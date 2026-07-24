@@ -1,0 +1,16 @@
+Specification-based testing
+
+You will now test a testing tool that provides random test data that should be useful for software testing.
+The requirements are available at https://www.thetesteye.com/exercises/RTD/Requirements.md
+You should test the tool and make sure the requirements are well covered by your tests.
+Beware that there as always also are implicit requirements, so make sure to also do exploratory testing to discover more bugs. Use testheuristics.md (in current folder) for further test inspiration.
+Testers are very picky so we want to find all important bugs so we can fix them.
+
+You should use the testing browser Trowser and its APIs, full documentation available in trowser-api-reference.md.
+The API supports navigation, interaction, and mpst of what you'd want from a browser API.
+It also has audits (POST api/audit-all) that are useful as a starting point before going deeper in an are.
+I have navigated my Trowser instance at localhost:6923 to https://www.thetesteye.com/exercises/RTD/good/index.html that you can use with API key trowser_XXX.
+
+Finalize by creating automated regression tests with the CLI interface, which is documented in scripting-reference.md
+Create a test report for this functionality in a nice-looking .html file in this folder.
+Be explicit on which requirements aren't perfect, and explain the heuristics and oracles that helped you, if applicable.

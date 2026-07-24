@@ -1,0 +1,34 @@
+axe-core - Mozilla Public License 2.0
+https://github.com/dequelabs/axe-core
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+---
+
+Mozilla Public License Version 2.0
+
+1. Definitions
+
+1.1. "Contributor" means each individual or legal entity that creates,
+contributes to the creation of, or owns Covered Software.
+
+1.2. "Covered Software" means Source Code Form to which the initial
+Contributor has attached the notice in Exhibit A, the Executable Form
+of such Source Code Form, and Modifications of such Source Code Form.
+
+1.3. "Executable Form" means any form of the work other than Source Code Form.
+
+1.4. "Source Code Form" means the form of the work preferred for making
+modifications.
+
+[Full MPL 2.0 text omitted for brevity - see http://mozilla.org/MPL/2.0/]
+
+---
+
+Exhibit A - Source Code Form License Notice
+
+This Source Code Form is subject to the terms of the Mozilla Public
+License, v. 2.0. If a copy of the MPL was not distributed with this
+file, You can obtain one at http://mozilla.org/MPL/2.0/.

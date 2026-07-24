@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trowser REST API — Swagger</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    :root {
+      --trowser-bg: #1a1a2e;
+      --trowser-surface: #16213e;
+      --trowser-accent: #0f3460;
+      --trowser-highlight: #e94560;
+      --trowser-text: #eee;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #fafafa;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .topbar-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .trowser-header {
+      background: var(--trowser-bg);
+      color: var(--trowser-text);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .trowser-header h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .trowser-header h1 span {
+      color: var(--trowser-highlight);
+    }
+
+    .trowser-header .subtitle {
+      opacity: 0.7;
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .trowser-quickstart {
+      background: var(--trowser-surface);
+      border: 1px solid var(--trowser-accent);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--trowser-text);
+      max-width: 480px;
+      line-height: 1.5;
+    }
+
+    .trowser-quickstart code {
+      background: rgba(255,255,255,0.1);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+
+    .trowser-quickstart ol {
+      margin: 4px 0 0 0;
+      padding-left: 20px;
+    }
+
+    .trowser-quickstart li {
+      margin-bottom: 2px;
+    }
+
+    #swagger-ui .topbar { display: none; }
+
+    #swagger-ui .info { margin: 20px 0 10px; }
+
+    #swagger-ui .scheme-container {
+      background: #f0f0f0;
+      padding: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="trowser-header">
+    <div>
+      <h1>🌐 <span>Trowser</span> REST API</h1>
+      <div class="subtitle">WebView2 browser with built-in test automation</div>
+    </div>
+    <div class="trowser-quickstart">
+      <strong>Quick start:</strong>
+      <ol>
+        <li>Launch Trowser — API runs on <code>localhost:6923</code></li>
+        <li>Copy the API key from the status bar tooltip</li>
+        <li>Click <strong>Authorize</strong> and paste the key</li>
+        <li>Expand any endpoint and click <strong>Try it out</strong></li>
+      </ol>
+    </div>
+  </div>
+  <div id="swagger-ui"></div>
+
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: "openapi.yaml",
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        docExpansion: "list",
+        defaultModelsExpandDepth: 1,
+        filter: true,
+        tagsSorter: "alpha",
+        operationsSorter: "method",
+        persistAuthorization: true,
+        tryItOutEnabled: false,
+        requestInterceptor: (req) => {
+          if (!req.url.includes("/api/ping")) {
+            const auth = window.ui?.getState?.()?.toJS?.()?.auth?.authorized?.BearerAuth?.value;
+            if (auth) {
+              req.headers["Authorization"] = "Bearer " + auth;
+            }
+          }
+          return req;
+        }
+      });
+    };
+  </script>
+</body>
+</html>

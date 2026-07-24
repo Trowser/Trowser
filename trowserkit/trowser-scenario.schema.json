@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://trowser.dev/schemas/trowser-scenario.schema.json",
+  "title": "Trowser Scenario",
+  "description": "Schema for .trw (Trowser scenario) files. Primary format: `phases` (setup → trigger → oracle → cleanup) executed via POST /api/test-scenario or POST /api/security/verify-workflow. Legacy flat `steps[]` still supported.",
+  "type": "object",
+  "additionalProperties": false,
+  "anyOf": [
+    { "required": ["phases"] },
+    { "required": ["steps"] }
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional JSON Schema reference for IDE validation."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable label for this scenario (displayed in Trowser's script console output)."
+    },
+    "stopOnError": {
+      "type": "boolean",
+      "default": true,
+      "description": "When true (default), stop executing after the first step that fails. Set to false to continue and collect all results."
+    },
+    "maxSteps": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 500,
+      "default": 250,
+      "description": "Hard cap on the number of steps. The server enforces an absolute maximum of 500."
+    },
+    "pacingMs": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 300000,
+      "default": 0,
+      "description": "Optional global delay in milliseconds between steps (after the first). Adds to each step’s own `delay`. Use on WAF-protected sites. Same as `globalDelay`."
+    },
+    "globalDelay": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 300000,
+      "default": 0,
+      "description": "Alias for `pacingMs` — extra wait between scenario steps."
+    },
+    "identitiesRequired": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Named identities required before running (Phase 1+ identity capture/apply). Informational until identity steps ship."
+    },
+    "phases": {
+      "type": "object",
+      "description": "Phased proof workflow (setup → trigger → oracle → cleanup). Oracle failure = scenario failure. Requires safetyMode active on POST /api/test-scenario.",
+      "additionalProperties": false,
+      "required": ["oracle"],
+      "properties": {
+        "setup": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/workflowStep" }
+        },
+        "trigger": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/workflowStep" }
+        },
+        "oracle": {
+          "type": "object",
+          "description": "WorkflowOracleEvaluator spec: { type: fetch|effectCheck|expression|domDiff|networkMatch|peerFetch|and|or, ... }"
+        },
+        "cleanup": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/workflowStep" }
+        }
+      }
+    },
+    "safetyMode": {
+      "type": "string",
+      "enum": ["passive", "safe", "active", "aggressive"],
+      "description": "Required active (or aggressive) for phased proof scenarios."
+    },
+    "confirmBackend": {
+      "type": "boolean",
+      "description": "Deprecated. Use safetyMode active instead."
+    },
+    "exportEvidence": {
+      "type": "boolean",
+      "description": "When true, write evidence bundle after oracle evaluation."
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of API calls to execute. Steps from a file are executed first; inline steps (via POST body) are appended.",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/definitions/step" },
+          { "$ref": "#/definitions/identityStep" }
+        ]
+      }
+    }
+  },
+    "definitions": {
+    "identityStep": {
+      "type": "object",
+      "description": "Identity orchestration step (no method/path). Runs capture or apply against stored snapshots.",
+      "additionalProperties": false,
+      "required": ["type", "action", "name"],
+      "properties": {
+        "type": { "const": "identity" },
+        "action": { "type": "string", "enum": ["capture", "apply"] },
+        "name": { "type": "string" },
+        "id": { "type": "string" },
+        "delay": { "type": "integer", "minimum": 0, "maximum": 30000 },
+        "target": { "type": "string", "enum": ["self", "peer"], "default": "self" },
+        "peer": { "type": "string" },
+        "navigateTo": { "type": "string" },
+        "includeAuthHeaders": { "type": "boolean" },
+        "verify": {
+          "type": "object",
+          "properties": {
+            "url": { "type": "string" },
+            "expectStatus": { "type": "integer", "default": 200 },
+            "method": { "type": "string" },
+            "timeoutMs": { "type": "integer" }
+          },
+          "required": ["url"]
+        }
+      }
+    },
+    "chainCategory": {
+      "type": "string",
+      "description": "Normalized finding category for chain-findings and chain analysis.",
+      "enum": [
+        "xss", "sqli", "sqli-indicator", "csrf", "idor", "ssrf", "open-redirect",
+        "path-traversal", "mass-assignment", "header-injection",
+        "content-type-confusion", "deserialization-suspected", "parser-differential",
+        "command-injection", "ssti-confirmed", "rce-indicator",
+        "weak-auth", "session-fixation", "missing-httponly", "missing-secure-flag",
+        "missing-samesite", "credential-exposure", "token-in-storage",
+        "missing-csp", "missing-hsts", "missing-xframe", "missing-referrer-policy",
+        "missing-permissions-policy", "weak-headers", "weak-cookies", "cors-misconfig",
+        "info-leak", "source-maps", "server-disclosure", "mixed-content",
+        "sensitive-storage", "captcha-leak", "timing-oracle", "missing-rate-limit",
+        "other"
+      ]
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "path"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "DELETE"],
+          "description": "HTTP method for this step."
+        },
+        "path": {
+          "type": "string",
+          "pattern": "^/?(api|mcp)/",
+          "description": "Trowser API endpoint path (e.g. /api/navigate, /api/click). Case-insensitive. Nested /api/test-scenario and /mcp are rejected at runtime.",
+          "examples": [
+            "/api/navigate",
+            "/api/click",
+            "/api/type",
+            "/api/state",
+            "/api/screenshot",
+            "/api/assert/page-contains",
+            "/api/journal",
+            "/api/security/chain-analyze",
+            "/api/security/chain-findings"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "description": "Optional label for this step. Shown in console output and returned in results for easy identification."
+        },
+        "query": {
+          "description": "Query parameters — either a string (\"a=1&b=2\" or \"?a=1&b=2\") or an object ({\"a\": \"1\"}). Object values (strings, numbers, booleans) are stringified automatically.",
+          "oneOf": [
+            { "type": "string" },
+            {
+              "type": "object",
+              "additionalProperties": {
+                "oneOf": [
+                  { "type": "string" },
+                  { "type": "number" },
+                  { "type": "boolean" }
+                ]
+              }
+            }
+          ]
+        },
+        "body": {
+          "description": "Request body for POST/DELETE steps. Can be a JSON object (most common) or a JSON-encoded string. String values may contain {{varName}} placeholders that are replaced from captured variables.",
+          "oneOf": [
+            { "type": "object" },
+            { "type": "string" }
+          ]
+        },
+        "delay": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30000,
+          "description": "Milliseconds to wait before executing this step. Useful for SPAs that need time to settle after a previous action. Maximum 30000 (30 seconds)."
+        },
+        "capture": {
+          "type": "object",
+          "description": "Capture values from the response into named variables for use in subsequent steps via {{varName}} placeholders. Keys are variable names, values are dot-path expressions into the response JSON (e.g. \"data.path\", \"data.results[0].id\"). Capture only runs on successful steps.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

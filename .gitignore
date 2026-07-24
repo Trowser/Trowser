@@ -1,0 +1,29 @@
+# Stage 1: initial public repository
+# Tracked: CHANGELOG.md, LICENSE, licenses/, trowserkit/
+# Remove or replace this block when adding source code and other project files.
+
+# Ignore everything
+*
+
+# Keep ignore rules
+!.gitignore
+
+# Stage 1 contents
+!CHANGELOG.md
+!LICENSE
+!licenses/
+!licenses/**
+!trowserkit/
+!trowserkit/**
+
+# --- Future project ignores (uncomment when expanding the repo) ---
+# .cert/
+# webview2-runtime/
+# bin/
+# obj/
+# dist/
+# *.user
+# *.suo
+# .vs/
+# testresults/
+# *.WebView2/

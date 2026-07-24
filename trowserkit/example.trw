@@ -1,0 +1,42 @@
+{
+  "$schema": "./trowser-scenario.schema.json",
+  "name": "Example: Navigate, screenshot, and verify",
+  "stopOnError": true,
+  "steps": [
+    {
+      "id": "navigate-to-example",
+      "method": "POST",
+      "path": "/api/navigate",
+      "body": { "url": "https://example.com" }
+    },
+    {
+      "id": "verify-title",
+      "method": "POST",
+      "path": "/api/assert/title",
+      "body": { "expected": "Example Domain", "message": "Page title should be 'Example Domain'" }
+    },
+    {
+      "id": "take-screenshot",
+      "method": "GET",
+      "path": "/api/screenshot",
+      "query": { "filename": "example-homepage" },
+      "capture": { "screenshotPath": "data.path" }
+    },
+    {
+      "id": "wait-for-settle",
+      "method": "GET",
+      "path": "/api/state",
+      "query": "limit=1",
+      "delay": 1000
+    },
+    {
+      "id": "log-result",
+      "method": "POST",
+      "path": "/api/journal",
+      "body": {
+        "kind": "note",
+        "note": "Screenshot saved to {{screenshotPath}}. Verified example.com loads correctly."
+      }
+    }
+  ]
+}

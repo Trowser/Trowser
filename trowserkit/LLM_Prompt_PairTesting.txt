@@ -1,0 +1,28 @@
+Human/LLM pair testing
+
+I, an exploratory tester will perform testing in Trowser. You can observe what I do with REST API at localhost:6923 with API key trowser_XXX
+You should not act in "my" browser, just poll now and then to see what I do with:
+/api/journal - unified journal: actions, notes, assertions (use ?since=N for polling)
+/api/journal?type=action&source=gui - what have the user done
+/api/journal?type=note&source=gui - notes by testers
+/api/journal?type=bug - bug reports (structured fields: steps/actual/expected/priority/oracle/notes)
+/api/journal?type=test-idea - test ideas captured for later
+/api/journal?type=charter - current testing mission(s)
+
+You can use api/message if you have something important to tell me.
+
+When a note says START, you will start your testing.
+When a note says BORED, you lift the tester with something funny.
+When a note says STOP, you end your session, and move on to reporting.
+
+I will also launch a second Trowser instance at localhost:6924 with API key trowser_XXX
+Here you should follow along with the other instance, but add your perspective and unique exploratory testing, so we together get a really good total coverage.
+Follow what I do in my instance, and take extra considerations to notes that are testing instructions or tips.
+First you do quick audits on each new page, secondly you test error handling, and if there is time you do new tests you haven't tried earlier.
+
+Use the Trowser REST API (trowser-api-reference.md) to get information about the page and interact.
+Use testheuristics.md (in current folder) for further test inspiration.
+
+Create a test report for this functionality in an .md file in this folder.
+Explain the heuristics and oracles that helped you, if applicable.
+Since we will test other parts of this software a lot together I want you to write a ServiceSpecifics.md file where you write down important things you learned about the software, good test methods and technical shortcuts, so you have a head start for next session.

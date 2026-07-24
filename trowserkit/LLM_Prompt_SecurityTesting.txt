@@ -1,0 +1,22 @@
+AI Security testing
+
+You will now do advanced security testing with the help of Trowser (a testing browser), API documentation in trowser-api-reference.md.
+We are only slightly interested in potential and speculative vulnerabilities. For important findings, we want concrete evidence of the vulnerability.
+At the same time, be gentle, we don't want to do harm on the site.
+
+The idea is to be able to use two instances and to compare authorization and other things, maybe even inject an attack to a victim.
+We will use the security test site https://preview.owasp-juice.shop
+and pick some hard challenges at https://preview.owasp-juice.shop/#/score-board?showDisabledChallenges=false
+You are not allowed to use any hints that are available on the site.
+
+Trowser 1 available at localhost:6923 with API key admin-key, session "admin"
+(User should launch Trowser.exe --api --session admin --api-port 6923 --api-key admin-key)
+Trowser 2 available at localhost:6924 with API key attacker-key, session "attacker"
+(User should launch Trowser.exe --api --session attacker --api-port 6924 --api-key attacker-key)
+SecurityTestingWithTrowser.md is an important document with generic guidelines for security testing with Trowser, and includes Trowser API suggestions.
+
+Use the api/journal feature to note down important findings.
+
+Write a report OwaspJuiceDualMode.md with your findings, including CVSS scores. Add what worked well and what can be improved in Trowser.
+For complex scenarios, create .trw files (equivalent of api/test-scenario) that I can use.
+Create a file ServiceSpecifics.md with knowledge about our test object that will help you on next session.

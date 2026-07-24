@@ -1,0 +1,15 @@
+Real-world LLM exploratory testing
+
+We will now do some really good testing with Trowser, the testing browser.
+I have navigated my Trowser instance at localhost:6923 to https://www.thetesteye.com/exercises/RTD/good/index.html where I want you to do deep exploratory testing to find bugs.
+This is a tool for software testers to generate random test data, and testers are very picky so we don't want any bugs.
+
+Use the Trowser REST API (trowser-api-reference.md) to get information about the page and interact.
+Use testheuristics.md (in current folder) for further test inspiration.
+
+API key is trowser_XXX
+
+Finalize by creating automated regression tests with the CLI interface, which is documented in scripting-reference.md
+Create a test report for this functionality in an .md file in this folder.
+Explain the heuristics and oracles that helped you, if applicable.
+Put our chat and your output (including thinking) in a separate file.

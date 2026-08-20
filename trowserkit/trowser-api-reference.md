@@ -16,7 +16,7 @@ Condensed reference for all Trowser endpoints.
 | API key | Auto-generated per session; use `--api-key <key>` for stable key |
 | Session | `--session <name>` isolates browser data (cookies, storage, cache) per named session under `%LocalAppData%\Trowser\Sessions\<name>\`. Default: `default`. Use different names to run multiple instances with independent sessions from the same exe. |
 | Ephemeral | `--ephemeral` uses a temporary session folder deleted on exit (for throwaway test sessions) |
-| Safe mode | `--safe` blocks JS execution, scripting, mocking, cookie/storage manipulation, `POST /api/fetch` (+ batch), `POST /api/upload`, `POST /api/fuzz`, `POST /api/storage` (write; same as `/storage/set`), `POST /api/intercept/replay`, `POST /api/load-test`, CSRF/methods/path-traversal/ssrf-scan/**open-redirect-scan** probes, `POST /api/security/verify` (+ batch), `POST /api/security/sqli-scan`, `POST /api/security/js-audit`, `POST /api/security/jwt-analyze`, `POST /api/security/jwt-forge`, `POST /api/security/brute-force`, `POST /api/security/idor-scan`, `POST /api/security/mass-assignment-scan`, `POST /api/security/auto-scan`, `POST /api/security/secrets-harvest`, `POST /api/security/smuggling`, `POST /api/security/host-header`, `POST /api/security/waf-bypass`, `POST /api/security/chain-patterns` **add/remove only**, `POST /api/websocket/send`, `POST /api/websocket/close`, `POST /api/security/websocket-audit`, `POST /api/security/cswsh-test`, etc. **Allowed in safe mode:** `POST /api/security/chain-analyze`, `GET /api/security/chain-findings`, `GET /api/security/chain-patterns`, `POST /api/security/chain-patterns` with `action=list`, `GET /api/orchestrate/playbooks`, `POST /api/orchestrate/dry-run/*`, `POST /api/vpx/render`. Orchestration playbooks (`POST /api/orchestrate/*`) respect the `safetyMode` in the request body — `SecurityPreflight` enforces host-based restrictions and caps mode to `safe` when `--safe-probes-only` is active. |
+| Safe mode | `--safe` blocks JS execution, scripting, mocking, cookie/storage manipulation, `POST /api/fetch` (+ batch), `POST /api/upload`, `POST /api/fuzz`, `POST /api/storage` (write; same as `/storage/set`), `POST /api/intercept/replay`, `POST /api/load-test`, CSRF/methods/path-traversal/ssrf-scan/**open-redirect-scan** probes, `POST /api/security/verify` (+ batch), `POST /api/security/sqli-scan`, `POST /api/security/js-audit`, `POST /api/security/nuclei-scan`, `POST /api/security/jwt-analyze`, `POST /api/security/jwt-forge`, `POST /api/security/brute-force`, `POST /api/security/idor-scan`, `POST /api/security/mass-assignment-scan`, `POST /api/security/auto-scan`, `POST /api/security/secrets-harvest`, `POST /api/security/smuggling`, `POST /api/security/host-header`, `POST /api/security/waf-bypass`, `POST /api/security/chain-patterns` **add/remove only**, `POST /api/websocket/send`, `POST /api/websocket/close`, `POST /api/security/websocket-audit`, `POST /api/security/cswsh-test`, etc. **Allowed in safe mode:** `POST /api/security/chain-analyze`, `GET /api/security/chain-findings`, `GET /api/security/chain-patterns`, `POST /api/security/chain-patterns` with `action=list`, `GET /api/orchestrate/playbooks`, `POST /api/orchestrate/dry-run/*`, `POST /api/vpx/render`. Orchestration playbooks (`POST /api/orchestrate/*`) respect the `safetyMode` in the request body — `SecurityPreflight` enforces host-based restrictions and caps mode to `safe` when `--safe-probes-only` is active. |
 | Security probes | `--safe-probes-only` forces **non-destructive** IDOR (GET/HEAD/OPTIONS only, no PUT/PATCH/DELETE) and skips **mass-assignment** in `POST /api/security/auto-scan` — overrides explicit JSON if those probes would mutate data. `--dangerous-ok` restores **legacy omission defaults** so omitted `includeMutatingProbes` / `includeIdorMutatingProbes` can enable mutating IDOR (still unsafe on shared environments). |
 | Scope | `--scope <patterns>` restricts navigation to matching URL patterns |
 | Proxy | `--proxy <url>` routes traffic through HTTP proxy (e.g. OWASP ZAP) |
@@ -99,11 +99,13 @@ All action endpoints accept elements by **ref**, **CSS selector**, or **semantic
 {"placeholder": "Search..."}
 {"testId": "submit-btn"}
 {"value": "option1"}
+{"ref": 3, "frame": "child"}
+{"selector": "#in-frame", "frame": "iframe#child-frame"}
 ```
 
-Ref numbers come from `GET /api/state` → `interactiveElements`. Hidden elements have `ref: -1`. After page changes, re-fetch `/api/state` for fresh refs.
+Ref numbers come from `GET /api/state` → `interactiveElements`. Hidden elements have `ref: -1`. After page changes, re-fetch `/api/state` for fresh refs. Pass `frame` (or use a frame-scoped snapshot) for same-origin iframe targets; refs from a framed snapshot carry `frameId` and are applied automatically.
 
-**`byText` matching** is case-insensitive and whitespace-normalized (multiple spaces/tabs/newlines → single space).
+**`byText` matching** is case-insensitive and whitespace-normalized (multiple spaces/tabs/newlines → single space). MCP click/hover tools also accept `text` as an alias for `byText`. On **`POST /api/type`** / **`browser_type`**, `text` means **content to type** (not a locator) — use `byText` for a visible-text locator.
 
 **Auto-waiting:** All actions wait up to 5s for element readiness. Override with `"timeout": <ms>`.
 
@@ -122,16 +124,16 @@ Returns the unified journal — a timeline of all session activity (actions, not
 |-------------|-------------|
 | `since` | Return entries after this index (exclusive). Use for incremental polling. |
 | `last` | Return only the last N entries. |
-| `type` | Filter: `action`, `assertion`, `message`, `error`, `screenshot`, `script-output`, or a note kind (`note`, `bug`, `enhancement`, `observation`, `charter`, `testing`, `test-idea`, `user`). `type=bug` extracts only bug reports. |
+| `type` | Filter: `action`, `assertion`, `message`, `error`, `screenshot`, `script-output`, `recording`, or a note kind (`note`, `bug`, `enhancement`, `observation`, `charter`, `testing`, `test-idea`, `user`). `type=bug` extracts only bug reports. |
 | `source` | Filter: `api` (LLM/REST), `gui` (human tester), `system` (auto-generated) |
 | `tag` | Filter by tag: return only entries that have this tag (case-insensitive) |
 
-Response: `{ entries[], count, total, logging }`. Each entry: `{ index, timestamp, type, kind?, source, summary, details?, severity?, fields?, tags?, url? }`. For `bug`/`enhancement` entries, `fields` contains `steps` (string or array), `actual`, `expected`, `priority`, `oracle`, `notes`.
+Response: `{ entries[], count, total, logging, revision, deleted[] }`. Each entry: `{ index, timestamp, type, kind?, source, summary, details?, severity?, fields?, tags?, url? }`. For `bug`/`enhancement` entries, `fields` contains `steps` (string or array), `actual`, `expected`, `priority`, `oracle`, `notes`. `revision` increments on add, update, and delete. `deleted` lists indices removed this process session (never reused). `type` also accepts `recording`.
 
 **Efficient polling pattern:**
 1. `GET /api/journal?since=0` → entries 1-3, remember `lastSeen=3`
 2. `GET /api/journal?since=3` → only new entries (4, 5…)
-3. Empty `entries[]` = no new activity
+3. Empty `entries[]` = no new activity. Also check `deleted` so you drop stale citations.
 
 ### POST /api/journal
 Add a structured entry to the journal. Entries are classified by `kind` so bugs, enhancements, test ideas and charters can be extracted programmatically later. API actions and assertions are auto-logged; use this endpoint for everything else.
@@ -139,7 +141,8 @@ Add a structured entry to the journal. Entries are classified by `kind` so bugs,
 | Field | Required | Applies to | Description |
 |-------|----------|------------|-------------|
 | `kind` | | all | `note` (default), `user`, `charter`, `testing`, `test-idea`, `observation`, `bug`, `enhancement` |
-| `note` | ✅* | all | Primary text / title (`text` and `title` are accepted aliases). *Optional when at least one structured field is given for a bug/enhancement. |
+| `note` | ✅* | all | Primary text / title (`text` and `title` are accepted aliases). *Optional when at least one structured field is given for a bug/enhancement. Multi-line values use the first line as title and the rest as markdown body. |
+| `details` | | all | Optional markdown body (if omitted, extra lines of `note` become the body). |
 | `severity` | | all | `info`, `low`, `medium`, `high`, `critical` |
 | `tags` | | all | Array of strings for grouping/filtering (e.g. `["login", "security"]`). Normalized to lowercase. |
 | `url` | | all | Page URL. Auto-captured from the browser if omitted. |
@@ -149,7 +152,7 @@ Add a structured entry to the journal. Entries are classified by `kind` so bugs,
 | `priority` | | bug, enhancement | `low`, `medium`, `high`, `critical` |
 | `oracle` | | bug, enhancement | Why you believe this is a bug |
 | `notes` | | bug, enhancement | Additional notes / workarounds |
-| `screenshot` | | all | Path to a screenshot (e.g. from `GET /api/screenshot`) — referenced by path in the journal and export (not embedded) |
+| `screenshot` | | all | Path to a screenshot (e.g. from `GET /api/screenshot`). The Journal panel lists the path; HTML export embeds the image. |
 
 Examples:
 ```json
@@ -168,12 +171,22 @@ Response includes all stored fields for verification: `{ index, timestamp, type,
 
 Bypasses the gate — always available, even when the server is busy.
 
+### PATCH /api/journal
+Update an existing journal entry. Body must include `index`. All other fields are optional and use the same vocabulary as POST (`kind`, `note`/`text`/`title`, `details`, `severity`, `tags`, `url`, structured bug fields, `screenshot`). Omitted fields are left unchanged; send an empty string / empty array to clear. **Gate-free**.
+
+Response: the updated entry (same shape as POST). `404` if the index is unknown.
+
+### DELETE /api/journal
+Remove an entry. Query: `index` (required). The index is never reused; subsequent GET responses include it in `deleted[]`. **Gate-free**.
+
+Response: `{ deleted, revision, total }`. `404` if the index is unknown.
+
 ### GET /api/journal/export
-Render the full journal as a formatted report — Markdown (default) or self-contained HTML. Bugs/enhancements are grouped and priority-sorted. Screenshots attached to entries are referenced by path (linked, not embedded). **Gate-free**.
+Render the full journal as a formatted report — HTML (REST default when `format` is omitted) or Markdown. Bugs/enhancements are grouped and priority-sorted. Screenshot files are **embedded** in HTML (base64) and referenced by path in Markdown. The docked Journal panel does not embed images. **Gate-free**.
 
 | Query Param | Description |
 |-------------|-------------|
-| `format` | `markdown` (default) or `html` |
+| `format` | `html` (REST default) or `markdown` / `md` (MCP `browser_journal_export` defaults to markdown) |
 | `path` | Optional file path to also write the report to disk |
 | `json` | If `true`, return `{ format, content, path? }` JSON instead of the raw document |
 
@@ -193,7 +206,7 @@ Force-cancel the stuck operation and return server to idle. Bypasses the gate (w
 Recover a **frozen** page: CDP **`Runtime.terminateExecution`** + **`Page.navigate`** (optional `terminateScripts`, default `true`). Body: `{ "url": "about:blank", "terminateScripts": true }`. **Bypasses the gate**; cancels stuck gated op after success. Same navigation-scope rules as `/api/navigate` except `about:` always allowed.
 
 ### GET /api/info
-Server version, current URL/title, **`navigationScope`** / **`navigationRestricted`**, assertion/console/network counts.
+Server version, current URL/title, **`navigationScope`** / **`navigationRestricted`**, **`externalMcpMode`** (`core` / `security`; `full` is an alias of security), assertion/console/network counts.
 
 ### GET /api/state
 **Main endpoint.** Full page snapshot: **URL**, title, `pageText` (3000 chars default), `headings`, `interactiveElements` (with ref numbers, plus `checked` for radio/checkbox), `imageSummary`, `consoleErrors`, `networkErrors`, `assertionSummary`. The `url` field is always included — no extra call to `/api/info` needed.
@@ -207,13 +220,17 @@ When configured, also includes **Shadows** fields: `securityShadow` (Security Sh
 | `?fullText=true` | Return untruncated pageText |
 | `?visible=false` | Include hidden elements (those with `ref: -1`). Default: visible only. |
 | `?selector=<css>` | Scope pageText and interactiveElements to elements within matching container(s) |
+| `?frame=<id\|name\|css>` | Collect interactive refs inside a same-origin iframe (`frameId` from `frames[]`, iframe `name`, or CSS selector of the `<iframe>`). Cross-origin frames appear in `frames[]` with `sameOrigin: false` but cannot be scanned. |
 | `?tag=<name>` | Filter elements by tag (`input`, `button`, `a`, `select`, etc.) |
 | `?type=<name>` | Filter elements by type/role (`text`, `checkbox`, `submit`, etc.) |
 | `?q=<text>` | Filter elements by text/label search (case-insensitive) |
 | `?limit=<n>` | Max number of interactiveElements |
-| `?sections=<list>` | Comma-separated sections to include (e.g., `interactiveElements,url,title`). Also: `securityShadow`, `powerMode`, `redTeamWhisper`. `refGeneration` always included. |
+| `?sections=<list>` | Comma-separated sections to include (e.g., `interactiveElements,url,title,frames`). Also: `securityShadow`, `powerMode`, `redTeamWhisper`. `refGeneration` always included. |
 
-Filtering does not change ref numbering -- refs remain valid for actions.
+Snapshot includes `frames[]`: `{ frameId, name, url, sameOrigin, parentFrameId }`. Interactive elements include `frameId` when scanned inside a frame. Filtering does not change ref numbering -- refs remain valid for actions.
+
+### GET /api/frames
+Thin list of iframes (same shape as `frames[]` on `/api/state`). No gate.
 
 ### POST /api/state/enrich
 Batch-fetch text/attributes for multiple refs in one call.
@@ -299,17 +316,50 @@ Network traffic log with optional filters. **Gate-free** — safe for passive po
 | `?type=<Script\|Fetch\|...>` | Filter by resource type |
 | `?includeBody=true` | Include request/response bodies |
 | `?includeHeaders=true` | Include full HTTP headers (including `Set-Cookie` captured via CDP) |
+| `?includeDataUrls=true` | Include `data:` URLs (default **false** — base64 images blow agent context) |
+| `?preferInteractive=false` | Disable soft Document/Fetch/XHR-first ordering (default prefers interactive types) |
+| `?maxUrlChars=500` | Truncate displayed URL length (default 500) |
+| `?limit=N` / `?last=N` | Return only the **most recent** N matching entries (MCP `browser_network` parity). Response includes `shown` and `truncated` |
+| `?summary=true` | Compact one-line-per-request for **all** matches (`summary: string[]`) instead of `entries` — best after heavy traffic |
 
 ### POST /api/network/clear
 Clear captured network entries. Empty body or `{}`. Call after reviewing network data to free memory.
 
-### POST /api/clear-all
-Reset all test session state in one call. Clears: console log, network log, cookies, mock rules, intercept rules, assertion counters, network throttle, viewport override, localStorage, and sessionStorage.
+### GET /api/network/har
+Export the in-memory network log as **HAR 1.2** JSON. Filters mirror `/api/network`. Optional `?path=` writes the HAR to a host file and returns a confirmation.
 
-Optional body: `{ "preserve": ["cookies", "storage"] }` — categories to keep intact. Accepted values: `cookies`, `storage`, `mocks`, `intercepts`, `throttle`, `viewport`.
+| Param | Description |
+|-------|-------------|
+| `?includeHeaders=false` | Omit headers (default include) |
+| `?includeBody=true` / `?includeBodies=true` | Include captured bodies (default false) |
+| `?url=` `?method=` `?errors=true` `?page=true` | Same filters as `/api/network` |
+| `?path=<file>` | Write HAR to this path instead of returning JSON |
+
+### GET /api/downloads
+List captured downloads: `id`, `url`, `suggestedFileName`, `path`, `state`, `bytes`, `totalBytes`, `mime`.
+
+### POST /api/downloads/wait
+Wait until a matching download reaches **`completed`** and the result file exists on disk (when a path was assigned). Does **not** resolve on `inprogress`. Interrupted/cancelled downloads return HTTP 400.
+
+| Field | Description |
+|-------|-------------|
+| `fileNameContains` | Optional filename substring |
+| `timeout` | ms (default 30000) |
+| `afterId` | Only match downloads with id greater than this |
+
+### POST /api/downloads/assert
+Assert filename / mime / minBytes / file exists / completed state on a captured download.
+
+### POST /api/downloads/clear
+Clear the download log. `{ "deleteFiles": true }` also deletes saved files.
+
+### POST /api/clear-all
+Reset all test session state in one call. Clears: console log, network log, cookies, mock rules, intercept rules, assertion counters, network throttle, viewport override, **emulation**, **download log**, **action trace**, localStorage, and sessionStorage.
+
+Optional body: `{ "preserve": ["cookies", "storage"] }` — categories to keep intact. Accepted values: `cookies`, `storage`, `mocks`, `intercepts`, `throttle`, `viewport`, `emulation`, `downloads`, `trace`.
 
 ### POST /api/clear-session
-Lighter reset — clears test artifacts (console, network, assertions, mocks, intercepts, throttle, viewport) but **preserves cookies and web storage**. Use when you need a clean test slate without destroying the user's session.
+Lighter reset — clears test artifacts (console, network, assertions, mocks, intercepts, throttle, viewport, emulation, downloads, trace) but **preserves cookies and web storage**. Use when you need a clean test slate without destroying the user's session.
 
 ### GET /api/assertions
 Current assertion results: `passed`, `failed`, `total`, `allPassed`, `results[]`. **Gate-free** — safe for passive polling.
@@ -321,6 +371,21 @@ Current assertion results: `passed`, `failed`, `total`, `allPassed`, `results[]`
 
 ### GET /api/inspiration
 Get a random testing inspiration message — a creative prompt, heuristic, or lateral-thinking trigger to spark new test ideas. Use it to get inspired, but don't necessarily follow it unless it resonates. **Gate-free**. Response: `{ "message": "..." }`.
+
+---
+
+## Scripting help
+
+### GET /api/scripting-help
+Curated C# scripting (`.csx`) cheat sheet for LLMs and agents writing repeatable scripts. Prefer this over inventing MCP tool-call JSON as a “script”. **Gate-free**.
+
+| Query | Default | Description |
+|-------|---------|-------------|
+| `topic` | `overview` | Section: `overview`, `map` (MCP/REST→C#), `interaction`, `assert`, `wait`, `network`, `fetch`, `mock`, `security`, `template`, `topics`, or `all` |
+
+Response: `{ "topic": "overview", "text": "...", "topics": ["assert", "fetch", ...] }`.
+
+**MCP equivalent:** `browser_scripting_help` with optional `topic`. Full reference: `trowserkit/scripting-reference.md`.
 
 ---
 
@@ -427,9 +492,26 @@ Click an element. Auto-waits for visible + enabled. Auto-waits for navigation on
 | Field | Default | Description |
 |-------|---------|-------------|
 | element | *(required)* | `ref`, `selector`, or locator |
+| `frame` | — | Same-origin iframe: `frameId`, iframe `name`, or CSS selector of `<iframe>` |
 | `button` | `"left"` | `left`, `right`, `middle` |
 | `clickCount` | 1 | 1=single, 2=double-click |
 | `timeout` | 5000 | Auto-wait (ms) |
+
+### POST /api/drag
+Drag from one element to another. By default: HTML5 DragEvent path when the source is `draggable`, otherwise CDP mouse (`mouseMoved` → `mousePressed` → stepped `mouseMoved` → `mouseReleased`). Only one path runs (no double-fire) unless you explicitly need both.
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `from` | Yes* | Nested element object (`ref`/`selector`/locator) |
+| `to` | Yes* | Nested element object |
+| `fromRef` / `fromSelector` | * | Flat alternatives to `from` |
+| `toRef` / `toSelector` | * | Flat alternatives to `to` |
+| `steps` | No (default 10) | Intermediate CDP move steps |
+| `html5` | No | `true` = HTML5 only; `false` = CDP only; omit = auto |
+| `frame` | No | Optional same-origin iframe scope for both ends |
+| `timeout` | No | Auto-wait (ms) |
+
+Response includes `path`: `"html5"`, `"cdp"`, or `"cdp+html5"`.
 
 ### POST /api/type
 Clear input and type text (or append with `append: true` / `clearFirst: false`). Auto-waits for visible + enabled. Automatically detects **contenteditable** elements (rich text editors) and uses `execCommand('insertText')` for compatibility. Pass `html` to insert formatted HTML.
@@ -438,11 +520,14 @@ Clear input and type text (or append with `append: true` / `clearFirst: false`).
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| element | Yes | `ref`, `selector`, or locator |
-| `text` | No (default `""`) | Text to type |
-| `html` | No | HTML content for contenteditable elements (uses `insertHTML`) |
+| element | Yes | `ref`, `selector`, or locator (`byText`, `label`, …). Alone, `value` still means the `@value:` locator |
+| `text` | One of text/value/html | Text to type. Explicit `""` clears the field |
+| `value` | One of text/value/html | **Alias for typed content** when the element is already addressed by `ref`/`selector`/another locator (MCP-shaped `{ref, value}`). Without another locator, `value` remains the `@value:` element locator |
+| `html` | One of text/value/html | HTML content for contenteditable elements (uses `insertHTML`) |
 | `append` | No (default `false`) | If `true`, append to existing content instead of clearing |
 | `clearFirst` | No (default `true`) | If `false`, append to existing content instead of clearing |
+
+Returns HTTP 400 if none of `text`, content-`value`, or `html` is provided (no silent success with an empty type).
 
 ### POST /api/upload
 Assign **absolute host file path(s)** to `<input type="file">` via CDP `DOM.setFileInputFiles`. Hidden file inputs are OK. **Blocked in safe mode.**
@@ -562,7 +647,10 @@ Run C# test script (same engine as CLI mode). Blocked in safe mode.
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `script` | Yes | C# script code |
+| `code` | Yes* | C# script source. Canonical field name. |
+| `script` | Yes* | Alias for `code` (accepted for DX compatibility). |
+
+\* Provide **`code`** or **`script`**.
 
 ### POST /api/batch
 Execute multiple actions sequentially in one request. Avoids stale-ref issues between steps.
@@ -708,6 +796,55 @@ Set viewport. Provide `preset` **or** `width`+`height`.
 | BigPhone | 412×915 | BigPad | 1024×1366 |
 | LandscapePhone | 844×390 | Desktop | *(reset)* |
 | | | BigDesktop | 1920×1080 |
+
+Related but separate: **network throttle** (`/api/network/throttle`) and **environment emulation** (`/api/emulation`).
+
+---
+
+## Environment Emulation
+
+CDP overrides for geolocation, locale, timezone, `prefers-color-scheme` / `prefers-reduced-motion`, user-agent, and (when supported) permissions. Cleared by `/api/clear-session` and `/api/clear-all`.
+
+**Cross-origin note:** After each successful navigation, Trowser re-applies the stored geolocation override and re-grants `permissions` for the **new origin** (CDP permissions are origin-scoped). `GET /api/emulation` reflects the intended session overrides; you do not need to re-`POST` after navigate.
+
+### GET /api/emulation
+Current overrides.
+
+### POST /api/emulation
+Set any subset:
+
+```json
+{
+  "geolocation": { "latitude": 59.33, "longitude": 18.07, "accuracy": 10 },
+  "locale": "sv-SE",
+  "timezone": "Europe/Stockholm",
+  "colorScheme": "dark",
+  "reducedMotion": "reduce",
+  "userAgent": "Custom UA",
+  "permissions": { "geolocation": "granted" }
+}
+```
+
+Clear a single geo override with `"geolocation": { "clear": true }` or `"geolocation": null`. Empty string for `locale` / `timezone` / `userAgent` clears that field.
+
+### DELETE /api/emulation
+Clear all emulation overrides.
+
+---
+
+## Action Trace
+
+Ring-buffer timeline of automation steps (not a Playwright `.zip` Trace Viewer). Optional compact DOM snapshot ids (off by default).
+
+### POST /api/trace/start
+`{ "domSnapshots": false, "maxSteps": 200 }`
+
+### POST /api/trace/stop
+
+### GET /api/trace
+### GET /api/trace/export
+JSON: `{ tracing, domSnapshots, steps: [{ t, action, args, url, refGeneration, domSnapshotId, ... }], domSnapshotData?: { [id]: html } }`.
+When started with `domSnapshots: true`, steps may include `domSnapshotId` and `domSnapshotData` holds compact outerHTML snippets.
 
 ---
 
@@ -864,7 +1001,17 @@ Use `body` for raw string payloads (form-encoded, XML, etc.). Use `json` as a sh
 Returns: `ok`, `status`, `statusText`, `redirected` (bool), `type` (`"basic"`, `"cors"`, `"manual-server-side"` for cross-origin manual redirects, `"server-side"` for TRACE/CONNECT), `url` (final URL), `headers`, `body`.
 
 ### POST /api/fetch/batch
-Multiple `fetch()` calls in the browser context. **Body:** `requests` (array of objects with the same fields as `/api/fetch`: `url`, `method`, `headers`, `body` or `bodyBase64` or `bodyFile` or `json`, `redirect`, `timeout`), `concurrent` (default `true`). Use for authenticated race-condition tests (parallel polls, etc.). Blocked in safe mode.
+Multiple `fetch()` calls in the browser context. **Body:** `requests` (array of objects with the same fields as `/api/fetch`: `url`, `method`, `headers`, `body` or `bodyBase64` or `bodyFile` or `json`, `redirect`, `timeout`), `concurrent` (default `true`).
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `includeBodies` | `false` | When true, each result includes a truncated `body` string (required for IDOR content evidence) |
+| `includeBody` | — | Alias for `includeBodies` |
+| `bodyMaxChars` | `200` | Max chars of response body when bodies are included (`0` = full body) |
+| `maxBodyChars` | — | Alias for `bodyMaxChars` |
+| `includeTiming` | `true` | Include `durationMs` per result |
+
+Without `includeBodies`, results still include `bodyLen` but `body` is `null`. Use for authenticated race-condition tests (parallel polls, etc.). Blocked in safe mode.
 
 ---
 
@@ -1254,11 +1401,13 @@ Endpoint/directory discovery.
 | `wordlist` | `"common"` | `common` (~50, includes CI/CD paths), `full` (~150), `api` (API-focused) |
 | `basePath` | `"/"` | Base path prefix |
 | `delayMs` | `0` | Milliseconds between requests. `0` = parallel (fast). `> 0` = sequential (avoids 429) |
-| `spaMode` | `false` | When `true`, probes a random invalid path to fingerprint the SPA shell and excludes responses that match (same status, title, similar body length; 3xx also compare `Location`). **Any response with API-shaped `Content-Type`** (`json`, `xml`, `text/plain`, etc.) is **never** treated as a shell duplicate — so JSON APIs behind the same reverse proxy stay in `discovered` even when status/length align with the probe. Use on SPAs that return `text/html` for the shell but `application/json` for real API routes |
+| `spaMode` | `false` | When `true`, probes a random invalid path to fingerprint the SPA shell and excludes responses that match (same status, title, similar body length; 3xx also compare `Location` fingerprint). **Any response with API-shaped `Content-Type`** (`json`, `xml`, `text/plain`, etc.) is **never** treated as a shell duplicate — so JSON APIs behind the same reverse proxy stay in `discovered` even when status/length align with the probe. Use on SPAs that return `text/html` for the shell but `application/json` for real API routes |
 | `baselineFilter` | `false` | Alias for `spaMode` |
 | `spaProbePath` | _(auto)_ | Optional custom probe path for SPA fingerprinting |
 
-**Response** also includes `probeCount` (paths probed), and when `discoveredCount === 0`: `zeroResultReason` (one-line explanation, e.g. SPA shell filter swallowed all hits).
+**Uniform auth redirects:** An invalid-path baseline is always probed. Paths that return the same 3xx status and the same redirect target fingerprint (`scheme://host/path`, query stripped) are filtered automatically — this suppresses Shibboleth/SAML/OIDC login-gate noise where every unknown path 302s to the IdP with unique `SAMLRequest`/`state` params. Playbooks also treat bare 3xx discoveries as `info` (not findings).
+
+**Response** also includes `probeCount` (paths probed), `spaFilteredCount`, `authRedirectFilteredCount`, and when `discoveredCount === 0`: `zeroResultReason` (one-line explanation, e.g. SPA shell / auth-redirect filter swallowed all hits).
 
 ### POST /api/security/crawl-light
 Light same-origin crawler (BFS): follows `<a href>` links and enumerates `<form action>` URLs (GET navigation only — no POST submissions). Populates the network log before scanners. Not a full smart-monkey pass. Respects **`host`** when set (playbook orchestrators pass **`scope.host`** automatically).
@@ -1523,7 +1672,7 @@ Test which HTTP methods are allowed on a URL. Sends GET, POST, PUT, DELETE, PATC
 | `url` | current page | URL to test |
 
 ### POST /api/security/smuggling
-HTTP Request Smuggling detection via **raw TCP probing**. Tests for CL-TE, TE-CL, TE-TE obfuscation, duplicate Content-Length (CL-CL), and header normalization weaknesses. Uses **timing-based differential detection** (James Kettle / PortSwigger technique) — does not actually smuggle requests; instead measures whether ambiguous framing causes one layer to stall while the other processes normally. Also fingerprints infrastructure (proxy detection via Via/X-Forwarded-For/X-Cache/CF-RAY headers, HTTP version, server disclosure).
+HTTP Request Smuggling detection via **raw TCP probing**. Tests for CL-TE, TE-CL, TE-TE obfuscation, duplicate Content-Length (CL-CL), and header normalization weaknesses. Uses **timing probes** plus **PortSwigger-style differential-response confirmation**: complete CL.TE / TE.CL requests that prefix a canary `GET/POST /404` onto the next request on the shared front-end→back-end connection; an unexpected 404 (vs baseline) confirms real desync. Timing-only stalls without confirmation remain informational. Also fingerprints infrastructure (proxy detection via Via/X-Forwarded-For/X-Cache/CF-RAY headers, HTTP version, server disclosure).
 
 **Safety gate:** Requires `"safetyMode": "active"` — sends specially crafted HTTP requests with ambiguous CL/TE headers. **Blocked in safe mode.**
 
@@ -1536,7 +1685,7 @@ HTTP Request Smuggling detection via **raw TCP probing**. Tests for CL-TE, TE-CL
 | `delayThresholdMs` | `3000` | Timing differential (ms) to flag as vulnerable (min: 1000) |
 | `teObfuscations` | `true` | Test 14 Transfer-Encoding header mutations (trailing space, tab, capitalization, extensions, etc.) |
 
-**Response:** `url`, `elapsedMs`, `summary`, `probesRun`, `findingCount`, `findings[]` (`technique`, `severity`, `confidence`, `evidence`, `description`, `remediation`, `probeDetails` with `baselineMs`/`probeMs`/`deltaMs`), `headerNormalization` (`acceptsDuplicateCL`, `acceptsObfuscatedTE`, `obfuscationsAccepted[]`, `rejectsBothCLAndTE`), `infrastructure` (`httpVersion`, `serverHeader`, `viaHeaders[]`, `proxyLikely`, `proxyEvidence[]`).
+**Response:** `url`, `elapsedMs`, `summary`, `probesRun`, `findingCount`, `findings[]` (`technique`, `severity`, `confidence`, `evidence`, `description`, `remediation`, `confirmationMethod` — e.g. `differential-response`, `timing-only-incomplete-chunk`, `timing-differential-corroborated-by-te-te` — `probeDetails` with `baselineMs`/`probeMs`/`deltaMs`), `headerNormalization` (`acceptsDuplicateCL`, `acceptsObfuscatedTE`, `obfuscationsAccepted[]`, `rejectsBothCLAndTE`), `infrastructure` (`httpVersion`, `serverHeader`, `viaHeaders[]`, `proxyLikely`, `proxyEvidence[]`).
 
 **Passive mode (in audit-all):** The passive smuggling check runs automatically in `POST /api/audit-all` without `safetyMode: "active"` — it only analyzes response headers (no active probing). Reports `risk` (`none`/`low`/`medium`/`high`), `indicators[]`, `proxyDetected`, and `recommendation`.
 
@@ -1785,7 +1934,7 @@ SSTI scan with **unified findings**. Discovers injectable parameters from the ne
 **MCP:** `browser_security_ssti_scan`.
 
 ### POST /api/security/ssti-polyglot-scan
-**Fast reflected SSTI** probe: single GET **polyglot** payload `${7*7}{{7*7}}<%=7*7%>#{7*7}` across common search/render paths and query parameter names. Baseline diff detects **49** in the response (high) or partial evaluation artifacts like `{{49}}` (medium). Ported from pentest-ai `web.ssti_polyglot`.
+**Fast reflected SSTI** probe: single GET **polyglot** payload `${7*7}{{7*7}}<%=7*7%>#{7*7}` across common search/render paths and query parameter names. Baseline diff detects evaluated **49** with non-digit boundaries (high when clean; medium with partial markers / template residue). Inspired by OWASP WSTG-INPV-18 and PortSwigger SSTI methodology.
 
 **Limitations:** Polyglot is **GET query only** — it will not exercise POST body / Content-Type matrices (e.g. `text/plain` template engines). For those surfaces use **`POST /api/security/ssti-scan`** with an explicit `request` template and the matching Content-Type (often `text/plain` or `application/json`).
 
@@ -1810,7 +1959,7 @@ SSTI scan with **unified findings**. Discovers injectable parameters from the ne
 **MCP:** `browser_security_ssti_polyglot_scan`. In auto-scan: **`includeSstiPolyglot: true`** (default) runs before full SSTI scan; skipped when **`includeSsti: false`**.
 
 ### POST /api/security/ssti-stored-scan
-**Stored SSTI**: POST template payload to profile-shaped fields (`bio`, `about`, `signature`, …), then **GET readback** URLs for evaluated marker **13289** (`137*97`). Tests Jinja2 `{{137*97}}`, Velocity `${137*97}`, ERB `<%=137*97%>` via form-urlencoded and JSON. Works best when logged in (`includeBrowserCookies`). Ported from pentest-ai `web.ssti_stored`.
+**Stored SSTI**: POST template payload to profile-shaped fields (`bio`, `about`, `signature`, …), then **GET readback** URLs for evaluated marker **13289** (`137*97`). Requires marker absent from baseline; POST-echo alone is high, confirmed separate readback is critical. Tests Jinja2 `{{137*97}}`, Velocity `${137*97}`, ERB `<%=137*97%>` via form-urlencoded and JSON. Works best when logged in (`includeBrowserCookies`). Inspired by OWASP WSTG-INPV-18 and PortSwigger SSTI. **Mutates** profile fields under active mode.
 
 **Safety gate:** `"safetyMode": "active"`. **Blocked in safe mode.**
 
@@ -1828,7 +1977,7 @@ SSTI scan with **unified findings**. Discovers injectable parameters from the ne
 **MCP:** `browser_security_ssti_stored_scan`. In auto-scan: **`includeSstiStored: true`** (default); skipped when **`includeSsti: false`**.
 
 ### POST /api/security/prototype-pollution-scan
-**Server-side prototype pollution**: POST JSON with **`__proto__`** and **`constructor.prototype`** pollution keys, then **GET** verify paths (`/`, `/api/me`, …) for canary strings **`yes-via-proto`** / **`yes-via-ctor`**. Ported from pentest-ai `web.prototype_pollution`.
+**Server-side prototype pollution**: POST JSON with **`__proto__`** and **`constructor.prototype`** pollution keys, then **GET** verify paths (`/`, `/api/me`, …) for canary **emergence** (absent on pre-pollution GET, present after). Hard-rejects 400/403/422 on pollution POST. Inspired by OWASP WSTG-INPV-22 and PortSwigger non-DoS PP research.
 
 **Safety gate:** `"safetyMode": "active"`. **Blocked in safe mode.**
 
@@ -1965,7 +2114,7 @@ SSTI scan with **unified findings**. Discovers injectable parameters from the ne
 **MCP:** `browser_security_captcha_replay_scan`.
 
 ### POST /api/security/llm-redteam-scan
-**OWASP LLM Top 10 red-team scan** — YAML probe corpus (**29 probes**, LLM01–LLM07), integrated with **Red Team Whisper** (surface hints + finding toasts). Runs via discovered **HTTP adapter** (`openai` / `simple` / `custom`) or **chat UI** (`llm-chat-interact` helper). Optional **WebMCP abuse** probes and **indirect injection** (upload + summarize).
+**OWASP LLM Top 10 application-layer red-team scan** — YAML probe corpus (**LLM01–03 + LLM05–07 + LLM09**; see `coverage` in response), plus optional **RAG/memory poison** (LLM04), **peer embedding isolation** (LLM08 via `peerBaseUrl`), **unbounded consumption** (LLM10), **WebMCP abuse**, and **indirect injection**. Integrated with **Red Team Whisper**. Runs via discovered **HTTP adapter** (`openai` / `simple` / `custom`) or **chat UI** (`llm-chat-interact` helper).
 
 Includes **system-prompt extraction** probes (`llm07_secret_password`, `llm07_initial_instructions`, …) and **output-handling** probes; LLM05 probes in **chat-ui** mode also run a **DOM render check** for unsafe HTML (`<script>`, `onerror=`, etc.) — may fire with `matched: "dom-unsafe-render"`.
 
@@ -1975,18 +2124,22 @@ Includes **system-prompt extraction** probes (`llm07_secret_password`, `llm07_in
 |-------|---------|-------------|
 | `safetyMode` | — | **Required.** `"active"`. (`confirmBackend: true` accepted as legacy alias) |
 | `mode` | `auto` | `auto` \| `http` \| `chat` — in `auto`, prefers **chat-ui** when a widget exists and best HTTP endpoint `confidence` &lt; 50; otherwise high-confidence HTTP (`body:llm-json-shape`) over path heuristics |
-| `maxProbes` | `24` | Cap probe count |
+| `maxProbes` | `28` | Cap corpus probe count (`0` = adjacent scanners only) |
 | `concurrency` | `2` | Parallel probes (HTTP mode only; chat-ui always runs sequentially to avoid DOM conflicts) |
 | `timeoutMs` | `30000` | Per-request timeout |
 | `probeDelayMs` | `1000` | Delay between probes in chat-ui mode (200–10000 ms). Helps avoid rate limits |
 | `includeWebMcpAbuse` | `true` | Curated WebMCP tool argument fuzz after corpus |
 | `includeIndirectInjection` | `false` | Upload doc with hidden instruction + summarize |
+| `includeRagPoison` | `false` | LLM04 memory/RAG persistence (+ LLM08 if `peerBaseUrl` set) |
+| `includeUnboundedConsumption` | `false` | LLM10 flood / oversized / max-output / tool-loop |
+| `peerBaseUrl` | — | Peer Trowser base URL for cross-tenant embedding check |
+| `peerApiKey` | — | Bearer key for peer |
 | `registerWhisperHints` | `true` | Push findings to Red Team Whisper |
-| `httpTarget` | — | `{ url, schema, model, headers, useBackendFetch, customBody, customResponseKey }` — `customBody` supports `{{PROMPT}}`, `{PROMPT}`, `§PROMPT§`, `{{MODEL}}` placeholders |
+| `httpTarget` | — | `{ url, schema, model, headers, useBackendFetch, customBody, customResponseKey }` — `customBody` may be a **JSON object** or a **string** form/raw template; supports `{{PROMPT}}`, `{PROMPT}`, `§PROMPT§`, `{{MODEL}}` placeholders. **JSON templates are parse-then-substituted** (multiline/HTML-safe). Form-urlencoded bodies URL-encode values. When `Content-Type` is `application/x-www-form-urlencoded` (or `customBody` is a non-JSON string), the adapter sends form-urlencoded and refreshes common CSRF fields from the page/cookies. Discovered OpenAI-style `messages[]` bodies are inferred as single-turn `{{PROMPT}}` custom targets. |
 | `chatTarget` | — | `{ inputSelector, submitSelector, responseSelector, waitAfterSubmitMs }` |
-| `probeIds` / `categories` | — | Optional filters; unknown IDs/categories returned in `warnings[]`. Alias: `LLM02_Insecure_Output_Handling` → `LLM05_Improper_Output_Handling` |
+| `probeIds` / `categories` | — | Optional filters; unknown IDs/categories returned in `warnings[]`. Alias: `LLM02_Insecure_Output_Handling` → `LLM05_Improper_Output_Handling`; legacy `LLM04_Model_Denial_of_Service` → `LLM10_Unbounded_Consumption` |
 
-**Chat-UI response capture** uses a 4-strategy cascade: (1) user-provided `responseSelector` (highest priority), (2) class-based selectors (`.answer`, `.response`, `.assistant-message`, …), (3) structural heuristics (table rows, list items, `[role="log"]` children near the chat input), (4) full-page text diff (compares `document.body.innerText` before/after each probe). This handles table-based, list-based, and unconventional chat layouts. Response isolation extracts only the latest bot message, not the full conversation history.
+**Chat-UI response capture** prefers **new** assistant content: DOM nodes whose text was not in the pre-submit baseline, then **HTTP network/SSE** response bodies and **WebSocket** frames for chat-like POSTs. Stale prior-turn bubbles and user echoes are rejected (`responseChanged` stays false / warning set). Typing indicators are waited out.
 
 **Typing indicator filtering:** both JS capture and C# polling detect typing indicators (`[typing...]`, `thinking...`, `loading...`, animated dots, `class="typing"`, `aria-busy="true"`, etc.) and wait through them. The scanner only accepts stable non-typing text. If the deadline expires with only a typing indicator captured, the result is treated as empty (not falsely reported as a real response).
 
@@ -1994,15 +2147,15 @@ Includes **system-prompt extraction** probes (`llm07_secret_password`, `llm07_in
 
 **Chat-UI resilience:** probes run sequentially; page state is verified before each probe (re-navigates if the page was lost). Rate-limit responses ("too fast", "rate limit", "please wait", …) trigger a 12s back-off + retry.
 
-Response includes `confidence` per probe (`high` | `medium` | `low` | `refused` | **`inconclusive`**). Empty or stale chat responses are **`inconclusive`**, not confident "not fired". Refusal/echo detection avoids firing when the model quotes the probe token without complying.
+Response includes `confidence` per probe (`high` | `medium` | `low` | `refused` | **`inconclusive`**). Empty or stale chat responses, HTTP **4xx/5xx**, and HTML error/CSRF pages are **`inconclusive`**, not confident "not fired". Refusal/echo detection avoids firing when the model quotes the probe token without complying. With `verbose: true`, chat-ui probes also populate `verboseTrace` (DOM submit + related network POSTs).
 
 **MCP:** `browser_security_llm_redteam_scan`.
 
 ### GET /api/security/llm-redteam-probes
-**Probe catalog** — lists all probe IDs and category names (use for `probeIds` / `categories` filters). Gate-free. REST only (no MCP tool yet).
+**Probe catalog** — lists all probe IDs, category names, and `coverage` metadata (use for `probeIds` / `categories` filters). Gate-free. **MCP:** `browser_security_llm_redteam_probes`.
 
 ### GET or POST /api/security/llm-endpoint-discover
-**LLM surface discovery** — network log chat/completion APIs, **WebSocket connections** (JSON message pattern analysis for `content`/`message`/`response` keys, user/role indicators, multi-turn patterns), DOM chat widgets, WebMCP tool count, copilot iframes. WebSocket endpoints appear with `source: "websocket"`, `method: "WS"`. Dedupes by URL. Endpoints include `confidence` (0–100). Filters third-party analytics/tracking domains (HubSpot, hsforms, GA, …), static assets (`.gif`, …), and non-JSON/image responses from weak path matches. DOM chat widget discovery detects off-screen inputs (below-fold chat inputs still discovered, with lower confidence). Response area detection probes for table/list/container structure near the chat input. Updates Red Team Whisper `llmSurface`.
+**LLM surface discovery** — network log chat/completion APIs (including **SSE** `text/event-stream` and form-urlencoded prompt fields), **WebSocket connections** (JSON message pattern analysis for `content`/`message`/`response` keys, user/role indicators, multi-turn patterns), DOM chat widgets, WebMCP tool count, copilot iframes. Sets `botGateDetected` when reCAPTCHA/hCaptcha/Turnstile-like widgets are present. WebSocket endpoints appear with `source: "websocket"`, `method: "WS"`. Dedupes by URL. Endpoints include `confidence` (0–100) and `isSse`. Filters third-party analytics/tracking domains (HubSpot, hsforms, GA, …), static assets (`.gif`, …), and non-JSON/image responses from weak path matches. DOM chat widget discovery detects off-screen inputs (below-fold chat inputs still discovered, with lower confidence). Response area detection probes for table/list/container structure near the chat input; default response selectors exclude heading/label false hits. Updates Red Team Whisper `llmSurface`.
 
 POST accepts optional JSON body `{}` (ignored). **Blocked in safe mode.**
 
@@ -2136,6 +2289,51 @@ Heuristic scan of **external `script[src]`** bundles: collects URLs from the liv
 
 **MCP:** `browser_security_js_audit`.
 
+### GET /api/security/nuclei-templates
+Inventory the runnable nuclei templates (embedded subset and/or a user `templatesDir`) **without scanning**, so you can pick applicable templates before running probes.
+
+| Query param | Default | Description |
+|-------------|---------|-------------|
+| `templatesDir` | — | Optional directory of user `*.yaml`/`*.yml` templates to include (same fallbacks as the scan endpoint) |
+| `includeBuiltinTemplates` | `true` | Set `false` to list only your `templatesDir` templates |
+
+**Response:** `count`, `templates[]` (`id`, `name`, `severity`, `tags`, `methods`, `source` = `embedded`\|`user`), `tags[]` (tag catalog with `count`), `skippedTemplates[]` (`id`, `reason`, `source` for unsupported/unparseable templates).
+
+**MCP:** `browser_security_nuclei_templates`. **Scripting:** `ListNucleiTemplates(templatesDir, includeBuiltinTemplates)`.
+
+### POST /api/security/nuclei-scan
+Native runner over a **curated embedded subset** of [nuclei-templates](https://github.com/projectdiscovery/nuclei-templates) (MIT), plus **your own templates**. Supports **HTTP** templates with matchers `status` / `word` / `regex` / `header` only — not the full Nuclei DSL (no dns/tcp/headless/code/workflows/payloads/raw). Only `{{BaseURL}}` / `{{RootURL}}` substitution is supported. Embedded templates ship under `Resources/nuclei/`. **Not a Nuclei replacement** — the goal is to let testers run a handful of HTTP templates inline while exploring a site. Use `GET /api/security/nuclei-templates` to see what's available.
+
+**Safety gate:** `"safetyMode": "safe"` is enough when all selected templates use GET/HEAD/OPTIONS. Write-verb templates require `"safetyMode": "active"`. `dryRun: true` needs no safety mode (it sends no HTTP). **Blocked in `--safe` CLI mode.**
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `safetyMode` | `"safe"` | `"safe"` (GET/HEAD-only subset) or `"active"` / `"aggressive"` (needed for write-verb templates). Omitting defaults to `safe`; `passive` is rejected (except with `dryRun`). |
+| `targetUrl` | current page | Base URL for `{{BaseURL}}` / `{{RootURL}}` |
+| `targetUrls` | — | Optional list of base URLs to scan; each selected template runs against every URL. Accepts a JSON array or a comma-separated string. Merged with `targetUrl` and deduped. |
+| `tags` | — | Optional tag filter — a JSON array (`["exposure","misconfig"]`) **or** a comma-separated string (`"exposure,misconfig"`). Runs templates matching any listed tag. |
+| `severity` | — | Optional **minimum** severity filter (`info`\|`low`\|`medium`\|`high`\|`critical`) — includes that severity and higher. Alias: `minSeverity` (both accepted; `minSeverity` wins if both set). |
+| `maxTemplates` | `50` | Cap on templates to run (after tag/severity filtering) |
+| `timeoutMs` | `10000` | Per-request timeout |
+| `followRedirects` | `false` | Follow HTTP redirects. **Default false** so redirect/`Location` matchers (e.g. open-redirect templates asserting `302` + `Location`) can match the intermediate response. |
+| `templatesDir` | — | Optional directory of user `*.yaml` / `*.yml` templates to load (recursively) in addition to the embedded subset. Falls back to `%TROWSER_NUCLEI_TEMPLATES%` or a `nuclei-templates/` folder beside the exe when unset. User templates go through the same parser/limitations and are filtered by `tags`/`severity`. |
+| `includeBuiltinTemplates` | `true` | Set `false` to run **only** your `templatesDir` templates (skip the embedded subset). |
+| `dryRun` | `false` | Resolve/select templates and return `selectedTemplateIds` **without sending any HTTP** (works in any safety mode). |
+| `verboseTemplateTrace` | `false` | Return `templateTrace[]` with per-template `url`, `method`, `statusCode`, `matched`, `requested`. |
+| `registerChainFindings` | `true` | When `true`, register matches as chain findings (`Source=nuclei`, category `nuclei-match`) |
+
+**Response:** `targetUrl` (first URL), `targetUrls` (all scanned URLs), `dryRun`, `templatesLoaded` (total candidate pool — embedded + user), `templatesSelected` (after tag/severity/max filtering), `templatesRun` / `httpRequests` (individual HTTP requests sent — one per template path per URL), `templatesFilteredOut` (alias: `templatesSkipped` — loaded but excluded by filters), `selectedTemplateIds[]` (always present), `matchedTemplateIds[]` (templates that produced a finding), `skippedTemplates[]` (`id`, `reason`, `source` — templates that could **not** be run due to DSL limits/parse errors), `findingCount`, `findings[]`, `templateTrace[]` (when requested), `summary[]`, `report`. Returns **400** when no templates match the filters.
+
+Each `findings[]` entry uses stable common fields shared across scanners — `title` (= template name), `description` (= detail), `severity`, `url` — alongside `templateId`, `templateName`, `category`, `method`, `statusCode`, `detail`, `tags`.
+
+> **Note:** nuclei uses a dedicated `HttpClient` outside the generic request-trace chokepoint, so a `verbose` scan's `verboseTrace.requestCount` will **not** include nuclei probes — use `httpRequests` (or `verboseTemplateTrace`) in this response for the count.
+
+> **Custom templates:** point `templatesDir` at a folder of Nuclei HTTP YAML (or drop files in `nuclei-templates/` beside the exe). Templates using unsupported protocols, variables other than `{{BaseURL}}`/`{{RootURL}}`, raw requests, or matcher types beyond `status`/`word`/`regex`/`header` are skipped **with a reason** (see `skippedTemplates[]`). Use `dryRun: true` to preview which templates would run. To scan many hosts, pass `targetUrls`.
+
+**Embedded templates (read-only GET exposure/misconfig probes):** `git-config`, `env-file`, `phpinfo`, `actuator-env`, `actuator-health`, `docker-registry`, `server-status`, `swagger-index`, `swagger-ui`, `openapi-spec` (`openapi.json`/`swagger.json`/`v3/api-docs`), `robots-txt`, `security-txt`, `wordpress-login`, `ds-store`, `web-config`, `htaccess`, `nginx-conf`, `graphql-ide` (`graphiql`/`playground`/`altair`), `aws-credentials`. Common tags: `exposure`, `misconfig`, `config`, `files`, `api`, `swagger`, `openapi`, `graphql`, `spring`, `actuator`, `secret`, `panel`. Call `GET /api/security/nuclei-templates` for the authoritative, live list (id/severity/tags/methods).
+
+**MCP:** `browser_security_nuclei_scan`, `browser_security_nuclei_templates`. **Quicktest:** `Security/3 NucleiScan.csx`. **Scripting:** `RunNucleiScan` / `AssertNucleiClean` / `PrintNucleiReport` / `ListNucleiTemplates` (scan methods accept `targetUrls`, `templatesDir`, `includeBuiltinTemplates`, `followRedirects`, `dryRun`, `verboseTemplateTrace`).
+
 ### POST /api/security/jwt-analyze
 Reads **cookies, localStorage, and sessionStorage** via one in-page script; finds JWT-shaped strings; Base64url-decodes header/payload (no signing or forgery). **Optional** **`token`** (string) and **`tokens`** (array) decode JWTs you already have (e.g. from `POST /api/fetch` or a login response) in addition to page-derived tokens. Reports `alg`, optional `exp`, sensitive claim names, and static notes for **`none` / HS256 / RS256** (e.g. algorithm-confusion hygiene).
 
@@ -2166,21 +2364,27 @@ Pure **JWT (JWS) manipulation** for security testing: decode `baseToken`, apply 
 **MCP:** `browser_security_jwt_forge`.
 
 ### POST /api/security/jwt-acceptance-sweep
-Cookie-isolated sweep of attack-surface endpoints for **missing authentication** and **JWT alg:none acceptance** (anonymous GET vs Bearer alg:none). Requires browse first for attack-surface data.
+Cookie-isolated sweep for **missing authentication** and **JWT alg:none acceptance** (anonymous GET vs forged alg:none). Prefer explicit `endpoints[]` for focused proofs; otherwise uses attack-surface candidates from the network log (browse first).
 
 `MISSING_AUTH` requires response body to look like **authenticated/sensitive content** — HTTP 200 login pages (password fields, sign-in text) are **not** flagged (avoids false positives on Java/JSP apps that redirect to login with 200).
+
+When the token comes from (or `cookieName` names) a cookie JWT, each gated endpoint is probed with both `Authorization: Bearer` and `Cookie: <name>=`.
 
 **Safety gate:** `"safetyMode": "active"`. **MCP:** `browser_security_jwt_acceptance_sweep`.
 
 | Field | Default | Description |
 |-------|---------|-------------|
 | `token` / `baseToken` | — | Explicit JWT or Bearer token (alg:none accepted as-is) |
-| `host` | — | Limit to host |
+| `endpoints` | — | Absolute URLs (strings or `{ url }`) to probe. When non-empty, **only** these are tested unless `includeNetworkLog` is true |
+| `includeNetworkLog` | auto | Default `false` when `endpoints` is set, else `true`. Controls attack-surface candidates from the network log |
+| `cookieName` | auto | Cookie header name for cookie-transport probes (e.g. `_dct`). Inferred from cookie JWT sources when possible |
+| `host` | — | Limit network-log candidates to host |
 | `maxEndpoints` | 15 | Cap endpoints tested |
-| `verbose` | false | Include `jwtPayloadUsed` per row |
+| `verbose` | false | Include `jwtPayloadUsed` / transport detail per row |
 | `includeUnauthenticatedOnly` | false | Skip JWT tests when no token |
+| `includeAlgVariants` | true | Test case/whitespace/missing alg variants when canonical none rejected |
 
-**Response:** `rows[]` (one per endpoint: `NO_ISSUE`, `MISSING_AUTH`, `JWT_ALG_NONE`), `summary[]`, `endpointsTested`, `jwtSource`, `authContext` (cookie-based auth hint when no JWT).
+**Response:** `rows[]` (`NO_ISSUE`, `MISSING_AUTH`, `JWT_ALG_NONE_ACCEPTED`, `JWT_ALG_VARIANT_ACCEPTED`; each may include `transport`: `bearer`\|`cookie`\|`anon`), `summary[]`, `endpointsTested`, `jwtSource`, `cookieName`, `includedNetworkLog`, `explicitEndpoints`, `authContext`.
 
 ### POST /api/security/auth-bypass-pivot
 Captures a token (explicit, session JWT analyze, cookie session, or SQLi login bypass) and retests endpoints that reject anonymous callers (401/403 from network log + attack-surface). Emits `AUTH_BYPASS_PIVOT` rows; chain category `auth-bypass-pivot`.
@@ -2366,7 +2570,7 @@ Heuristic **JSON mass assignment** probe (OWASP API / broken object property lev
 **MCP:** `browser_security_mass_assignment_scan`.
 
 ### POST /api/security/mass-assignment-patch
-**PATCH/PUT self-promote** probe (pentest-ai `privilege_escalation_patch` style): discovers profile update endpoints from traffic, injects privileged fields (`role`, `isAdmin`, `balance`, …), then **verifies persistence** via GET `/api/users/me` (or discovered me URL).
+**PATCH/PUT self-promote** mass-assignment probe (OWASP WSTG-INPV-20 / API mass-assignment): discovers profile update endpoints from traffic, injects privileged fields (`role`, `isAdmin`, `balance`, …), then **verifies persistence** via GET `/api/users/me` (or discovered me URL). Reflection-only hits are at most medium.
 
 **Safety gate:** `"safetyMode": "active"`. **Blocked in safe mode.**
 
@@ -2458,6 +2662,7 @@ Automated scan pipeline: derives endpoints from captured traffic, then **`includ
 |-------|---------|-------------|
 | `safetyMode` | — | **Required.** `"active"`. (`confirmBackend: true` accepted as legacy alias) |
 | `scanDepth` | `"standard"` | Scan breadth: **`quick`** (skip polyglot, tighter caps), **`standard`** (balanced — polyglot capped at 24 probes), **`thorough`** (full polyglot scaffold + higher limits). Aliases: `fast`/`light`, `normal`/`balanced`, `deep`/`full`. |
+| `payloadProfile` | `"small"` | Payload corpus: **`small`** (built-in curated catalogs — default) or **`big`** (merge SecLists / PayloadsAllTheThings subsets from `corpora/` or `%TROWSER_CORPORA%`, still hard-capped). Orthogonal to `scanDepth` / `safetyMode`. |
 | `maxStepSeconds` | depth default | Hard wall-clock budget. Defaults: **quick=120**, **standard=300**, **thorough=900**. On expiry the scan returns **partial results** (`budgetExhausted: true`) instead of hanging the busy gate. Set explicitly to override; playbook budgets still win when tighter. |
 | `host` | *(all)* | Filter endpoints to a specific host (hostname, `host:port`, or origin/URL — same rules as attack-surface) |
 | `maxEndpointsPerScanner` | `5` | Max endpoints each scanner tests |
@@ -2496,30 +2701,30 @@ Automated scan pipeline: derives endpoints from captured traffic, then **`includ
 | `includeRestScaffold` | `false` | Force REST scaffold probe |
 | `includeAuthBypassPivot` | `false` | Run auth-bypass-pivot after weak-auth signals |
 
-**Response:** `warnings[]`, **`scanDepth`** (applied profile: `quick` | `standard` | `thorough`), **`maxStepSeconds`** (applied budget), **`budgetExhausted`** / **`partial`** (true when the step budget cut the run short — findings already collected are still returned), `endpointsDiscovered`, `endpointsScanned`, `scannersRun[]`, `scannersSkipped[]`, `findingsCount`, `findings[]` (scanner, severity, endpoint, method, title, detail, optional `occurrences` when deduped, optional `nextActions[]` verify-workflow stubs), `attackSurfaceSummary`, `errors[]`, `elapsedMs`.
+**Response:** `warnings[]`, **`scanDepth`** (applied profile: `quick` | `standard` | `thorough`), **`payloadProfile`** (applied: `small` | `big`), **`corporaAvailable`** (true when external corpora are present — if `false` while `payloadProfile=big`, the run silently fell back to built-in `small` catalogs), **`maxStepSeconds`** (applied budget), **`budgetExhausted`** / **`partial`** (true when the step budget cut the run short — findings already collected are still returned), `endpointsDiscovered`, `endpointsScanned`, `scannersRun[]`, `scannersSkipped[]`, `findingsCount`, `findings[]` (scanner, severity, endpoint, method, title, detail, optional `occurrences` when deduped, optional `nextActions[]` verify-workflow stubs), `attackSurfaceSummary`, `errors[]`, `elapsedMs`.
 
 **MCP:** `browser_security_auto_scan`.
 
 ### POST /api/security/secrets-harvest
 Unified **secret/credential harvesting** across all browser sources in one call: **JS bundles** (hardcoded credentials, API keys, internal URLs via `js-audit`), **cookies & storage** (JWT tokens, auth tokens, PII via `jwt-analyze` + `storage` audit), **network responses** (leaked credentials, bearer tokens, password hashes in response bodies), **network request headers** (Bearer tokens, API keys in `Authorization`, `X-Api-Key`, `X-Auth-Token` headers — category `api-key-in-request`), **visible page text** (debug output, exposed secrets), and **source maps** (exposed `.map` files, debug mode indicators). Returns **deduplicated**, **severity-prioritized** findings. Includes **false positive suppression** for known library patterns (e.g. lodash FP alias mappings).
 
-**Safety gate:** `"safetyMode": "active"`. **Blocked in safe mode.**
+**Safety gate:** `"safetyMode": "safe"` runs the **passive** sources (cookies/storage, captured network log, page text/HTML comments). `"safetyMode": "active"` additionally **fetches** JS bundles and source maps (new outbound requests). **Blocked in `--safe` CLI mode.**
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `safetyMode` | — | **Required.** `"active"`. (`confirmBackend: true` accepted as legacy alias) |
-| `includeJsBundles` | `true` | Scan JS `script[src]` assets for hardcoded secrets |
-| `includeCookiesAndStorage` | `true` | Analyze cookies, localStorage, sessionStorage for tokens/PII |
-| `includeNetworkResponses` | `true` | Scan captured network response bodies for credential exposure |
-| `includePageText` | `true` | Scan visible page text for secrets/debug output |
-| `includeSourceMaps` | `true` | Check for exposed source maps and debug mode |
+| `safetyMode` | `"safe"` | `"safe"` (passive sources) or `"active"`/`"aggressive"` (also fetch JS bundles + source maps). (`confirmBackend: true` accepted as legacy alias for active.) |
+| `includeJsBundles` | `true` (active only) | Scan JS `script[src]` assets for hardcoded secrets — **only runs under active** (needs outbound fetch); forced off under safe. |
+| `includeCookiesAndStorage` | `true` | Analyze cookies, localStorage, sessionStorage for tokens/PII (passive) |
+| `includeNetworkResponses` | `true` | Scan captured network response bodies for credential exposure (passive) |
+| `includePageText` | `true` | Scan visible page text for secrets/debug output (passive) |
+| `includeSourceMaps` | `true` (active only) | Check for exposed source maps and debug mode — **only runs under active** (needs outbound fetch); forced off under safe. |
 | `maxJsScripts` | `20` | Max JS scripts to fetch and scan |
 | `maxNetworkResponses` | `100` | Max network response bodies to scan |
 | `maxBytesPerFile` | `1048576` | Max bytes read per JS bundle |
-| `includeHtmlComments` | `true` | Scan HTML comments in page source |
+| `includeHtmlComments` | `true` | Scan HTML comments in page source (passive) |
 | `timeoutMs` | `30000` | Timeout for JS bundle fetches |
 
-**Response:** `url`, `totalFindings`, `findings[]` (source, category, severity, location, description, snippet), `warnings[]` (e.g. large-bundle truncation — not counted as secrets), `summary` (critical, high, medium, low, info, bySource, byCategory), `sourcesScanned[]`, `errors[]`, `elapsedMs`. Detects emails, Luhn-valid credit cards, PEM private keys, JWTs, API keys, and comment-embedded secrets.
+**Response:** `url`, `totalFindings`, `findings[]` (source, category, severity, location, description, snippet), `warnings[]` (e.g. large-bundle truncation — not counted as secrets), `summary` (critical, high, medium, low, info, bySource, byCategory), `sourcesScanned[]`, `passiveOnly` (true when JS/source-map fetching was skipped under safe), `errors[]`, `elapsedMs`. Detects emails, Luhn-valid credit cards, PEM private keys, JWTs, API keys, and comment-embedded secrets.
 
 **MCP:** `browser_security_secrets_harvest`.
 
@@ -2784,7 +2989,7 @@ Out-of-Band interaction detection. Monitors browser network log for requests who
 | `mode` | `"start"` | `start`, `stop`, `status`, `clear` |
 | `domain` | `"callback.trowser.test"` | Custom callback domain |
 
-Use `{{CALLBACK}}` in fuzz payloads — auto-substituted with callback URL (ASCII-safe). Legacy `§CALLBACK§` is still accepted.
+Use `{{CALLBACK}}` in fuzz payloads — auto-substituted with callback URL (ASCII-safe). Legacy section-sign CALLBACK marker is still accepted.
 
 **GET** — Poll interactions. Returns `interactions[]` with `timestamp`, `url`, `method`, `correlationId`, `finding`. **Gate-free**.
 
@@ -2979,6 +3184,7 @@ Active XSS scan with **unified findings**. Reflected path: character-survival fi
 | `url` + `paramName` | — | Explicit base URL + parameter (reflected + DOM candidates) |
 | `request` | — | Optional `{ url, method?, headers?, body? \| json? }` with `§marker§` / `{{marker}}` |
 | `depth` | `standard` | `quick` \| `standard` \| `deep` (deep enables stored by default) |
+| `payloadProfile` | `"small"` | `small` (built-in) \| `big` (external corpora when available; still capped) |
 | `includeReflected` | `true` | Fetch-based reflection analysis |
 | `includeDom` | `true` | Navigate + sink monitor |
 | `includeStored` | from depth | Stored XSS POST+readback |
@@ -2999,7 +3205,9 @@ Extract all page text in a structured format for proofreading. Returns `headings
 GUI consistency & image optimization audit. Analyzes computed styles to count distinct font families, font sizes, text/background colors, button/input heights, and spacing values. Also checks images for optimization issues (oversized images, missing dimensions, missing lazy loading). Warns when counts exceed thresholds (e.g., >4 font families, >10 text colors). No params needed.
 
 ### POST /api/third-party
-Third-party resource inventory. Scans for external scripts, stylesheets, iframes, and fonts. Reports domains, transfer sizes (from Performance API), and Subresource Integrity (SRI) coverage. Useful for privacy audits, GDPR compliance, and supply chain security. No params needed.
+Third-party resource inventory. Scans for external scripts, stylesheets, iframes, and fonts. Classifies third-party hosts via **tldts** (Public Suffix List / eTLD+1) so same-site subdomains (e.g. `cdn.example.com`) are not mislabeled. Reports domains, transfer sizes (from Performance API), and Subresource Integrity (SRI) coverage. Useful for privacy audits, GDPR compliance, and supply chain security. No params needed.
+
+Each `resources[]` entry includes both **`hostname`** (full host, e.g. `fonts.googleapis.com`) and **`etldPlus1`** / **`domain`** (registrable domain, e.g. `googleapis.com`). Note: cross-origin resources served without `Timing-Allow-Origin` report `sizeBytes: 0` (opaque `transferSize`).
 
 ### POST /api/security/mixed-content
 Mixed content detection. On HTTPS pages, finds all resources loaded over HTTP. Reports element tag, attribute, URL, and severity (High = scripts/iframes, Medium = images/stylesheets, Low = other). Returns clean result on HTTP pages. No params needed.
@@ -3081,7 +3289,7 @@ Replay a captured SAML assertion with modifications for security testing. Requir
 
 Goal-oriented orchestration layer: one call per OWASP category, one prioritized report. Each playbook composes Trowser's existing primitives (auto-scan, CORS sweep, secrets harvest, supply-chain scan, etc.) into a sequenced pipeline with unified safety, depth, and budget controls.
 
-> **Browse manually, then scan with `crawl: false`.** Playbooks default to **`crawl: false`** — they scan traffic already in the network log. Browse login, search, and CRUD flows first; set **`crawl: true`** only when you want the playbook to auto-discover links/forms before scanning. For probe-heavy playbooks (`a05-injection`, `a01-access`, …), set **`scope.targetUrl`** to one captured endpoint for a fast focused run, or **`depth: "deep"`** for explicit broader coverage (default standard depth probes at most **2** endpoints site-wide).
+> **Browse manually, then scan with `crawl: false`.** Playbooks default to **`crawl: false`** — they scan traffic already in the network log. Browse login, search, and CRUD flows first; set **`crawl: true`** only when you want the playbook to auto-discover links/forms before scanning. For probe-heavy playbooks (`a05-injection`, `a01-access`, …), set **`scope.targetUrl`** to one captured endpoint for a fast focused run, or **`depth: "deep"`** for explicit broader coverage (default standard depth probes at most **2** endpoints site-wide). Agent sessions: prefer **`a05a-injection-core`** (then `a05b` / `a05c`) or **`depth: "llm"`** with a 120–300s budget instead of full A05’s ~1800s recommendation.
 
 All orchestration endpoints share the **same request envelope** and return the **same response envelope**. VPX is always produced internally; the `format` parameter controls the rendering.
 
@@ -3101,7 +3309,7 @@ All orchestration endpoints share the **same request envelope** and return the *
   "safetyMode": "safe",
   "depth": "standard",
   "crawl": false,
-  "budget": { "maxSeconds": 120, "maxRequests": 800 },
+  "budget": { "maxSeconds": 300, "maxRequests": 800 },
   "evidence": "auto",
   "emitSuggestedProofs": true,
   "tags": ["pre-prod", "sprint-42"],
@@ -3110,6 +3318,8 @@ All orchestration endpoints share the **same request envelope** and return the *
   "persistVpx": true
 }
 ```
+
+**Canonical budget workflow:** `POST /api/orchestrate/dry-run/{id}` → copy `recommendedBudget` into the real run. The default `maxSeconds: 120` often yields `coverageIncomplete` / `skippedByBudget` on probe-heavy playbooks — do not treat 120s as a normal envelope.
 
 All fields are optional with sensible defaults.
 
@@ -3122,7 +3332,7 @@ All fields are optional with sensible defaults.
 | `scope.excludeLogout` | `true` | Skip logout/sign-out/SLO URLs during crawl and when selecting probe targets. Does **not** block `logout-invalidation-probe` / intentional a07 logout testing |
 | `scope.identities` | `[]` | Identity names from IdentityStore for multi-role testing |
 | `safetyMode` | `"safe"` | `passive` (zero probes) · `safe` (GET/HEAD/OPTIONS only) · `active` (all verbs) · `aggressive` (stress/brute-force) |
-| `depth` | `"standard"` | `quick` (1 probe endpoint, passive scans up to 5) · `standard` (2 probe endpoints, passive up to 20) · `deep` (broader probe coverage — up to 100 endpoints, explicit opt-in) |
+| `depth` | `"standard"` | `quick` (1 probe endpoint, passive scans up to 5) · `llm` / `agent` (short agent profile, 1 probe endpoint, ~120–300s budgets) · `standard` (2 probe endpoints, passive up to 20) · `deep` (broader probe coverage — up to 100 endpoints, explicit opt-in) |
 | `crawl` | `false` | Alias for `includeCrawl`. When `false` (default), skips the shared `crawl-light` step — **use after manual browsing** |
 | `includeCrawl` | `false` | When `false` (default), skips the shared `crawl-light` step. Prefer `crawl` for brevity |
 | `scope.targetUrl` | — | **Recommended for probe playbooks.** Restrict scanners to one captured endpoint URL (must exist in network log). Caps probe steps to that endpoint |
@@ -3238,9 +3448,13 @@ Returns the step plan for a playbook **without executing any probes**. Use to pr
   },
   "budgetNotes": [
     "Large attack surface (28 endpoints): budget raised to large-site tier."
-  ]
+  ],
+  "coverageIncomplete": false,
+  "agentInstruction": null
 }
 ```
+
+When any step has `skippedByBudget: true`, the dry-run sets **`coverageIncomplete: true`** and a one-line **`agentInstruction`** telling agents to raise the budget before executing.
 
 **Budget floor:** If the caller's budget is below `recommendedBudget`, the orchestrator automatically raises it to the recommended minimum and emits a warning. Per-playbook **standard-depth base** recommendations: A01 = 360s/800req, A02/A03/A04/A11 = 180s/800req, A05 = 1200s/2000req, A06/A12 = 300s/1000req, A07 = 360s/1200req, A14 = 600s/1500req, **full = 2400s/10000req**. With **20+ endpoints**, budgets scale to large-site tiers (e.g. A01 → 600s/1500req, A05 → 1800s/3000req, full → 3600s/15000req).
 
@@ -3362,7 +3576,7 @@ Returns the step plan for a playbook **without executing any probes**. Use to pr
 
 ### POST /api/orchestrate/a05-injection
 
-**A05 Injection.** Steps: crawl → attack-surface → injection scan (SQLi, XSS, SSTI, NoSQL, LDAP, cmd-canary, parser-probe, prototype-pollution, CSTI, path-traversal) → SQLi login sweep → deserialization + file upload.
+**A05 Injection (full).** Steps: crawl → attack-surface → injection scan (SQLi, XSS, SSTI, NoSQL, LDAP, cmd-canary, parser-probe, prototype-pollution, CSTI, path-traversal) → SQLi login sweep → deserialization + file upload. Recommended budget ~1800s. For LLM/agent sessions prefer the split playbooks below or `depth: "llm"`.
 
 | Step | Safety requirement | What it does |
 |------|-------------------|--------------|
@@ -3372,7 +3586,19 @@ Returns the step plan for a playbook **without executing any probes**. Use to pr
 | `sqli-login-sweep` | `active`+ | SQL injection bypass on common login endpoints |
 | `deserialization-scan` | `active`+ | Insecure deserialization gadgets and file upload validation bypass |
 
-**`nextActions` hints:** `a01-access` (when SQLi found), `a07-authn` (when XSS/template injection), `a11-ssrf` (when cmd injection).
+**`nextActions` hints:** `a01-access` (when SQLi found), `a07-authn` (when XSS/template injection), `a11-ssrf` (when cmd injection); header/body re-probe templates when non-query sinks appear in the surface.
+
+### POST /api/orchestrate/a05a-injection-core
+
+**A05a Injection Core** (~300s). cmd-canary + XSS + SQLi only. Ideal first pass for agent sessions. `nextActions` point at `a05b` / `a05c`.
+
+### POST /api/orchestrate/a05b-injection-templates
+
+**A05b Injection Templates** (~600s). SSTI, SSTI-polyglot, CSTI, NoSQL, LDAP, path-traversal. Run after `a05a`.
+
+### POST /api/orchestrate/a05c-injection-advanced
+
+**A05c Injection Advanced** (~600s). Parser-probe, prototype-pollution, SQLi login sweep, deserialization + file upload. Run after `a05a`/`a05b`.
 
 ### POST /api/orchestrate/a06-design
 
@@ -3429,15 +3655,16 @@ Returns the step plan for a playbook **without executing any probes**. Use to pr
 
 ### POST /api/orchestrate/a13-llm
 
-**A13 AI & LLM.** Steps: crawl → LLM endpoint discovery → OWASP LLM Top 10 red-team probes → indirect prompt injection → output-to-sink tracing.
+**A13 AI & LLM.** Steps: crawl → LLM endpoint discovery → corpus red-team (LLM01–03 + LLM05–07 + LLM09) → RAG/memory poison (LLM04/08) → unbounded consumption (LLM10, skipped at `depth: quick`) → output-to-sink tracing.
 
 | Step | Safety requirement | What it does |
 |------|-------------------|--------------|
 | `crawl-light` | any | BFS crawl to populate network log and discover LLM/chat endpoints |
 | `llm-discover` | any | Discover chat endpoints from network log and chat UI widgets from DOM |
-| `llm-redteam` | `active`+ | Prompt injection, jailbreak, data exfiltration, tool abuse probes |
-| `indirect-injection` | `active`+ | Indirect prompt injection via file upload or URL summarization |
-| `output-sink-trace` | `active`+ | Instrument DOM sinks (innerHTML, eval, document.write) then fire canary-tagged prompts to prove injection → XSS chain |
+| `llm-redteam` | `active`+ | Corpus probes + WebMCP abuse |
+| `rag-poison` | `active`+ | Document/memory poison persistence (LLM04); peer isolation via scan API `peerBaseUrl` |
+| `unbounded-consumption` | `active`+ | LLM10 flood / oversized / max-output / tool-loop (not at quick depth) |
+| `output-sink-trace` | `active`+ | Instrument DOM sinks then fire canary-tagged prompts to prove injection → XSS chain |
 
 **Output-to-sink tracing:** The `output-sink-trace` step monkey-patches dangerous DOM sinks BEFORE firing LLM probes. Each probe contains a unique canary (`TROWSER_CANARY_<guid>`). If a canary reaches innerHTML, eval, or setAttribute(onclick/href), it proves the LLM's output flows unsanitized into an executable sink — confirming prompt injection → XSS/code-exec. This bridges LLM red-team findings to traditional web vulnerability proof.
 
@@ -3804,7 +4031,7 @@ Automated BOLA/IDOR detection and access-control boundary mapping. These endpoin
 | 200 + same body | 200 + same body | `BOLA_SUSPECTED` ⚠️ |
 | 200 | 200 + different body | `FILTERED_RESPONSE` (check manually) |
 | 200 | 200 via redirect to login/access-denied page | `REDIRECT_DENIED` ✅ (common with ASP.NET WebForms, Spring Security) |
-| 200 | 401/403 | `PROPERLY_DENIED` ✅ |
+| 200 | 401/403/404 | `PROPERLY_DENIED` ✅ (404 = common hide-existence denial for owner-only resources) |
 | 200 | 500 | `ERROR_BEFORE_AUTH` ⚠️ |
 | 401/403 | 401/403 | `DENIED_BOTH` ℹ️ |
 
@@ -3889,7 +4116,7 @@ Accepts **legacy single-endpoint fields** or **`endpoints[]`** for batch tests. 
 **Auto-classification:**
 | Finding | Meaning |
 |---------|---------|
-| `PROPERLY_DENIED` | 401/403 — access correctly denied ✅ |
+| `PROPERLY_DENIED` | 401/403/404 — access correctly denied ✅ |
 | `IDENTICAL_TO_AUTHORIZED` | Same response as authorized baseline — BOLA suspected ⚠️ |
 | `ACCESS_GRANTED` | 200 but different body — manual review needed |
 | `ERROR` | Server error |
@@ -3909,15 +4136,26 @@ Accepts **legacy single-endpoint fields** or **`endpoints[]`** for batch tests. 
 ```
 
 ### POST /api/fetch-direct
-**Gate-free server-side fetch with browser cookies.** Makes an HTTP request server-side using `HttpClient` with cookies extracted from the browser's CookieManager (including HttpOnly cookies). Unlike `POST /api/fetch` (which runs `fetch()` inside WebView2 and requires the gate), this endpoint bypasses the gate entirely. Used internally by `peer/fetch` to avoid deadlocks.
+**Gate-free server-side fetch** using `HttpClient`. Unlike `POST /api/fetch` (which runs `fetch()` inside WebView2 and requires the gate), this endpoint bypasses the gate entirely. Used internally by `peer/fetch` to avoid deadlocks.
 
-Same request/response format as `POST /api/fetch`.
+| Field | Default | Description |
+|-------|---------|-------------|
+| `url` | required | Absolute URL |
+| `method` | `GET` | HTTP method |
+| `headers` | — | Request headers (including optional `Cookie` / `Authorization`) |
+| `body` / `json` | — | Request body |
+| `timeout` | 30000 | Timeout ms |
+| `includeBrowserCookies` | `true` | When `true`, merge the WebView cookie jar for the URL, then overlay any caller `Cookie` header (**caller wins on same cookie name**). When `false`, send **only** caller-supplied `Cookie` / `Authorization` (no jar) — use this for portable-token proofs |
+
+**Response** adds `cookiesSent` (cookie **names** only) and `includeBrowserCookies` for auditability. Values are never echoed.
 
 ### GET /api/session/identity
 
-**Live session introspection** (renamed from `GET /api/identity`). Returns session name, domain, redacted cookie previews, storage tokens, and inferred auth mechanism. **Gate-free.**
+**Live session introspection** (renamed from `GET /api/identity`). Returns session name, domain, redacted cookie previews, JWT cookie inventory, storage tokens, and inferred auth mechanism. **Gate-free.**
 
-**Response `data`:** `sessionName`, `domain`, `currentUrl`, `cookieCount`, `cookies`, `inferredTokens?`, `inferredIdentity?`
+**Response `data`:** `sessionName`, `domain`, `currentUrl`, `cookieCount`, `cookies`, `jwtCookies?`, `inferredTokens?`, `inferredIdentity?`
+
+`jwtCookies[]` entries: `name`, `alg`, `exp`, `iss`, `preview` (redacted). Inference prefers cookies whose **values** are JWT-shaped (`eyJ…` / three segments) over opaque cookies whose names merely contain `token`.
 
 Supported auth mechanisms: `shibboleth`, `java-session`, `aspnet`, `oauth`, `jwt-cookie`, `session-cookie`, `storage-token`.
 
@@ -3981,29 +4219,38 @@ SSO/MFA handoff — human completes login in GUI, Trowser auto-captures on cooki
 
 **Endpoint:** `POST http://localhost:6923/mcp` (Streamable HTTP, JSON-RPC 2.0)
 
+**Setup:** Settings → Security → **MCP client config** (OpenCode / Cursor / Claude Code / Copilot CLI) → **Copy**. Full instructions: [README — Connect an external MCP agent](README.md#connect-an-external-mcp-agent).
+
 ```json
-{"mcpServers": {"trowser": {"url": "http://localhost:6923/mcp"}}}
+{"mcpServers": {"trowser": {"url": "http://localhost:6923/mcp?mode=core", "headers": {"Authorization": "Bearer trowser_YOUR_API_KEY"}}}}
 ```
+
+**Transport notes:** `POST /mcp` is the JSON-RPC endpoint. `GET` / `DELETE` return **405** (no standalone SSE stream / no session delete — Streamable HTTP 2025-03-26). Empty `POST` bodies return **202** (client probe tolerance). JSON-RPC requests with a body (including `tools/call`) wait on the same operation gate as REST (up to 60s) and return a JSON-RPC result or busy error — never an empty **202**. Parallel MCP calls from clients like Cursor are serialized; on gate timeout the response is JSON-RPC `-32000` with `blockedBy`. Settings → Copy embeds the key for reliability; env-var auth is optional (see README).
+
+**External MCP Mode** (default **Core**): controls which tools appear on `tools/list` / are callable for external clients. **Core** = interact + quality audits + `browser_security_auto_scan` (token-efficient). **Security** = complete MCP surface (core plus specialist scanners, intercept/mock, identities, and peers). Copied Settings configs use `?mode=core`. Per-request override: query `?mode=core|security` (`full` is an alias of security; legacy `economical`, `eco`, `agent`, `chat` → core) or header `X-Trowser-Mcp-Mode`. Built-in AI Assistant Interaction Mode (Chat / Economical / Full) remains separate. GitHub Copilot and OpenAI-style Chat APIs cap tools at 128: Full mode sends Core first (including `browser_journal_add` / `_get` / `_export`, console, network, fetch) then fills remaining slots with specialist scanners. Tools in `HiddenFromLlm` (currently `browser_take_screenshot`) stay off the list — prefer `GET /api/screenshot`. **Safe mode** still blocks mutating tools on `/mcp`. Tool JSON payloads are **compact** (not pretty-printed) to save tokens. `GET /api/info` reports `externalMcpMode`.
+
+**Locator naming:** prefer **`byText`** for visible-text locators on both REST and MCP (aligned with REST). On MCP click/hover/etc., plain `text` remains an alias for `byText`. On **`browser_type`**, `text` / `value` are **typed content** (aliases); use `byText` if you need a visible-text locator.
 
 ### MCP Tools
 
 | Tool | Description |
 |------|-------------|
-| `browser_snapshot` | Page state: URL, title, headings, interactive elements, errors |
+| `browser_snapshot` | Page state: URL, title, headings, interactive elements, errors (compact JSON) |
 | `browser_diff_state` | Diff two refGeneration snapshots (added/removed elements, text/value, URL/title, new errors) |
 | `browser_navigate` | URL (`url`) or history (`action`: back / forward) |
 | `browser_force_navigate` | `url`, optional `terminateScripts` — CDP recovery; MCP bypasses gate for this tool |
 | `browser_go_back` | History: back |
 | `browser_go_forward` | History: forward |
-| `browser_click` | Click element (left/right/middle, single/double) |
-| `browser_type` | Type into input (clears first) |
+| `browser_click` | Click element (left/right/middle, single/double); locators include `byText` |
+| `browser_type` | Type into input (clears first). Content: `value` **or** `text`; locator: `ref` / `byText` / … (not `text`) |
 | `browser_upload` | File input: `path`, `paths`, or `base64` + optional `fileName`; optional `submit` (blocked in safe mode) |
 | `browser_select_option` | Select dropdown option |
 | `browser_hover` | Hover over element |
 | `browser_press_key` | Keyboard key press |
 | `browser_scroll` | Scroll page or element into view |
-| `browser_take_screenshot` | Screenshot as inline base64. Supports `format` (png/jpeg), `quality`, ref/selector, padding |
-| `browser_screenshot_compare` | Visual diff: compare two screenshots, highlight pixel changes in red overlay |
+| `browser_take_screenshot` | **Hidden from `tools/list`** (token cost). Still callable by name; prefer `GET /api/screenshot`. Supports `format` (png/jpeg), `quality`, ref/selector, padding |
+| `browser_screenshot_compare` | Visual diff vs saved screenshot path (`GET /api/screenshot` or prior capture) |
+| `browser_wait_for_idle` | Wait for network quiet + no CSS animations (`POST /api/wait-for-idle` parity) |
 | `browser_text` | Element inner text (pierces shadow DOM) |
 | `browser_extract` | Extract structured data from tables/repeating elements |
 | `browser_page_text` | All visible page text |
@@ -4039,7 +4286,7 @@ SSO/MFA handoff — human completes login in GUI, Trowser auto-captures on cooki
 | `browser_security_ssrf_scan` | SSRF scanner: internal IPs, cloud metadata, protocol handlers, callback probes; discovery, **`endpointHints`**, or request template mode; uses `redirect: manual` on redirect-like params (requires `safetyMode: "active"`; blocked in safe mode) |
 | `browser_security_open_redirect_scan` | Open redirect scanner (CWE-601): probes redirect/url/next params with `redirect: manual`, checks Location for off-site redirects; **`endpointHints`** for params without query in URL (requires `safetyMode: "active"`; blocked in safe mode) |
 | `browser_security_methods` | HTTP methods testing: probes GET/POST/PUT/DELETE/PATCH/OPTIONS/HEAD/TRACE and flags security issues |
-| `browser_security_smuggling` | HTTP Request Smuggling detection: raw TCP probing for CL-TE, TE-CL, TE-TE obfuscation, CL-CL duplicate headers, and header normalization weaknesses. Timing-based detection — no actual smuggling. Includes infrastructure fingerprinting (proxy/CDN detection). Requires `safetyMode: "active"`; blocked in safe mode. |
+| `browser_security_smuggling` | HTTP Request Smuggling detection: raw TCP probing for CL-TE, TE-CL, TE-TE obfuscation, CL-CL duplicate headers, and header normalization. Timing probes plus differential-response confirmation (canary /404 prefix). Includes infrastructure fingerprinting (proxy/CDN detection). Requires `safetyMode: "active"`; blocked in safe mode. |
 | `browser_security_host_header` | Host header injection scanner: raw TCP probing for Host override, X-Forwarded-Host, duplicate Host, port manipulation, absolute-URL requests. Detects reflected poisoned host in redirects, links, and body. Auto-discovers reset/invite endpoints from network log. Requires `safetyMode: "active"`; blocked in safe mode. |
 | `browser_security_shadow` | Security Shadow Mode: enable/disable/query ambient continuous security analysis |
 | `browser_firewall_test` | Client-side firewall testing: active verification of CSP, SRI, iframe sandbox, Permissions-Policy (requires `safetyMode: "active"`) |
@@ -4117,8 +4364,11 @@ SSO/MFA handoff — human completes login in GUI, Trowser auto-captures on cooki
 | `browser_wait_for_network` | Wait for specific network request |
 | `browser_storage` | Read/write localStorage/sessionStorage |
 | `browser_inspiration` | Get a random testing inspiration message |
+| `browser_coverage` | Reflective coverage lens (REST: `GET /api/coverage`) — pages visited, interactive elements exercised, and which quality characteristics have been touched, derived from the journal |
 | `browser_journal_add` | Add a note to the test journal (observations, bugs, strategy). Supports `tags` and auto-captures page `url`. |
-| `browser_journal_get` | Get journal entries (with `since`, `last`, `type`, `source`, `tag` filters) |
+| `browser_journal_get` | Get journal entries (with `since`, `last`, `type`, `source`, `tag` filters). Includes `revision` and deleted indices. |
+| `browser_journal_update` | Update an existing journal entry by `index` (partial fields). |
+| `browser_journal_delete` | Delete a journal entry by `index`. |
 | `browser_peer_register` | Register a peer Trowser instance for cross-instance security testing: `name`, `baseUrl` (localhost), optional `apiKey` |
 | `browser_peers` | List all registered peer instances with health status and session names |
 | `browser_peer_fetch` | **Cross-identity fetch**: send a request through a peer's browser session (uses peer's cookies/auth). The workhorse for BOLA/IDOR testing. Fields: `peer`, `url`, `method`, `headers`, `json`, `body`, `timeout` |

@@ -48,7 +48,7 @@ Swagger documentation of REST API
 Quicktests GetAllPageStrings and ScreenReaderText
 Configurable random test data with Ctrl+D
 Testing inspiration with Ctrl+I
-Right-click Run Script on selected element (RapidFire example)
+Right-click Run Script on selected element (ClickFrenzy example)
 
 1.1.1 2026-04-16
 Improvements to Trowser for security and robustness testing
@@ -109,3 +109,28 @@ GUI for peer sessions and BOLA testing
 Miscellaneous security API enhancements
 Editable system prompt in AI Assistant
 OpenRouter free as default AI integration (just add your API key)
+
+1.3.4 2026-07-30
+Markdown support in AI Assistant window and Show as HTML
+Security API improvements; less false positives, better testing on LLMs
+Ability for users to add their own quicktests to menu
+Journal Panel to see notes from the session log
+Experimental quicktests AttackForm, RequiredFieldProbe, ReloadStatePersistence, ErrorMessageMarathon and CopyPasteVsType
+Richer bug capture abilities
+Coverage lens that informs on functionality and quality characteristics
+
+1.3.5 2026-08-13
+Better support for frames, downloads, drag & drop
+API support for environment/permission emulation, and HAR Export
+3rd party updates for axe and web-vitals, added Nuclei, tltds, csp-evaluator
+Better integration so AI assistant kan write C# scripts
+Support for agent MCP connection with improved token efficiency
+
+1.3.7 2026-08-20
+Better support for Github Copilot as AI Assistant
+Token efficiency improvements in MCP
+!? button to get AI help when something interesting happens
+Overhaul of the Journal Panel including edit and delete
+
+
+All releases also include minor bug fixes and enhancements.

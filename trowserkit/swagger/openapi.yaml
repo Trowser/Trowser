@@ -968,6 +968,37 @@ paths:
           schema:
             type: boolean
           description: Include full HTTP request/response headers
+        - name: includeDataUrls
+          in: query
+          schema:
+            type: boolean
+          description: Include data: URLs (default false)
+        - name: preferInteractive
+          in: query
+          schema:
+            type: boolean
+          description: Soft-prefer Document/Fetch/XHR ordering (default true)
+        - name: maxUrlChars
+          in: query
+          schema:
+            type: integer
+            default: 500
+          description: Truncate displayed URL length
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          description: Return only the most recent N matching entries (alias last)
+        - name: last
+          in: query
+          schema:
+            type: integer
+          description: Alias for limit — most recent N entries
+        - name: summary
+          in: query
+          schema:
+            type: boolean
+          description: Compact one-line-per-request for all matches (summary string array instead of entries)
       responses:
         "200":
           description: Network entries
@@ -978,6 +1009,8 @@ paths:
                 data:
                   count: 12
                   errors: 2
+                  shown: 12
+                  truncated: false
                   entries:
                     - id: 1
                       method: GET
@@ -1376,6 +1409,9 @@ paths:
         Detects contenteditable elements and uses `execCommand` for compatibility.
         Pass `html` for formatted content in rich text editors.
         Use `append: true` or `clearFirst: false` to append to existing content instead of clearing.
+        Content: provide `text`, or `value` as a content alias when the element is already addressed
+        by ref/selector/another locator (MCP-shaped). Without another locator, `value` remains the
+        `@value:` element locator. Returns 400 if none of text/value(content)/html is provided.
       requestBody:
         required: true
         content:
@@ -1401,10 +1437,11 @@ paths:
                   type: string
                 value:
                   type: string
-                  description: Target radio/checkbox/option by value attribute
+                  description: >
+                    Typed content when ref/selector/another locator is present (alias of text).
+                    Alone, targets radio/checkbox/option by value attribute (@value: locator).
                 text:
                   type: string
-                  default: ""
                   description: Text to type (empty string clears the field)
                 html:
                   type: string
@@ -1426,6 +1463,11 @@ paths:
                 value:
                   ref: 0
                   text: "user@example.com"
+              byRefValueAlias:
+                summary: Type using value as content alias (MCP-shaped)
+                value:
+                  ref: 0
+                  value: "user@example.com"
               byLabel:
                 summary: Type by label
                 value:
@@ -5746,7 +5788,7 @@ paths:
     get:
       operationId: get_security_llm_redteam_probes
       tags: [Security Testing]
-      summary: "lists all probe IDs and category names (use for `probeIds` / `categories` filters)."
+      summary: "Probe catalog + coverage metadata (IDs/categories for probeIds/categories filters)."
       description: Gate-free - safe for passive polling.
       responses:
         "200":
@@ -5761,7 +5803,7 @@ paths:
     post:
       operationId: post_security_llm_redteam_scan
       tags: [Security Testing]
-      summary: "YAML probe corpus (**29 probes**, LLM01-LLM07), integrated with **Red Team Whisper** (surface hints + finding toasts)."
+      summary: "OWASP LLM application-layer red-team (corpus LLM01-03+LLM05-07+LLM09; optional RAG poison / unbounded consumption / WebMCP)."
       description: |
         May require safetyMode in the request body (passive, safe, active, aggressive).
         Legacy confirmBackend true is accepted as alias for active.
@@ -5811,7 +5853,7 @@ paths:
     post:
       operationId: post_security_mass_assignment_patch
       tags: [Security Testing]
-      summary: "**PATCH/PUT self-promote** probe (pentest-ai `privilege_escalation_patch` style): discovers profile update endpoints fro..."
+      summary: "**PATCH/PUT self-promote** mass-assignment probe (OWASP WSTG-INPV-20 / API mass-assignment): discovers profile update endpoints..."
       description: |
         May require safetyMode in the request body (passive, safe, active, aggressive).
         Legacy confirmBackend true is accepted as alias for active.
@@ -6569,9 +6611,10 @@ paths:
     post:
       operationId: post_security_smuggling
       tags: [Security Testing]
-      summary: "HTTP Request Smuggling detection via **raw TCP probing**."
+      summary: "HTTP Request Smuggling detection via raw TCP probing (timing + differential-response confirmation)."
       description: |
-        May require safetyMode in the request body (passive, safe, active, aggressive).
+        Requires safetyMode: active. Runs CL-TE/TE-CL timing probes and PortSwigger-style
+        differential-response confirmation (canary /404 prefix), plus TE-TE/CL-CL/HEADER checks.
         Legacy confirmBackend true is accepted as alias for active.
       requestBody:
         required: true
@@ -7630,6 +7673,32 @@ paths:
         "200":
           description: Success
 
+    patch:
+      operationId: patch_journal
+      tags: [Journal]
+      summary: "Update an existing journal entry."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+    delete:
+      operationId: delete_journal
+      tags: [Journal]
+      summary: "Remove an entry. Query: `index` (required). The index is never reused; subsequent GET responses include it in `deleted[]…"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
 
   /api/storage:
     get:
@@ -7754,6 +7823,287 @@ paths:
           application/json:
             schema:
               type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/llm-http-mcp-list:
+    post:
+      operationId: post_security_llm_http_mcp_list
+      tags: [Security Testing]
+      summary: "POST /api/security/llm-http-mcp-list — security llm http mcp list"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/llm-sink-assist:
+    post:
+      operationId: post_security_llm_sink_assist
+      tags: [Security Testing]
+      summary: "POST /api/security/llm-sink-assist — security llm sink assist"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/llm-http-send:
+    post:
+      operationId: post_security_llm_http_send
+      tags: [Security Testing]
+      summary: "POST /api/security/llm-http-send — security llm http send"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/attack-form:
+    post:
+      operationId: post_attack_form
+      tags: [Other]
+      summary: "Adaptive form attack ('Attack this form'): inspects the live page to discover the editable fields wired to a form/submit…"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/coverage:
+    get:
+      operationId: get_coverage
+      tags: [Other]
+      summary: "GET /api/coverage — coverage"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/trace:
+    get:
+      operationId: get_trace
+      tags: [Other]
+      summary: "Get action timeline steps"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/downloads/clear:
+    post:
+      operationId: post_downloads_clear
+      tags: [Other]
+      summary: "Clear download log: { \"deleteFiles\": false }"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/trace/stop:
+    post:
+      operationId: post_trace_stop
+      tags: [Other]
+      summary: "Stop action timeline recording"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/downloads/assert:
+    post:
+      operationId: post_downloads_assert
+      tags: [Other]
+      summary: "Assert download: { \"fileNameContains\", \"mime\", \"minBytes\", \"exists\" }"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/network/har:
+    get:
+      operationId: get_network_har
+      tags: [Console & Network]
+      summary: "Export network log as HAR 1.2 JSON. Query: ?includeBody=true, ?url=, ?method=, ?errors=true, ?page=true, ?path=file"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/trace/export:
+    get:
+      operationId: get_trace_export
+      tags: [Other]
+      summary: "Export action timeline JSON"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/trace/start:
+    post:
+      operationId: post_trace_start
+      tags: [Other]
+      summary: "Start action timeline: { \"domSnapshots\": false, \"maxSteps\": 200 }"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/emulation:
+    get:
+      operationId: get_emulation
+      tags: [Other]
+      summary: "Get environment overrides (geolocation, locale, timezone, colorScheme, reducedMotion, userAgent, permissions)"
+      responses:
+        "200":
+          description: Success
+
+    post:
+      operationId: post_emulation
+      tags: [Other]
+      summary: "Set environment overrides: { \"geolocation\": {\"latitude\":59.3,\"longitude\":18.0}, \"locale\": \"sv-SE\", \"timezone\": \"Europe/S…"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+    delete:
+      operationId: delete_emulation
+      tags: [Other]
+      summary: "Clear all environment overrides"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/downloads:
+    get:
+      operationId: get_downloads
+      tags: [Other]
+      summary: "List captured downloads (id, url, suggestedFileName, path, state, bytes, mime)"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/downloads/wait:
+    post:
+      operationId: post_downloads_wait
+      tags: [Other]
+      summary: "Wait for download: { \"fileNameContains\": \"report\", \"timeout\": 30000 }"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/drag:
+    post:
+      operationId: post_drag
+      tags: [Other]
+      summary: "Drag: { \"from\": {\"ref\":N}, \"to\": {\"selector\":\"#dst\"}, \"steps\": 10, \"frame\": \"optional\" }"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/frames:
+    get:
+      operationId: get_frames
+      tags: [Other]
+      summary: "List iframes: frameId, name, url, sameOrigin, parentFrameId"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/nuclei-scan:
+    post:
+      operationId: post_security_nuclei_scan
+      tags: [Security Testing]
+      summary: "Native runner over a **curated embedded subset** of [nuclei-templates](https://github.com/projectdiscovery/nuclei-templates) (MIT)."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/nuclei-templates:
+    get:
+      operationId: get_security_nuclei_templates
+      tags: [Security Testing]
+      summary: "Inventory the runnable nuclei templates (embedded subset and/or a user `templatesDir`) **without scanning**, so you can…"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/scripting-help:
+    get:
+      operationId: get_scripting_help
+      tags: [Other]
+      summary: "Curated C# scripting (.csx) cheat sheet for LLMs/agents."
       responses:
         "200":
           description: Success

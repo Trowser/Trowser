@@ -4,6 +4,12 @@ A concise guide for AI-driven and manual security testing using the Trowser REST
 
 ---
 
+## Scanner provenance
+
+Trowser **owns** its security probe implementations. Detection design is aligned with public methodologies — primarily **OWASP WSTG**, **PortSwigger** research/Academy techniques, **OWASP API Security**, relevant **RFCs**, and vendor advisories — plus Trowser-specific traffic/session/scaffold behaviour.
+
+---
+
 ## Playbooks first, this guide second
 
 Trowser ships **security playbooks** — orchestrated scanners aligned with the Trowser Twelve taxonomy (OWASP Top Ten Extended). Each playbook runs a curated chain of primitives in the right order, applies a uniform `safetyMode`, correlates findings, and returns `nextActions` plus suggested proofs.
@@ -42,33 +48,57 @@ Playbooks **wrap** the same REST primitives documented here — they do not repl
 | `a02-misconfig` | `POST /api/orchestrate/a02-misconfig` | Phase 2 individual scans, gotchas (discover on SPAs) |
 | `a03-supplychain` | `POST /api/orchestrate/a03-supplychain` | Secrets Harvest Methodology |
 | `a04-crypto` | `POST /api/orchestrate/a04-crypto` | Secrets Harvest Methodology, session/cookie checks |
-| `a05-injection` | `POST /api/orchestrate/a05-injection` | XSS Testing, Fuzzing, Injection Testing |
+| `a05-injection` | `POST /api/orchestrate/a05-injection` | XSS Testing, Fuzzing, Injection Testing (full; ~1800s) |
+| `a05a-injection-core` | `POST /api/orchestrate/a05a-injection-core` | Short agent slice: cmd-canary + XSS + SQLi (~300s) |
+| `a05b-injection-templates` | `POST /api/orchestrate/a05b-injection-templates` | SSTI / polyglot / CSTI / NoSQL / LDAP / path |
+| `a05c-injection-advanced` | `POST /api/orchestrate/a05c-injection-advanced` | Login-sweep, deser, upload, parser, prototype pollution |
 | `a06-design` | `POST /api/orchestrate/a06-design` | Business logic, race conditions (Phase 3 & 5) |
 | `a07-authn` | `POST /api/orchestrate/a07-authn` | Brute-Force / Account Lockout, session testing |
 | `a09-opsec` | `POST /api/orchestrate/a09-opsec` | Forced-error interpretation, log-leak triage |
 | `a11-ssrf` | `POST /api/orchestrate/a11-ssrf` | SSRF follow-up with custom payloads |
 | `a12-availability` | `POST /api/orchestrate/a12-availability` | Load-test / race patterns (Phase 5) |
-| `a13-llm` | `POST /api/orchestrate/a13-llm` | LLM output→sink tracing, prompt-injection proof |
+| `a13-llm` | `POST /api/orchestrate/a13-llm` | LLM application-layer Top 10: corpus + RAG poison + unbounded consumption + output→sink |
 | `a14-other` | `POST /api/orchestrate/a14-other` | Smuggling, host-header, open redirect (Phase 5) |
 | *(none)* | — | **Phase 4 — SAML / Federation** (manual-first) |
 
+### OWASP LLM Top 10 coverage (A13 / `llm-redteam-scan`)
+
+| Category | Status | How |
+|----------|--------|-----|
+| LLM01 Prompt Injection | Covered | YAML corpus + indirect/RAG upload |
+| LLM02 Sensitive Disclosure | Covered | YAML corpus |
+| LLM03 Supply Chain | Covered (light) | Model/plugin fingerprint probes |
+| LLM04 Data/Model Poisoning | Adjacent | `includeRagPoison` (document/memory persistence) — not training-set poisoning |
+| LLM05 Improper Output Handling | Covered | YAML + DOM render check + A13 sink-trace |
+| LLM06 Excessive Agency | Covered | YAML + WebMCP tool invocation abuse |
+| LLM07 System Prompt Leakage | Covered | YAML corpus |
+| LLM08 Vector/Embedding | Adjacent | Peer cross-tenant check via `peerBaseUrl` on rag-poison |
+| LLM09 Misinformation | Covered | Canary CVE/DOI/URL fabrication probes |
+| LLM10 Unbounded Consumption | Adjacent | `includeUnboundedConsumption` (flood / oversized / max-output / tool-loop) |
+
+Scan responses include `coverage.covered` / `coverage.notCoveredInCorpus`. Claim: **application-layer OWASP LLM Top 10**; training-time risks remain out of scope.
+
 Common playbook request envelope:
 
+**Canonical budget workflow:** call dry-run first, then copy `recommendedBudget` into the real run. Do **not** treat `maxSeconds: 120` as a normal envelope for probe playbooks — that default often marks core steps `skippedByBudget` (`coverageIncomplete: true`).
+
 ```json
+// 1) POST /api/orchestrate/dry-run/a05a-injection-core
+// 2) Use data.recommendedBudget from the response:
 {
   "scope": {
     "host": "example.com",
     "targetUrl": "https://example.com/api/search?q=test"
   },
-  "safetyMode": "safe",
-  "depth": "standard",
+  "safetyMode": "active",
+  "depth": "llm",
   "crawl": false,
-  "budget": { "maxSeconds": 120, "maxRequests": 800 },
+  "budget": { "maxSeconds": 300, "maxRequests": 800 },
   "emitSuggestedProofs": true
 }
 ```
 
-Use `"safetyMode": "active"` when injection, fuzz, smuggling, or other live probes are required. See the API reference orchestration section for full options.
+If dry-run returns `coverageIncomplete: true`, raise the budget (or use `depth: "llm"` on a05a) before executing. Use `"safetyMode": "active"` when injection, fuzz, smuggling, or other live probes are required. See the API reference orchestration section for full options.
 
 ---
 
@@ -121,6 +151,7 @@ Use when playbooks are insufficient, you need full control, or you are **drillin
 - [ ] Or run individual scans: `security-headers`, `cookies`, `cors`, `xss`, `mixed-content`, `source-maps`, `storage`, `firewall-test`, `third-party`, `methods`, `discover`, `path-traversal`, `csrf`
 - [ ] Run `POST /api/security/auto-scan` — detects SQLi, IDOR (path params), method enumeration, CSRF in one call
 - [ ] Run `POST /api/security/secrets-harvest` — finds credentials, tokens, API keys in network responses and JS bundles
+- [ ] Run `POST /api/security/nuclei-scan` — embedded exposure templates; add **`templatesDir`** for app-specific YAML (see Nuclei below)
 - [ ] Check identity state: `GET /api/session/identity` — shows current session info and cookies
 - [ ] If SAML: `POST /api/security/saml-decode {"source":"network","findAll":true}`
 - [ ] If JWT: `POST /api/security/jwt-analyze {"safetyMode":"active"}`
@@ -242,14 +273,42 @@ Use `/api/execute-js` to inspect the page context:
 | `/api/security/path-traversal` | Query-parameter traversal only (path-based requires manual testing) |
 | `/api/security/source-maps` | Exposed source maps = full source code disclosure |
 | `/api/security/storage` | Sensitive data in localStorage/sessionStorage |
+| `/api/security/nuclei-scan` | Embedded + **custom** Nuclei HTTP templates; multi-URL exposure sweep |
+| `/api/third-party` | Third-party inventory via eTLD+1 (`hostname` + `etldPlus1`); SRI coverage |
+| `/api/security-headers` | Headers + **csp-evaluator** when a CSP is present |
 
 ### High-Value Security APIs
 
 These newer APIs provide the deepest security insights and should be run after populating the network log.
 
-**`POST /api/security/auto-scan`** — Composite scanner that detects SQLi, IDOR (path parameters), HTTP method enumeration, CSRF, SSTI, open redirects, and mass assignment from the network log. Returns severity-rated findings. Best run after browsing 5–10 pages.
+**`POST /api/security/auto-scan`** — Composite scanner that detects SQLi, IDOR (path parameters), HTTP method enumeration, CSRF, SSTI, open redirects, and mass assignment from the network log. Returns severity-rated findings. Best run after browsing 5–10 pages. Use **`payloadProfile`: `"big"`** when SecLists/PayloadsAllTheThings corpora are installed (`corpora/` beside the exe or `%TROWSER_CORPORA%`); response echoes `payloadProfile` + `corporaAvailable`.
 
 **`POST /api/security/secrets-harvest`** — Analyzes all captured network responses and JS bundles for credentials, tokens, API keys, and password hashes. Typically finds 20–30 items including hardcoded test credentials. CRITICAL findings include email+password combos in API responses.
+
+**`POST /api/security/nuclei-scan`** — Native runner over a **small embedded HTTP template subset** plus **your own YAML**. Best for exposure/misconfig (`.env`, `.git`, swagger, app-specific secret paths). Not a full ProjectDiscovery Nuclei (no dns/raw/payloads/workflows).
+
+| Practice | Detail |
+|----------|--------|
+| Safety | `"safetyMode": "safe"` is enough for GET/HEAD templates; write verbs need `"active"`. Blocked in `--safe` CLI. |
+| Custom pack | Point **`templatesDir`** at a folder of `*.yaml` (or drop files in `nuclei-templates/` beside the exe / `%TROWSER_NUCLEI_TEMPLATES%`). Set **`includeBuiltinTemplates`: false** to run only your pack. |
+| Multi-host | Pass **`targetUrls`** (array or comma-string). Each selected template runs per URL. |
+| Base vs root | `{{BaseURL}}` includes the path of each target; for origin files (`.env`, `.git`) use **`{{RootURL}}`** or pass origin-only URLs — otherwise `/marketplace/.git/HEAD` misses the real leak. |
+| Filters | **`tags`**: array or `"exposure,custom"`. **`severity`** (alias `minSeverity`): minimum severity. Empty match → 400. |
+| Unsupported YAML | Templates with dns/payloads/raw/extra variables are **skipped silently** — keep packs HTTP-only with `status`/`word`/`regex`/`header` matchers. |
+| Output | Use `templatesSelected` / `httpRequests` (not `verboseTrace`). Findings register into the chain feed (`source=nuclei`). |
+
+Example — app pack + builtins across two origins:
+```json
+{
+  "safetyMode": "safe",
+  "targetUrls": ["https://app.example", "https://staging.example"],
+  "templatesDir": "C:/sec/nuclei-app-pack",
+  "includeBuiltinTemplates": true,
+  "tags": "exposure,custom,misconfig",
+  "severity": "low"
+}
+```
+Scripting: `RunNucleiScan` / `AssertNucleiClean` / `PrintNucleiReport` accept the same options.
 
 **`GET /api/session/identity`** — Returns current session info (cookies, auth state). Replaces deprecated `GET /api/identity`.
 
@@ -278,7 +337,7 @@ These newer APIs target specific BAC sub-categories. Run them after populating t
 **`POST /api/security/harvest-ids`** — Harvests numeric/GUID/hex IDs from network log and DOM. Read-only (no `safetyMode` required). Returns `ids[]` and `suggestedBoundaryTests[]`.
 - Captures IDs from query parameters (e.g., `?productId=1`), reporting `kind`, `value`, `source`, `paramName`, `type`, and `contextUrl`.
 - `suggestedBoundaryTests` generates ready-to-use configs for `authz/boundary` with `urlTemplate`, `parameter`, `authorizedValues`, `unauthorizedValues`, and `reason`.
-- **Known issue:** `urlTemplate` in suggestions uses URL-encoded `%7bid%7d` instead of `{id}`. Decode before passing to `authz/boundary`.
+- Templates should keep brace placeholders (`{id}`). If a consumer still shows `%7Bid%7D`, decode before passing to `authz/boundary` (Trowser display URLs decode braces automatically).
 
 **`POST /api/security/jwt-acceptance-sweep`** — Sweeps endpoints for missing auth and JWT alg:none acceptance. Best on JWT-authenticated APIs. Requires `safetyMode: "active"`.
 - Accepts explicit `token` parameter — use a crafted alg:none JWT to test specific endpoints.
@@ -600,6 +659,9 @@ $csp = $r.data.headers."content-security-policy"    # ✅ Correct
 ### `/api/fetch/batch` — Response Field Name
 The response field is `results`, not `responses`.
 
+### `/api/fetch/batch` — Response bodies
+Bodies are **off by default** (`body: null`, `bodyLen` only). For IDOR / content comparison set `"includeBodies": true` (alias `"includeBody": true`) and optionally `bodyMaxChars` / `maxBodyChars`.
+
 ### `/api/load-test` vs `/api/fetch/batch`
 - `load-test`: server-side, no browser cookies by default (use `useBrowserCookies:true`). Best for quick concurrency checks.
 - `fetch/batch`: browser-context, includes cookies and session. Best for authenticated concurrent testing.
@@ -607,8 +669,13 @@ The response field is `results`, not `responses`.
 ### `/api/fuzz` — Can Hang
 Large payload sets with `pitchfork` attack type can run 4+ minutes without progress. Use `/api/abort` to recover. Prefer `/api/fetch/batch` for controlled parallel testing.
 
-### `/api/security/discover` — Unreliable on SPAs
+### `/api/security/discover` — Unreliable on SPAs / SSO login gates
 SPAs with catch-all routes return 200 for every path. Compare response body sizes — identical sizes mean the catch-all page. Use network log analysis for real endpoint discovery instead.
+
+Shibboleth / SAML / OIDC apps often **302 every unknown path** to the same IdP URL (with unique `SAMLRequest` / `state` query params). Trowser fingerprints the invalid-path baseline redirect (host+path, query stripped) and filters matching 3xx responses automatically — they are not findings. Set `spaMode: true` to also filter SPA shell 2xx duplicates. Authenticate first if you need discovery behind the login gate.
+
+### `/api/security/nuclei-scan` — BaseURL vs RootURL
+`{{BaseURL}}` keeps the path of each `targetUrls` entry. For origin-level files (`.env`, `.git`), use **`{{RootURL}}`** in custom YAML or pass origin-only URLs — otherwise `/app/page/.git/HEAD` misses the real leak (SPA HTML). Prefer body **word** matchers with status to avoid SPA false positives. Unsupported YAML (dns/payloads/raw) is skipped silently.
 
 ### `/api/security/cookies` — Does Not Check HttpOnly
 Always supplement with `document.cookie` via `execute-js`.
@@ -719,7 +786,7 @@ API behavior: severity is capped to **info** for residual markers; Dom.Dangerous
 Auto-bypass responses expose **`verdict`** (alias of `worstVerdict`) plus `effectiveTrace.verdict`. Do not treat a missing top-level `verdict` on older builds as “null finding” — read `worstVerdict` / `effectiveTrace`.
 
 ### Playbook / auto-scan budgets
-Standalone **`auto-scan`** applies a depth default wall-clock budget (`quick`≈120s, `standard`≈300s, `thorough`≈900s) via `maxStepSeconds` when omitted — expect `budgetExhausted: true` and partial results rather than an indefinite busy gate. `a05-injection` recommends ~1800s. With `budget.honorRequested=true` and a short cap (e.g. 90s), the playbook switches to an **injection-fast** profile and cancels in-flight scanners at the step timeout. Prefer `depth: "quick"` or raise `budget.maxSeconds`.
+Standalone **`auto-scan`** applies a depth default wall-clock budget (`quick`≈120s, `standard`≈300s, `thorough`≈900s) via `maxStepSeconds` when omitted — expect `budgetExhausted: true` and partial results rather than an indefinite busy gate. Full `a05-injection` recommends ~1800s. For LLM/agent sessions prefer **`a05a-injection-core`** (then `a05b` / `a05c`) or **`depth: "llm"`** (aliases: `agent`) with a 120–300s budget — warnings stay informational instead of pushing multi-hour caps. With `budget.honorRequested=true` and a short cap on full A05 (e.g. 90s), the playbook switches to an **injection-fast** profile (cmd/xss/sqli only).
 
 ### `/api/clear-all` — Destructive
 Clears form fields and configuration. Never call on an SP config page without the `preserve` parameter.
@@ -730,8 +797,8 @@ Default depth is 2. Always use `-Depth 5` or higher for nested request bodies. F
 ### `/api/security/path-filter-bypass` — False Positives with Traversal Payloads
 The `backslash-normalize` and `encoded-dot-dot` payloads (e.g., `/admin/..\`) resolve to the site root via URL normalization, producing a status change (403→200 or 404→200) that may not be a real bypass. Always verify: fetch the bypass URL and compare the response body against `/` — if they match, it's a false positive. The `content-differential` indicator confirms only a status difference, not that different protected content was accessed.
 
-### `/api/security/harvest-ids` — URL-Encoded Placeholders in Pipeline
-The `suggestedBoundaryTests[].urlTemplate` emits `%7bid%7d` instead of `{id}`. When feeding suggestions directly into `authz/boundary`, decode the placeholder first: replace `%7b` → `{` and `%7d` → `}`. Without this, the boundary test will fail with status=0 errors on all unauthorized values.
+### `/api/security/harvest-ids` — Placeholders
+Suggestions should use `{id}` brace templates. If an older session or external tool still emits `%7b`/`%7d`, decode before `authz/boundary` or the boundary test will fail with status=0.
 
 ### `/api/security/auth-bypass-pivot` — Requires 401/403 in Network Log
 The tool auto-detects retest candidates from the network log. If you haven't browsed any pages that return 401/403, it reports `endpointsRetested: 0`. Browse protected endpoints first (e.g., navigate to `/admin`).

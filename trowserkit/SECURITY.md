@@ -168,15 +168,15 @@ Trowser.exe --run tests/suite.csx --url https://staging.myapp.com --api-key "ci-
 
 Fixed API key for stable configuration. CLI mode disables the API by default.
 
-### MCP client (Cursor, Claude Desktop)
+### MCP client (OpenCode, Cursor, Claude Code)
 
-Configure your MCP client to connect to `http://localhost:6923/mcp` with the API key from the status bar tooltip. Example Cursor MCP config:
+Prefer **Settings → Security → MCP client config → Copy** (embeds port, mode, and API key for OpenCode / Cursor / Claude Code / Copilot CLI). Enable **Keep API key for next session** (or `--api-key`) so the key stays stable. Keep mcp.json user-level when it contains a key; do not commit secrets. Manual Cursor example:
 
 ```json
 {
   "mcpServers": {
     "trowser": {
-      "url": "http://localhost:6923/mcp",
+      "url": "http://localhost:6923/mcp?mode=core",
       "headers": {
         "Authorization": "Bearer trowser_your_key_here"
       }
@@ -184,6 +184,8 @@ Configure your MCP client to connect to `http://localhost:6923/mcp` with the API
   }
 }
 ```
+
+External MCP defaults to **Core** tool surface (copied Settings config uses `?mode=core`). For security testing use `?mode=security` (`?mode=full` is an alias of security). Header: `X-Trowser-Mcp-Mode`. See [README — Connect an external MCP agent](README.md#connect-an-external-mcp-agent).
 
 ## Known Security Limitations
 
@@ -193,7 +195,7 @@ When using the **Forward & Edit Response** feature in the breakpoint hit dialog,
 
 ### LLM API keys stored in plain text
 
-LLM API keys configured in Settings are stored as plain JSON in `%APPDATA%\Trowser\settings.json`. They are not encrypted. Any process or user with access to your Windows profile can read them. If this is a concern:
+LLM API keys configured in Settings are stored as plain JSON in `%APPDATA%\Trowser\settings.json`, including a per-provider copy (endpoint, key, and model) so switching providers does not reuse the previous provider's credentials. They are not encrypted. Any process or user with access to your Windows profile can read them. If this is a concern:
 - Prefer environment variables (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GITHUB_TOKEN`) — Trowser reads them when the Settings key field is empty and does not write them to disk.
 - For GitHub Copilot, Trowser can use the GitHub CLI (`gh auth token`) so no key needs to be stored at all.
 - Delete `%APPDATA%\Trowser\settings.json` when you no longer need the configuration.

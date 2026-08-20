@@ -2,6 +2,8 @@
 
 Complete reference for writing Trowser test scripts (`.csx` files). Scripts are C# with full `async/await` support, executed by the Roslyn scripting engine with the automation API available as top-level globals.
 
+**AI Assistant / MCP:** call `browser_scripting_help` for a curated cheat sheet (optional `topic`: overview, map, interaction, assert, …). Do not treat MCP tool-call JSON as a runnable script.
+
 ## CLI Usage
 
 ### Executable Location
@@ -72,7 +74,7 @@ The **Quicktests ▾** dropdown in the Script Console toolbar provides ready-mad
 | `FullSiteHealth` | Comprehensive health check: all audits on the current page |
 | `GUIAudit` | GUI visual consistency + image optimization |
 | `HtmlValidation` | Inspects HTML with 3rd party html-validate |
-| `5 HttpSmuggling` | Raw TCP HTTP smuggling timing probes (CL-TE, TE-CL, TE-TE, CL-CL) against the document URL |
+| `5 HttpSmuggling` | Raw TCP HTTP smuggling: timing + differential-response confirmation (CL-TE, TE-CL, TE-TE, CL-CL) against the document URL |
 | `6 WafBypass` | WAF bypass technique probe: block detection + encoding/header/path/HPP transforms (browse first for query-param discovery) |
 | `4 CstiScan` | Client-side template injection (CSTI): DOM-aware {{7*7}} probes via URL query/hash (browse first; best on AngularJS/Vue/Handlebars) |
 | `2 JavaScriptVulnerabilities` | Retire.js CVE scan for JavaScript libraries on the current page |
@@ -106,6 +108,20 @@ Scripts can call `await SurpriseMe()` directly. It picks a random eligible embed
 **MCP:** `browser_surpriseme` — same behavior.
 
 Blocked in `--safe` mode (same as `execute-script` / `browser_run_script`).
+
+### Write your own quicktest (UserScripts)
+
+You are not limited to the built-in catalog. Drop your own `.csx` files into the user quicktests folder and they appear under **Quicktests ▾ → UserScripts**:
+
+```
+Documents\Trowser Quicktests
+```
+
+- The first time Trowser opens this folder it seeds a `README.md` (a short authoring guide) and an `ExampleQuicktest.csx` you can copy.
+- Subfolders become nested submenus, so you can organise scripts however you like.
+- The **UserScripts** submenu rescans the folder every time you open it — new files show up immediately, no restart needed. Use **UserScripts → Open folder…** to jump straight there.
+- Selecting an item loads the script into the Script Console; press **Run** (or `Ctrl+Enter`) to execute it. A user quicktest is just a normal Trowser C# script and has the full scripting API described in this document.
+- User quicktests are **not** included in the randomized `SurpriseMe` pool (that stays limited to the vetted embedded catalog), but they run with full script access — keep any state-mutating actions behind an explicit safety check.
 
 ---
 
@@ -209,7 +225,9 @@ Recorded scripts can serve as a guide for LLM agents using the REST API. The tab
 All automation methods are available as top-level calls (no object prefix needed):
 `Navigate`, `GoBack`, `GoForward`, `Click`, `Type`, `Select`, `Hover`, `PressKey`, `Scroll`, `GetText`, `GetAttribute`, `GetProperty`, `IsChecked`, `Exists`, `Count`, `Extract`, `GetWebMcpTools`, `CallWebMcpTool`, `WaitForElement`, `WaitForRequest`, `WaitForNavigation`, `WaitForFinalNavigation`, `WaitForIdle`, `Sleep`, `ExecuteJs`, `GetRandomTestData`, `Fetch`, `FetchBatchAsync`, `Screenshot`, `Log`, `GetCookies`, `GetCookie`, `SetCookie`, `DeleteCookie`, `ClearCookies`, `GetAllStorage`, `GetStorageItem`, `SetStorageItem`, `DeleteStorageItem`, `ClearStorage`, `SetNetworkThrottle`, `ClearNetworkThrottle`, `MockResponse`, `RemoveMock`, `ClearMocks`, `GetMockRules`, `AddInterceptRule`, `RemoveInterceptRule`, `ClearInterceptRules`, `GetInterceptRules`, `GetPendingRequests`, `ResolvePendingRequest`, `RunInterrupterTest`, `ClearAll`, `ClearSession`, `PrintStorageSecurityReport`, `AssertStorageSecurity`, `CheckHttpMethods`, `PrintHttpMethodsReport`, `AssertHttpMethodsClean`, `CheckAttackSurface`, `PrintAttackSurfaceReport`, `TryDecodeSamlFromNetwork`, `PrintSamlFromNetworkReport`, `AssertSamlSecurity`, `RunAutoScan`, `PrintAutoScanReport`, `AssertAutoScanClean`, `RunSecretsHarvest`, `PrintSecretsHarvestReport`, `AssertSecretsClean`, `RunFirewallTest`, `PrintFirewallTestReport`, `AssertFirewallTestClean`, `RunJwtAnalysis`, `PrintJwtAnalysisReport`, `AssertJwtAnalysisClean`, `RunOidcAnalysis`, `PrintOidcAnalysisReport`, `AssertOidcAnalysisClean`, `RunGraphqlAnalysis`, `PrintGraphqlAnalysisReport`, `AssertGraphqlAnalysisClean`, `RunJavaScriptStaticAudit`, `PrintJavaScriptStaticAuditReport`, `AssertJavaScriptStaticAuditClean`, `RunHttpSmugglingScan`, `PrintHttpSmugglingReport`, `AssertHttpSmugglingClean`, `RunWafBypassScan`, `PrintWafBypassReport`, `AssertWafBypassEffective`.
 
-Locator factory methods (also top-level): `ByRole`, `ByLabel`, `ByText`, `ByPlaceholder`, `ByTestId`.
+Locator factory methods (also top-level): `ByRole`, `ByLabel`, `ByText`, `ByPlaceholder`, `ByTestId`, `ByFrame`.
+
+Frame / download / drag / emulation / forensics (also top-level): `GetFrames`, `ByFrame`, `Drag`, `WaitForDownload`, `GetDownloads`, `AssertDownload`, `ClearDownloads`, `SetEmulation`, `ClearEmulation`, `ExportHar`, `StartTrace`, `StopTrace`, `GetTrace`, `ExportTrace`, `ClearTrace`.
 
 ---
 
@@ -338,8 +356,25 @@ Locators find elements by meaning rather than DOM structure. They're more resili
 | `ByText(text)` | `string text` | `string` | Find element by visible text content (case-insensitive, whitespace-normalized) |
 | `ByPlaceholder(text)` | `string text` | `string` | Find input by placeholder text |
 | `ByTestId(testId)` | `string testId` | `string` | Find element by `data-testid` attribute |
+| `ByFrame(frame, selectorOrLocator)` | `string frame, string selectorOrLocator` | `string` | Scope a selector/locator to a same-origin iframe (`frameId`, iframe `name`, or CSS of `<iframe>`) |
 
 Locators return special strings that all action methods understand. Pass them directly to `Click`, `Type`, `GetText`, etc.
+
+```csharp
+await Click(ByFrame("child", "#in-frame"));
+await Type(ByFrame("f1", ByLabel("Email")), "a@b.c");
+await Drag("#src", "#dst", steps: 10);
+var dl = await WaitForDownload(fileNameContains: "report");
+// DownloadEntry C# names: Id, Url, SuggestedFileName, Path, State, BytesReceived, TotalBytes, MimeType, Timestamp
+// Friendly aliases: Bytes / ByteCount, Mime, FileName (REST JSON uses bytes / mime)
+AssertDownload(fileNameContains: "report", minBytes: 1, entry: dl);
+Console.WriteLine($"{dl.FileName}: {dl.Bytes} bytes, mime={dl.Mime}");
+await SetEmulation(new EmulationUpdate { ColorScheme = "dark", Locale = "sv-SE" });
+StartTrace();
+// ... actions ...
+StopTrace();
+var har = ExportHar(includeBodies: false);
+```
 
 ### Usage
 
@@ -852,7 +887,10 @@ Runs a **category playbook** via the in-process orchestration engine (same engin
 | `a02-misconfig` | Misconfiguration (headers, CORS, cookies, discovery) |
 | `a03-supplychain` | Supply chain (Retire.js, manifests, CI/CD exposure) |
 | `a04-crypto` | Cryptography & secrets |
-| `a05-injection` | Injection (SQLi, XSS, SSTI, CSTI, etc.) |
+| `a05-injection` | Injection full (SQLi, XSS, SSTI, CSTI, etc.; ~1800s) |
+| `a05a-injection-core` | Injection core for agents (cmd + XSS + SQLi; ~300s) |
+| `a05b-injection-templates` | SSTI / NoSQL / LDAP / path |
+| `a05c-injection-advanced` | Login-sweep / deser / upload / parser |
 | `a06-design` | Insecure design |
 | `a07-authn` | Authentication |
 | `a09-opsec` | Operational security |
@@ -1028,7 +1066,7 @@ Scans for hidden endpoints, admin panels, config files, and API documentation by
 
 **DiscoveredEndpoint:** `Path`, `StatusCode`, `ContentType`, `Title`, `ContentLength`, `RedirectLocation`
 
-Set `spaMode` to `true` on single-page apps so responses that match the shell fingerprint (probe to a random invalid path) are excluded from `Discovered`.
+Set `spaMode` to `true` on single-page apps so responses that match the shell fingerprint (probe to a random invalid path) are excluded from `Discovered`. Uniform auth redirects (same 3xx + same IdP/login Location host+path, query stripped) are always filtered — Shibboleth/SAML/OIDC login gates no longer flood discoveries.
 
 **Wordlists:**
 - `"common"` (~50 paths) — robots.txt, .env, .git, admin, swagger, health, config files
@@ -1267,7 +1305,7 @@ Fetches external `script[src]` assets and scans for credential-like assignments,
 
 ## HTTP request smuggling (raw TCP)
 
-Timing-based probes (`HttpRequestSmugglingScanner`) against the **document URL** origin. Optional `techniques`, `timeoutMs`, `delayThresholdMs`, `teObfuscations`.
+Timing probes plus PortSwigger-style differential-response confirmation (`HttpRequestSmugglingScanner`) against the **document URL** origin. Optional `techniques`, `timeoutMs`, `delayThresholdMs`, `teObfuscations`.
 
 | Method | Parameters | Returns |
 |--------|------------|---------|

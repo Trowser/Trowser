@@ -235,7 +235,7 @@ Most items here are still manual or LLM-driven. **5 HttpSmuggling** is available
 
 ### Quicktest: 5 HttpSmuggling
 
-**What it does:** Opens raw TCP connections to the host of the current page and runs **timing-based** CL-TE, TE-CL, TE-TE, CL-CL, and Transfer-Encoding obfuscation probes. It does not complete a smuggled request; it looks for timing differentials consistent with desynchronized framing.
+**What it does:** Opens raw TCP connections to the host of the current page and runs CL-TE, TE-CL, TE-TE, CL-CL, and Transfer-Encoding obfuscation probes. Timing stalls are treated as informational unless corroborated. **Differential-response confirmation** (PortSwigger): complete CL.TE/TE.CL prefixes that leave a canary `/404` for the next request — an unexpected 404 confirms real desync.
 
 **What to look for:** HIGH or MEDIUM findings — triage with infrastructure team; confirm with manual testing or dedicated smuggling tooling if needed.
 
@@ -282,7 +282,7 @@ Send unexpected Content-Types (`application/xml`, `text/xml`, `multipart/mixed`)
 | 3 | FirewallTest | Active Testing | CSP / SRI / sandbox / Permissions-Policy bypass attempts in the live page | Navigate to target page |
 | 3 | GraphqlAnalysis | Active Testing | GraphQL security probes; endpoint auto-detect from network log | GraphQL traffic or public endpoint |
 | 4 | SamlFromNetwork | SAML/Federation | Decode and analyze SAML messages from network log | Complete an SSO flow |
-| 5 | HttpSmuggling | Advanced | Raw TCP smuggling timing probes vs. current document URL | Navigate to target origin |
+| 5 | HttpSmuggling | Advanced | Raw TCP smuggling timing + differential-response probes vs. document URL | Navigate to target origin |
 
 ---
 
@@ -305,13 +305,16 @@ These are separate from the numbered Phase 1–5 quicktests above. Each runs one
 | A02 Misconfiguration | `a02-misconfig` | Headers, CORS, cookies, discovery, methods |
 | A03 Supply Chain | `a03-supplychain` | Retire.js, manifests, CI/CD, bundle fingerprinting |
 | A04 Crypto and Secrets | `a04-crypto` | JWT hygiene, secrets harvest, session entropy |
-| A05 Injection | `a05-injection` | SQLi, XSS, SSTI, CSTI, parser confusion |
+| A05 Injection | `a05-injection` | SQLi, XSS, SSTI, CSTI, parser confusion (full) |
+| A05a Core | `a05a-injection-core` | cmd-canary + XSS + SQLi (agent-friendly) |
+| A05b Templates | `a05b-injection-templates` | SSTI / NoSQL / LDAP / path |
+| A05c Advanced | `a05c-injection-advanced` | Login-sweep / deser / upload |
 | A06 Insecure Design | `a06-design` | Race conditions, business-logic indicators |
 | A07 Authentication | `a07-authn` | Login flows, session handling, brute-force signals |
 | A09 Operational Security | `a09-opsec` | Logging leaks, fail-open, debug exposure |
 | A11 SSRF | `a11-ssrf` | Server-side request forgery probes |
 | A12 Availability | `a12-availability` | Load/rate-limit indicators |
-| A13 AI and LLM | `a13-llm` | LLM-specific risk patterns |
+| A13 AI and LLM | `a13-llm` | Application-layer OWASP LLM Top 10 (corpus + RAG poison + LLM10 + sink-trace) |
 | A14 Other | `a14-other` | Catch-all / emerging checks |
 
 **Start here:** Run **A00 Full Site Security** for a one-call assessment, then drill into individual categories for depth.

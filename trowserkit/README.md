@@ -1,6 +1,8 @@
 # Trowser
 
-A Windows web browser built for testing web services. Combines a WebView2-based browser with a built-in C# scripting engine for test automation -- like a browser and Selenium in one. Supports both an interactive GUI and a headless CLI mode for automated testing (including LLM-driven testing via APIs).
+A Windows web browser built for testing web services. Combines a WebView2-based browser with a built-in C# scripting engine for test automation -- like a browser and Playwright in one. Supports both an interactive GUI and a headless CLI mode for automated testing (including LLM-driven testing via APIs).
+Project site: https://trowser.github.io/
+Issue tracking: https://github.com/Trowser/Trowser/issues
 
 ## Prerequisites
 
@@ -19,6 +21,8 @@ Trowser has been built by Rikard Edgren, well aided by Claude Opus and composer.
 The solution was made possible by all people who helped me learn exploratory testing since 1998, especially thetesteye companions Henrik Emilsson and Martin Jansson, and also field legends like Cem Kaner, James Bach, Michael Bolton and Elisabeth Hendrickson.
 Guidance during the development (4 weeks to version 1.0) was provided by Pär Holmdahl, Henrik Emilsson, Magnus Florén, and Pär Tojkander.
 Big thanks to the Trowser Alpha Group: Christopher Edeson, and Roger Ringström.
+Further development was helped by Rahul Parwal and Alan Richardson.
+
 Creator can be reached at thetesteye.com, LinkedIn, or rikard.edgren@thetesteye.com.
 
 ## Privacy
@@ -33,12 +37,30 @@ Network requests made by Trowser:
 
 All data stays on your machine. Settings are stored locally in `%APPDATA%\Trowser\`. Diagnostic logs are written to `%APPDATA%\Trowser\trowser.log`.
 
+## Quality goals
+
+The purpose of Trowser is to make it easier for humans and AI to do good testing, especially exploratory testing.
+- Capability: Trowser API should support common actions a tester want to control in web services
+- Accuracy: Trowser functionality should be reliable and rather warn than give false positives
+- Reliability: Trowser should be stable and consistent in behaviour
+- Usability: Trowser should be fast to use for testing experts; it will be difficult for new testers, but should enable learning opportunities
+- Charisma: Trowser should not interfere with test object, and the tester should feel in control
+- Security: Trowser is only intended for test services, but should not be vulnerable to escalated attacks on the local machine
+- Performance: Trowser should be, and feel, as fast as other browsers and comparable test tools
+- Installability: Distributable should be complete, and does not have to be officially signed
+- Compatibility: Trowser should work on Windows 64-bit, including virtual machines and emulators
+- Supportability: Trowser can log the user actions, and Trowser problems encountered
+- Testability: Trowser should be usable for testing of all web services
+- Maintainability: It should be easy to add features to Trowser and fix bugs
+- Portability: Trowser does not support translation or porting to other environments
+
+
+
 ## Known bugs
 
-- Chat Window "x" can only close a chat session, not the whole panel
+- The intercept mechanism uses browser-level request interception and may not work in all situations
 - Monkey test can report fewer actions than requested, without logging
 - POST /api/load-test Sends Requests Without Session Cookies (if logged in, use /api/execute-js with fetch() instead)
-- The intercept mechanism uses browser-level request interception and may not work in all situations
 - Menu has partial white lines between sections
 - License in About dialog looks like a link, but isn't
 - Session Log dialog has incorrect tab order
@@ -58,14 +80,12 @@ When Trowser runs in GUI mode, it starts an embedded HTTP API server on `localho
 5. The LLM reports findings to you
 
 Examples of LLM instructions are available in trowserkit folder. Remember to include testheuristics.md and tailor it to your needs.
-Copilot instructions are provided in `.github/copilot-instructions.md`.
-A Cursor rule file is provided at `.cursor/rules/trowser.mdc` (see also `trowserkit/trowser.mdc` for distribution).
-Make your own for your context.
 
 #### Mode 2: Chat Window
-Trowser GUI has a Chat window where instructions can be given to an LLM (setup in Settings).
+Trowser GUI has a Chat window where instructions can be given to an LLM (setup in Settings, OpenRouter Free is default, just add your API key).
 Commands are sent with structured tool calling, and passes along API instructions and test heuristics.
-This is not the recommended workflow, external calls with REST API provides much better ways to inform the LLM, and reports are easier to read (.html works good).
+This is recommended for smaller chunks of work, external calls with REST API provides much better ways to inform the LLM, and reports are easier to read (.md and .html works good).
+There are three modes: Chat, Economical and Full, and each of these system prompts can be edited by the user. These modes limit tools for the built-in Chat window only. Chat includes the session journal (`browser_journal_add` / `_get` / `_export`). GitHub Copilot and OpenAI cap tools at 128 — Full mode keeps Core (journal, interact, audits) first, then specialist scanners. External `POST /mcp` clients default to **Core** (copied Settings config uses `?mode=core`). Use `?mode=security` for the complete MCP surface (`?mode=full` is an alias of security).
 
 ## CLI Scripts (batch)
 Write a `.csx` script, run it, read the output. Good for predefined test suites.
@@ -440,7 +460,7 @@ foreach (var h in headings) Log($"{h["level"]}: {h["text"]}");
 
 ## Real-Time LLM API
 
-When running in GUI mode, Trowser starts an HTTP API server on `http://localhost:6923`. This allows LLM agents (Cursor, ChatGPT, etc.) to interact with a live browser session. Trowser also implements **MCP** (Model Context Protocol) at `POST http://localhost:6923/mcp` for native integration with Cursor, Claude Desktop, and other MCP clients.
+When running in GUI mode, Trowser starts an HTTP API server on `http://localhost:6923`. This allows LLM agents (Cursor, ChatGPT, etc.) to interact with a live browser session. Trowser also implements **MCP** (Model Context Protocol) at `POST http://localhost:6923/mcp` for native integration with OpenCode, Cursor, Claude Code, and other MCP clients.
 
 ### Configuration
 
@@ -455,6 +475,50 @@ When running in GUI mode, Trowser starts an HTTP API server on `http://localhost
 | `--proxy <url>` | Route all browser traffic through a proxy (e.g. OWASP ZAP) |
 
 The API is enabled by default in GUI mode and disabled in CLI mode (`--run`). See [Security](#security) for details on authentication and safe mode. Full API reference: **[trowser-api-reference.md](trowser-api-reference.md)**. Endpoint index (auto-generated): **[trowser-api-index.md](trowser-api-index.md)**. See **[DOCUMENTATION.md](DOCUMENTATION.md)** for the doc map.
+
+### Connect an external MCP agent
+
+Trowser speaks **Streamable HTTP** MCP at `POST /mcp` (not stdio). Hands-on setup is required: Trowser must be running, and clients need the Bearer API key.
+
+**Quick path (recommended):**
+
+1. Start Trowser, turn the API on in the status bar if needed.
+2. Open **Settings → Security**.
+3. Enable **Keep API key for next session** (stable key across restarts).
+4. Select the agent in **MCP client config** (OpenCode default, Cursor, Claude Code, Copilot CLI) and click **Copy**.
+5. Paste into the agent’s config file and reconnect MCP.
+
+Copied configs **embed the API key** so they work immediately (localhost + Keep API key). The URL uses `?mode=core` (interact, quality audits, basic security scan). For security testing use `?mode=security`. Override with header `X-Trowser-Mcp-Mode: core|security` (`full` is an alias of security).
+
+| Client | Config file | Notes |
+|--------|-------------|--------|
+| **OpenCode** | `opencode.json` / `~/.config/opencode/opencode.json` | `"type": "remote"`, `"oauth": false` |
+| **Cursor** | `.cursor/mcp.json` / `~/.cursor/mcp.json` | `url` + `headers.Authorization` |
+| **Claude Code** | `.mcp.json` or `claude mcp add` | Requires `"type": "http"` |
+| **GitHub Copilot CLI** | `~/.copilot/mcp-config.json` / `.mcp.json` | `"type": "http"`, `"tools": ["*"]` |
+
+Other MCP clients with Streamable HTTP + Bearer headers can reuse the Cursor or Claude Code shape.
+
+**Optional env-var auth:** For shareable configs you can use `Bearer ${env:TROWSER_API_KEY}` (Cursor), `Bearer {env:TROWSER_API_KEY}` (OpenCode), or `Bearer ${TROWSER_API_KEY}` (Claude Code / Copilot CLI). On Windows the User env var is only visible to apps started **after** it was set — fully quit and restart Cursor. Prefer embedding the key in a **user-level** mcp.json for day-to-day use; do not commit keys to git.
+
+Example (Cursor — embedded key from Settings → Copy):
+
+```json
+{
+  "mcpServers": {
+    "trowser": {
+      "url": "http://localhost:6923/mcp?mode=core",
+      "headers": {
+        "Authorization": "Bearer trowser_YOUR_API_KEY"
+      }
+    }
+  }
+}
+```
+
+**External MCP Mode:** Core (default) exposes navigate/interact/wait/fetch, quality audits (`browser_audit_all`, a11y, performance, SEO, resource, …), and a basic security scan (`browser_security_auto_scan`). Copied configs use Core. For security testing use `?mode=security` (complete MCP surface: specialist scanners + intercept). `?mode=full` is an alias of security. Screenshot stays off `tools/list` in both packs — use `GET /api/screenshot`. REST is unchanged (always full API surface; safe mode still applies). Built-in Chat Interaction Mode (Chat / Economical / Full) is separate.
+
+**Why not auto-install from agent marketplaces?** Localhost + a rotating/session API key means a registry listing still needs a running Trowser and a pasted key. The Settings **Copy** button is the high-payoff path; marketplace packaging adds little until keys can be negotiated automatically.
 
 ### API Endpoints
 
@@ -483,7 +547,7 @@ All action endpoints accept `{ "ref": N }` (preferred), `{ "selector": "..." }`,
 |----------|------|-------------|
 | `POST /api/navigate` | `{ "url": "..." }` | Navigate to a URL |
 | `POST /api/click` | `{ "ref": N }` or locator. `button`, `clickCount` for right/double-click | Click an element |
-| `POST /api/type` | `{ "ref": N, "text": "..." }` | Type into an input |
+| `POST /api/type` | `{ "ref": N, "text": "..." }` or `{ "ref": N, "value": "..." }` | Type into an input (`value` = content alias when element is addressed) |
 | `POST /api/select` | `{ "ref": N, "value": "..." }` | Select dropdown option |
 | `POST /api/text` | `{ "ref": N }` | Get element inner text (pierces shadow DOM) |
 | `POST /api/attribute` | `{ "ref": N, "attribute": "..." }` | Get element attribute (pierces shadow DOM) |
@@ -670,5 +734,8 @@ This tool bundles the following open-source libraries:
 - html-validate (MIT)
 - gremlins.js (MIT)
 - web-vitals (Apache-2.0)
+- csp-evaluator (Apache-2.0)
+- tldts (MIT)
+- nuclei-templates (MIT)
 
 Full license texts are included in the `licenses/` folder of the distributable.

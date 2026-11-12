@@ -48,6 +48,7 @@ public class LlmSettingsDialog : Window
     private readonly string _proxyUrl;
     private readonly int _apiPort;
     private readonly string _apiKey;
+    private readonly bool _apiRunning;
     private readonly int _contextBudgetTokens;
     private readonly bool _autoCompactEnabled;
     private readonly int _compactWarnPercent;
@@ -98,7 +99,7 @@ public class LlmSettingsDialog : Window
     private static readonly SolidColorBrush FgDim = Bc("#888888");
     private static readonly SolidColorBrush BorderClr = Bc("#3F3F46");
 
-    public LlmSettingsDialog(Window owner, LlmSettings llmSettings, int apiPort, string? apiKey)
+    public LlmSettingsDialog(Window owner, LlmSettings llmSettings, int apiPort, string? apiKey, bool apiRunning)
     {
         Owner = owner;
         Title = "LLM Settings";
@@ -112,6 +113,7 @@ public class LlmSettingsDialog : Window
         _proxyUrl = llmSettings.ProxyUrl;
         _apiPort = apiPort;
         _apiKey = apiKey ?? "";
+        _apiRunning = apiRunning;
         _contextBudgetTokens = llmSettings.ContextBudgetTokens;
         _autoCompactEnabled = llmSettings.AutoCompactEnabled;
         _compactWarnPercent = llmSettings.CompactWarnPercent;
@@ -515,6 +517,11 @@ public class LlmSettingsDialog : Window
         };
         claudeStartBtn.Click += (_, _) =>
         {
+            if (!_apiRunning)
+            {
+                claudeStartBtn.Content = "API is off";
+                return;
+            }
             var starter = McpClientConfig.ClaudeStarters[starterCombo.SelectedIndex];
             var command = McpClientConfig.BuildClaudeCodeLaunch(_apiPort, starter, _apiKey);
             try

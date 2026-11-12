@@ -1200,7 +1200,7 @@ public partial class MainWindow
 
     private void OpenLlmSettings_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new LlmSettingsDialog(this, _llmSettings, _apiPort, _apiKey);
+        var dialog = new LlmSettingsDialog(this, _llmSettings, _apiPort, _apiKey, _apiServer?.IsRunning == true);
         if (dialog.ShowDialog() != true)
             return;
 

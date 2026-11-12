@@ -2,7 +2,7 @@ NuGet packages and runtime redistributed in Trowser release builds
 (self-contained single-file publish of src/Trowser/Trowser.csproj).
 
 ================================================================
-Markdig 0.41.3 (BSD-2-Clause) - https://github.com/xoofx/markdig
+Markdig 1.6.0 (BSD-2-Clause) - https://github.com/xoofx/markdig
 ================================================================
 Copyright (c) 2016-2026, Alexandre Mutel
 All rights reserved.
@@ -52,7 +52,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================
-Microsoft.CodeAnalysis.CSharp.Scripting 5.0.0 / Roslyn (MIT) - https://github.com/dotnet/roslyn
+Microsoft.CodeAnalysis.CSharp.Scripting 5.9.0 / Roslyn (MIT) - https://github.com/dotnet/roslyn
 ================================================================
 The MIT License (MIT)
 
@@ -107,7 +107,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================
-Microsoft.Web.WebView2 1.0.3800.47 (Microsoft license) - https://www.nuget.org/packages/Microsoft.Web.WebView2
+Microsoft.Web.WebView2 1.0.4314.35 (Microsoft license) - https://www.nuget.org/packages/Microsoft.Web.WebView2
 ================================================================
 Copyright (C) Microsoft Corporation. All rights reserved.
 

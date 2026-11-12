@@ -16,6 +16,8 @@ namespace Trowser;
 public class LlmSettingsDialog : Window
 {
     private readonly ComboBox _mcpClientCombo;
+    private readonly RadioButton _useBuiltInChat;
+    private readonly RadioButton _useExternalAgent;
     private readonly ComboBox _providerCombo;
     private readonly TextBox _endpointTextBox;
     private readonly TextBlock _endpointHint;
@@ -76,6 +78,7 @@ public class LlmSettingsDialog : Window
             StreamResponsesUserSet = true,
             ConfirmSensitiveAssistantActions = _confirmSensitiveActionsCheckBox.IsChecked != false,
             ConfirmActiveSafetyProbes = _confirmActiveSafetyProbesCheckBox.IsChecked != false,
+            UseExternalAgent = _useExternalAgent.IsChecked == true,
             Providers = LlmSettings.CloneProfiles(_providerProfiles),
             ProxyEnabled = _proxyEnabled,
             ProxyUrl = _proxyUrl,
@@ -139,7 +142,45 @@ public class LlmSettingsDialog : Window
         _systemPromptFull = llmSettings.SystemPromptFull;
         _systemPromptEconomical = llmSettings.SystemPromptEconomical;
 
-        AddLabel(rootStack, "Interaction Mode (built-in AI Assistant only)");
+        // Top switch: built-in Chat (needs an API key) or an external agent connected over MCP.
+        // Only the chosen side's fields are shown.
+        AddLabel(rootStack, "How do you want to use AI?");
+        _useBuiltInChat = new RadioButton
+        {
+            Content = "Built-in Chat — uses an API key",
+            Foreground = FgText,
+            FontSize = 12,
+            Margin = new Thickness(0, 2, 0, 2),
+            GroupName = "AiSurface",
+            IsChecked = !llmSettings.UseExternalAgent
+        };
+        rootStack.Children.Add(_useBuiltInChat);
+        _useExternalAgent = new RadioButton
+        {
+            Content = "External agent — Claude Code, Cursor, OpenCode…",
+            Foreground = FgText,
+            FontSize = 12,
+            Margin = new Thickness(0, 2, 0, 12),
+            GroupName = "AiSurface",
+            IsChecked = llmSettings.UseExternalAgent
+        };
+        rootStack.Children.Add(_useExternalAgent);
+
+        var chatStack = new StackPanel();
+        var agentStack = new StackPanel();
+        rootStack.Children.Add(chatStack);
+        rootStack.Children.Add(agentStack);
+        void ShowSurface()
+        {
+            var external = _useExternalAgent.IsChecked == true;
+            chatStack.Visibility = external ? Visibility.Collapsed : Visibility.Visible;
+            agentStack.Visibility = external ? Visibility.Visible : Visibility.Collapsed;
+        }
+        _useBuiltInChat.Checked += (_, _) => ShowSurface();
+        _useExternalAgent.Checked += (_, _) => ShowSurface();
+        ShowSurface();
+
+        AddLabel(chatStack, "Interaction Mode");
         var modeHint = new TextBlock
         {
             Text = "Choose your style of assistant, and change in Prompt... for fruther customization.",
@@ -148,7 +189,7 @@ public class LlmSettingsDialog : Window
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 6)
         };
-        rootStack.Children.Add(modeHint);
+        chatStack.Children.Add(modeHint);
         var modeRow = new Grid { Margin = new Thickness(0, 0, 0, 4) };
         modeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         modeRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -226,9 +267,9 @@ public class LlmSettingsDialog : Window
         };
         Grid.SetColumn(promptBtn, 1);
         modeRow.Children.Add(promptBtn);
-        rootStack.Children.Add(modeRow);
+        chatStack.Children.Add(modeRow);
 
-        AddLabel(rootStack, "Provider");
+        AddLabel(chatStack, "Provider");
         _providerCombo = new ComboBox
         {
             Width = 420,
@@ -251,7 +292,7 @@ public class LlmSettingsDialog : Window
         OverlayActiveProfile(llmSettings);
 
         _providerCombo.SelectionChanged += ProviderCombo_SelectionChanged;
-        rootStack.Children.Add(_providerCombo);
+        chatStack.Children.Add(_providerCombo);
 
         var presetRow = new StackPanel
         {
@@ -274,7 +315,7 @@ public class LlmSettingsDialog : Window
         fetchBtn.ToolTip = "Load model ids from the provider (OpenRouter, OpenAI-compatible, Ollama, GitHub Copilot).";
         fetchBtn.Click += (_, _) => _ = RunFetchModelsAsync();
         presetRow.Children.Add(fetchBtn);
-        rootStack.Children.Add(presetRow);
+        chatStack.Children.Add(presetRow);
 
         _llmStatusText = new TextBlock
         {
@@ -285,16 +326,16 @@ public class LlmSettingsDialog : Window
             Margin = new Thickness(0, 4, 0, 4),
             Visibility = Visibility.Collapsed
         };
-        rootStack.Children.Add(_llmStatusText);
+        chatStack.Children.Add(_llmStatusText);
 
-        AddLabel(rootStack, "API Endpoint");
+        AddLabel(chatStack, "API Endpoint");
         _endpointTextBox = CreateTextBox(llmSettings.Endpoint);
         _endpointTextBox.TextChanged += (_, _) =>
         {
             RefreshApiKeyHint();
             UpdateConfiguredStatus();
         };
-        rootStack.Children.Add(_endpointTextBox);
+        chatStack.Children.Add(_endpointTextBox);
         _endpointHint = new TextBlock
         {
             Foreground = FgDim,
@@ -302,7 +343,7 @@ public class LlmSettingsDialog : Window
             Margin = new Thickness(0, 2, 0, 0),
             TextWrapping = TextWrapping.Wrap
         };
-        rootStack.Children.Add(_endpointHint);
+        chatStack.Children.Add(_endpointHint);
 
         _githubHostPanel = new StackPanel();
         AddLabel(_githubHostPanel, "GitHub host (Copilot)");
@@ -314,9 +355,9 @@ public class LlmSettingsDialog : Window
         };
         _githubHostPanel.Children.Add(_githubHostTextBox);
         AddHint(_githubHostPanel, "Leave empty to auto-detect from Copilot CLI / gh. Example: company.ghe.com");
-        rootStack.Children.Add(_githubHostPanel);
+        chatStack.Children.Add(_githubHostPanel);
 
-        AddLabel(rootStack, "API Key");
+        AddLabel(chatStack, "API Key");
         _apiKeyBox = new PasswordBox
         {
             Password = llmSettings.ApiKey,
@@ -334,7 +375,7 @@ public class LlmSettingsDialog : Window
             RefreshApiKeyHint();
             UpdateConfiguredStatus();
         };
-        rootStack.Children.Add(_apiKeyBox);
+        chatStack.Children.Add(_apiKeyBox);
         _apiKeyHint = new TextBlock
         {
             Foreground = FgDim,
@@ -342,9 +383,9 @@ public class LlmSettingsDialog : Window
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 2, 0, 0)
         };
-        rootStack.Children.Add(_apiKeyHint);
+        chatStack.Children.Add(_apiKeyHint);
 
-        AddLabel(rootStack, "Model");
+        AddLabel(chatStack, "Model");
         _modelCombo = new ComboBox
         {
             IsEditable = true,
@@ -362,7 +403,7 @@ public class LlmSettingsDialog : Window
         ApplyModelListForCacheKey(_previousModelCacheKey, llmSettings.Model);
         _modelCombo.AddHandler(System.Windows.Controls.Primitives.TextBoxBase.TextChangedEvent,
             new TextChangedEventHandler((_, _) => UpdateConfiguredStatus()));
-        rootStack.Children.Add(_modelCombo);
+        chatStack.Children.Add(_modelCombo);
         _modelHint = new TextBlock
         {
             Foreground = FgDim,
@@ -370,7 +411,7 @@ public class LlmSettingsDialog : Window
             Margin = new Thickness(0, 2, 0, 0),
             TextWrapping = TextWrapping.Wrap
         };
-        rootStack.Children.Add(_modelHint);
+        chatStack.Children.Add(_modelHint);
         RefreshCopilotFields();
 
         var advancedRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
@@ -389,7 +430,7 @@ public class LlmSettingsDialog : Window
         AddHint(tokStack, "Leave empty for provider default. Caps reply length.");
         advancedRow.Children.Add(tokStack);
 
-        rootStack.Children.Add(advancedRow);
+        chatStack.Children.Add(advancedRow);
 
         _streamResponsesCheckBox = new CheckBox
         {
@@ -399,8 +440,8 @@ public class LlmSettingsDialog : Window
             Margin = new Thickness(0, 10, 0, 2),
             IsChecked = llmSettings.StreamResponses
         };
-        rootStack.Children.Add(_streamResponsesCheckBox);
-        AddHint(rootStack, "Show tokens as they arrive. When off, each assistant step appears all at once — it does not stop tool calls or extra turns. Only turn on if you want continuous messaging and token usage / proxy noise is not a problem.");
+        chatStack.Children.Add(_streamResponsesCheckBox);
+        AddHint(chatStack, "Show tokens as they arrive. When off, each assistant step appears all at once — it does not stop tool calls or extra turns. Only turn on if you want continuous messaging and token usage / proxy noise is not a problem.");
 
         _confirmSensitiveActionsCheckBox = new CheckBox
         {
@@ -410,8 +451,8 @@ public class LlmSettingsDialog : Window
             Margin = new Thickness(0, 10, 0, 2),
             IsChecked = llmSettings.ConfirmSensitiveAssistantActions
         };
-        rootStack.Children.Add(_confirmSensitiveActionsCheckBox);
-        AddHint(rootStack,
+        chatStack.Children.Add(_confirmSensitiveActionsCheckBox);
+        AddHint(chatStack,
             "When enabled, Chat asks before tools that run script, fetch with cookies, change mocks, and similar. " +
             "Page content can steer the assistant — keep this on on untrusted sites. Local file paths still ask when off.");
 
@@ -423,18 +464,17 @@ public class LlmSettingsDialog : Window
             Margin = new Thickness(0, 10, 0, 2),
             IsChecked = llmSettings.ConfirmActiveSafetyProbes
         };
-        rootStack.Children.Add(_confirmActiveSafetyProbesCheckBox);
-        AddHint(rootStack,
+        chatStack.Children.Add(_confirmActiveSafetyProbesCheckBox);
+        AddHint(chatStack,
             "When enabled, Chat asks before security tools run in active or aggressive safety mode (they can change server state). " +
             "Local file paths still ask when off.");
 
         RefreshApiKeyHint();
         UpdateConfiguredStatus();
 
-        // ─── Section: MCP client config ───
-        AddSectionHeader(rootStack, "MCP client config", topMargin: 20);
-
-        var mcpConfigRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
+        // ─── External agent: pick agent + mode; Claude Code also gets a task and Start ───
+        AddLabel(agentStack, "Agent");
+        var agentRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
         _mcpClientCombo = new ComboBox
         {
             Height = 28,
@@ -447,44 +487,43 @@ public class LlmSettingsDialog : Window
         };
         foreach (var (_, displayName) in McpClientConfig.Clients)
             _mcpClientCombo.Items.Add(DarkComboBoxHelper.CreateItem(displayName));
-        _mcpClientCombo.SelectedIndex = 0; // OpenCode default
+        _mcpClientCombo.SelectedIndex = McpClientConfig.Clients
+            .Select((c, i) => (c.Kind, i))
+            .First(x => x.Kind == McpClientConfig.ClientKind.ClaudeCode).i;
         DarkComboBoxHelper.ApplyDarkStyle(_mcpClientCombo);
-        mcpConfigRow.Children.Add(_mcpClientCombo);
+        agentRow.Children.Add(_mcpClientCombo);
 
-        var mcpCopyBtn = new Button
+        agentRow.Children.Add(new TextBlock
         {
-            Content = "Copy",
-            Width = 70,
-            Height = 30,
-            Margin = new Thickness(8, 0, 0, 0),
-            Background = Bc("#3F3F46"),
-            Foreground = Brushes.White,
+            Text = "Mode",
+            Foreground = FgText,
+            FontSize = 12,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(16, 0, 8, 0)
+        });
+        var mcpModeCombo = new ComboBox
+        {
+            Height = 28,
+            Width = 110,
+            Background = BgDark,
+            Foreground = FgText,
             BorderBrush = BorderClr,
-            BorderThickness = new Thickness(1),
-            FontSize = 11,
-            Cursor = Cursors.Hand,
-            ToolTip = "Copy MCP JSON for the selected agent (includes URL and API key)"
+            FontSize = 12,
+            ToolTip = "Core: everyday testing tools. Security: adds security testing tools."
         };
-        mcpCopyBtn.Click += (_, _) =>
-        {
-            var kind = McpClientConfig.Clients[_mcpClientCombo.SelectedIndex].Kind;
-            var json = McpClientConfig.Build(kind, _apiPort, ExternalMcpMode.Core, _apiKey);
-            try
-            {
-                Clipboard.SetText(json);
-                mcpCopyBtn.Content = "Copied";
-            }
-            catch
-            {
-                mcpCopyBtn.Content = "Failed";
-            }
-        };
-        _mcpClientCombo.SelectionChanged += (_, _) => { mcpCopyBtn.Content = "Copy"; };
-        mcpConfigRow.Children.Add(mcpCopyBtn);
-        rootStack.Children.Add(mcpConfigRow);
+        mcpModeCombo.Items.Add(DarkComboBoxHelper.CreateItem("Core"));
+        mcpModeCombo.Items.Add(DarkComboBoxHelper.CreateItem("Security"));
+        mcpModeCombo.SelectedIndex = 0;
+        DarkComboBoxHelper.ApplyDarkStyle(mcpModeCombo);
+        agentRow.Children.Add(mcpModeCombo);
+        agentStack.Children.Add(agentRow);
+        ExternalMcpMode SelectedMcpMode() =>
+            mcpModeCombo.SelectedIndex == 1 ? ExternalMcpMode.Security : ExternalMcpMode.Core;
 
-        // One-click Claude Code start: registers Trowser and opens a session with a starter prompt.
-        var claudeRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 4) };
+        // Claude Code only: task + Start (registers Trowser and opens a session with a starter prompt).
+        var claudePanel = new StackPanel();
+        AddLabel(claudePanel, "Task");
+        var claudeRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
         var starterCombo = new ComboBox
         {
             Height = 28,
@@ -513,7 +552,7 @@ public class LlmSettingsDialog : Window
             BorderThickness = new Thickness(1),
             FontSize = 11,
             Cursor = Cursors.Hand,
-            ToolTip = "Open a terminal, register Trowser with Claude Code, and start a session with this prompt. Needs the claude CLI on PATH."
+            ToolTip = "Open a terminal, register Trowser with Claude Code, and start a session with this task. Needs the claude CLI on PATH."
         };
         claudeStartBtn.Click += (_, _) =>
         {
@@ -525,7 +564,7 @@ public class LlmSettingsDialog : Window
                 return;
             }
             _apiPort = port.Value;
-            var starter = McpClientConfig.ClaudeStarters[starterCombo.SelectedIndex];
+            var starter = McpClientConfig.ClaudeStarters[starterCombo.SelectedIndex] with { Mode = SelectedMcpMode() };
             var command = McpClientConfig.BuildClaudeCodeLaunch(_apiPort, starter, _apiKey);
             try
             {
@@ -541,12 +580,59 @@ public class LlmSettingsDialog : Window
                 claudeStartBtn.Content = "Failed";
             }
         };
-        starterCombo.SelectionChanged += (_, _) => { claudeStartBtn.Content = "Start Claude Code"; };
+        // Each task suggests its mode (Security check → Security); the Mode combo can still override it.
+        starterCombo.SelectionChanged += (_, _) =>
+        {
+            claudeStartBtn.Content = "Start Claude Code";
+            mcpModeCombo.SelectedIndex =
+                McpClientConfig.ClaudeStarters[starterCombo.SelectedIndex].Mode == ExternalMcpMode.Security ? 1 : 0;
+        };
         claudeRow.Children.Add(claudeStartBtn);
-        rootStack.Children.Add(claudeRow);
-        AddHint(rootStack, "Uses your Claude subscription through Claude Code, not an API key. Needs the claude CLI installed and signed in. Registers Trowser as 'trowser' at user scope.");
+        claudePanel.Children.Add(claudeRow);
+        AddHint(claudePanel, "Uses your Claude subscription through Claude Code, not an API key. Needs the claude CLI installed and signed in. Registers Trowser as 'trowser' at user scope.");
+        agentStack.Children.Add(claudePanel);
 
-        AddHint(rootStack, "Paste into the agent config. Enable Keep API key in Settings if you want a stable key. Prefer user-level mcp.json over committing secrets. Copied URL uses Core mode. For security testing use ?mode=security.");
+        var mcpCopyBtn = new Button
+        {
+            Content = "Copy config",
+            Height = 30,
+            Padding = new Thickness(10, 0, 10, 0),
+            Margin = new Thickness(0, 10, 0, 4),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Background = Bc("#3F3F46"),
+            Foreground = Brushes.White,
+            BorderBrush = BorderClr,
+            BorderThickness = new Thickness(1),
+            FontSize = 11,
+            Cursor = Cursors.Hand,
+            ToolTip = "Copy MCP JSON for the selected agent and mode (includes URL and API key)"
+        };
+        mcpCopyBtn.Click += (_, _) =>
+        {
+            var kind = McpClientConfig.Clients[_mcpClientCombo.SelectedIndex].Kind;
+            var json = McpClientConfig.Build(kind, _apiPort, SelectedMcpMode(), _apiKey);
+            try
+            {
+                Clipboard.SetText(json);
+                mcpCopyBtn.Content = "Copied";
+            }
+            catch
+            {
+                mcpCopyBtn.Content = "Failed";
+            }
+        };
+        void ResetAgentButtons()
+        {
+            mcpCopyBtn.Content = "Copy config";
+            claudePanel.Visibility = McpClientConfig.Clients[_mcpClientCombo.SelectedIndex].Kind == McpClientConfig.ClientKind.ClaudeCode
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+        _mcpClientCombo.SelectionChanged += (_, _) => ResetAgentButtons();
+        mcpModeCombo.SelectionChanged += (_, _) => mcpCopyBtn.Content = "Copy config";
+        ResetAgentButtons();
+        agentStack.Children.Add(mcpCopyBtn);
+        AddHint(agentStack, "Paste into the agent's MCP config. Enable Keep API key in Settings if you want a stable key. Prefer user-level mcp.json over committing secrets.");
 
         scrollViewer.Content = rootStack;
         Grid.SetRow(scrollViewer, 0);

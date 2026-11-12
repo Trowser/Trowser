@@ -137,6 +137,12 @@ public class LlmSettings
     /// </summary>
     public bool ConfirmActiveSafetyProbes { get; set; } = true;
 
+    /// <summary>
+    /// Which side of LLM Settings is shown: false = built-in Chat fields, true = external agent
+    /// (MCP config copy and Claude Code launcher). UI choice only; Chat keeps working either way.
+    /// </summary>
+    public bool UseExternalAgent { get; set; }
+
     /// <summary>Approximate context budget for built-in chat compaction (tokens).</summary>
     public int ContextBudgetTokens { get; set; } = 128_000;
 

@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # 11.0.0 refuses net8.0-windows. 10.0.x is the newest line that still targets it.
+      - dependency-name: "System.Security.Cryptography.ProtectedData"
+        versions: [">= 11.0.0"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

@@ -22,9 +22,9 @@ Trowser bundles the following open-source components. Full license texts are in 
 | Component | Version | License | File |
 |-----------|---------|---------|------|
 | Markdig | 1.6.0 | BSD-2-Clause | dotnet-packages.txt |
-| YamlDotNet | 16.3.0 | MIT | dotnet-packages.txt |
+| YamlDotNet | 18.1.0 | MIT | dotnet-packages.txt |
 | Microsoft.CodeAnalysis.CSharp.Scripting (Roslyn) | 5.9.0 | MIT | dotnet-packages.txt |
-| System.Security.Cryptography.ProtectedData | 9.0.4 | MIT | dotnet-packages.txt |
+| System.Security.Cryptography.ProtectedData | 10.0.15 | MIT | dotnet-packages.txt |
 | .NET runtime (self-contained publish) | 8.0 | MIT | dotnet-packages.txt |
 | Microsoft.Web.WebView2 SDK | 1.0.4314.35 | Microsoft license | dotnet-packages.txt |
 

@@ -1,0 +1,24 @@
+id: wordpress-login
+
+info:
+  name: WordPress Login Panel
+  author: projectdiscovery
+  severity: info
+  description: Detects an exposed WordPress login page at the site origin.
+  tags: exposure,wordpress,panel,legacy
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/wp-login.php"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "wp-login"
+          - "WordPress"
+        condition: or
+        part: body

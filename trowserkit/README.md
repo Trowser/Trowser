@@ -17,11 +17,15 @@ If you downloaded Trowser as a signed release and see a "Windows protected your 
 
 ## Credits and Contact
 
-Trowser has been built by Rikard Edgren, well aided by Claude Opus and composer. Fast technical testing made possible by axe-core, Retire.js, html-validate, web.vitals and gremlins.js.
+Trowser was originally built by Rikard Edgren, well aided by Claude Opus and composer. Fast technical testing made possible by tools like axe-core, Retire.js, html-validate, web.vitals and gremlins.js.
 The solution was made possible by all people who helped me learn exploratory testing since 1998, especially thetesteye companions Henrik Emilsson and Martin Jansson, and also field legends like Cem Kaner, James Bach, Michael Bolton and Elisabeth Hendrickson.
 Guidance during the development (4 weeks to version 1.0) was provided by Pär Holmdahl, Henrik Emilsson, Magnus Florén, and Pär Tojkander.
 Big thanks to the Trowser Alpha Group: Christopher Edeson, and Roger Ringström.
 Further development was helped by Rahul Parwal and Alan Richardson.
+
+Trowser is now open-source under MIT license
+Repository: https://github.com/Trowser/Trowser
+Product site: https://trowser.github.io/
 
 Creator can be reached at thetesteye.com, LinkedIn, or rikard.edgren@thetesteye.com.
 
@@ -31,38 +35,34 @@ Trowser does **not** collect telemetry, analytics, or usage data of any kind. No
 
 Network requests made by Trowser:
 - **Web pages you visit** -- standard browser traffic, routed through WebView2 (Chromium).
-- **LLM API calls** -- only when you configure an LLM provider in Settings. Sent to the endpoint you specify (OpenRouter, OpenAI, Anthropic, GitHub Copilot, or a local model such as Ollama). Keys can also come from `OPENROUTER_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`. Trowser sends page snapshots and tool results to the LLM; no data is sent without your explicit action.
+- **LLM API calls** -- only when you configure an LLM provider in LLM Settings. Sent to the endpoint you specify (OpenRouter, OpenAI, Anthropic, GitHub Copilot, or a local model such as Ollama). Keys can also come from `OPENROUTER_API_KEY` / `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`. Trowser sends page snapshots and tool results to the LLM; no data is sent without your explicit action.
 - **Retire.js vulnerability database** -- during security scans, Trowser checks GitHub (`api.github.com`) for a newer version of the Retire.js database. No user data is included in this request; it is a simple version check cached for 12 hours.
 - **Proxy** -- if configured, all browser traffic is routed through your specified proxy (e.g. OWASP ZAP). No proxy is used by default.
 
-All data stays on your machine. Settings are stored locally in `%APPDATA%\Trowser\`. Diagnostic logs are written to `%APPDATA%\Trowser\trowser.log`.
+All data stays on your machine. Settings are stored locally in `%APPDATA%\Trowser\`. Diagnostic logs are written to `%APPDATA%\Trowser\trowser.log`. Typed URLs used for address-bar completion are stored in `%APPDATA%\Trowser\url-history.json` (clear from Settings, or Shift+Delete on a suggestion).
 
 ## Quality goals
 
-The purpose of Trowser is to make it easier for humans and AI to do good testing, especially exploratory testing.
-- Capability: Trowser API should support common actions a tester want to control in web services
-- Accuracy: Trowser functionality should be reliable and rather warn than give false positives
-- Reliability: Trowser should be stable and consistent in behaviour
-- Usability: Trowser should be fast to use for testing experts; it will be difficult for new testers, but should enable learning opportunities
-- Charisma: Trowser should not interfere with test object, and the tester should feel in control
-- Security: Trowser is only intended for test services, but should not be vulnerable to escalated attacks on the local machine
-- Performance: Trowser should be, and feel, as fast as other browsers and comparable test tools
-- Installability: Distributable should be complete, and does not have to be officially signed
-- Compatibility: Trowser should work on Windows 64-bit, including virtual machines and emulators
-- Supportability: Trowser can log the user actions, and Trowser problems encountered
-- Testability: Trowser should be usable for testing of all web services
-- Maintainability: It should be easy to add features to Trowser and fix bugs
-- Portability: Trowser does not support translation or porting to other environments
-
+- **Capability**: Trowser API should support common actions a tester want to control in web services
+- **Accuracy**: Trowser functionality should be reliable and rather warn than give false positives
+- **Reliability**: Trowser should be stable and consistent in behaviour
+- **Usability**: Trowser should be fast to use for testing experts; it will be difficult for new testers, but should enable learning opportunities
+- **Charisma**: Trowser should not interfere with test object, and the tester should feel in control
+- **Security**: Trowser is only intended for test services, but should not be vulnerable to escalated attacks on the local machine
+- **Performance**: Trowser should be, and feel, as fast as other browsers and comparable test tools
+- **Installability**: Distributable should be complete, and does not have to be officially signed
+- **Compatibility**: Trowser should work on Windows 64-bit, including virtual machines and emulators
+- **Supportability**: Trowser can log the user actions, and Trowser problems encountered
+- **Testability**: Trowser should be usable for testing of all web services
+- **Maintainability**: It should be easy to add features to Trowser and fix bugs
+- **Portability**: Trowser does not support translation or porting to other environments
 
 
 ## Known bugs
 
 - The intercept mechanism uses browser-level request interception and may not work in all situations
 - Monkey test can report fewer actions than requested, without logging
-- POST /api/load-test Sends Requests Without Session Cookies (if logged in, use /api/execute-js with fetch() instead)
 - Menu has partial white lines between sections
-- License in About dialog looks like a link, but isn't
 - Session Log dialog has incorrect tab order
 
 ### LLM Integration
@@ -71,6 +71,7 @@ Trowser supports two modes of LLM interaction:
 
 #### Mode 1: Real-Time API (interactive)
 When Trowser runs in GUI mode, it starts an embedded HTTP API server on `localhost:6923`. An LLM agent can connect to a live Trowser instance and interact with the browser in real-time: observe the page, click elements, fill forms, run assertions, and iterate based on results.
+REST API and MCP is supported.
 
 **Workflow:**
 1. Open Trowser, navigate to the page you want to test, activate REST API in status bar
@@ -82,10 +83,10 @@ When Trowser runs in GUI mode, it starts an embedded HTTP API server on `localho
 Examples of LLM instructions are available in trowserkit folder. Remember to include testheuristics.md and tailor it to your needs.
 
 #### Mode 2: Chat Window
-Trowser GUI has a Chat window where instructions can be given to an LLM (setup in Settings, OpenRouter Free is default, just add your API key).
+Trowser GUI has a Chat window where instructions can be given to an LLM (setup in LLM Settings, OpenRouter Free is default, just add your API key).
 Commands are sent with structured tool calling, and passes along API instructions and test heuristics.
 This is recommended for smaller chunks of work, external calls with REST API provides much better ways to inform the LLM, and reports are easier to read (.md and .html works good).
-There are three modes: Chat, Economical and Full, and each of these system prompts can be edited by the user. These modes limit tools for the built-in Chat window only. Chat includes the session journal (`browser_journal_add` / `_get` / `_export`). GitHub Copilot and OpenAI cap tools at 128 — Full mode keeps Core (journal, interact, audits) first, then specialist scanners. External `POST /mcp` clients default to **Core** (copied Settings config uses `?mode=core`). Use `?mode=security` for the complete MCP surface (`?mode=full` is an alias of security).
+There are three modes: Chat, Economical and Full, and each of these system prompts can be edited by the user. These modes limit tools for the built-in Chat window only. **Economical** is the default: live click/type/navigate, quality audits, a basic `browser_security` scan, screenshot, and optional C# scripts. **Chat** is an advisor (observe + journal + heuristics). **Full** is the complete MCP surface for security testing. Chat includes the session journal (`browser_journal_add` / `_get` / `_update` / `_delete` / `_export`). GitHub Copilot and OpenAI cap tools at 128 — Full mode keeps Core (journal, interact, audits) first, then specialist scanners. External `POST /mcp` clients default to **Core** (copied LLM Settings config uses `?mode=core`). Use `?mode=security` for the complete MCP surface (`?mode=full` is an alias of security).
 
 ## CLI Scripts (batch)
 Write a `.csx` script, run it, read the output. Good for predefined test suites.
@@ -124,6 +125,17 @@ Trowser.exe --run <script.csx> [--url <url>] [--output <file>] [--visible] [--ti
 
 For full scripting reference (Quicktests, recording, semantic locators, performance, security, mocking, etc.), see **[scripting-reference.md](scripting-reference.md)**.
 
+### Headless API host (`--serve`)
+
+Use **`--run`** when you only need scripting (API off). Use **`--serve --api`** to run a hidden browser that exposes REST and MCP — same stack as [`src/Trowser.ApiTests`](../src/Trowser.ApiTests/) and `scripts/test.ps1 -Level smoke`:
+
+```powershell
+Trowser.exe --serve --api --api-port 6923 --api-key <key> --session mysession --nosplash
+# or: .\scripts\start-serve.ps1
+```
+
+Then call `http://localhost:<port>/api/...` or `POST http://localhost:<port>/mcp`. Pair with `.\tests\regression\run-regression.ps1 -Fast -Port … -Key …` for a fast loop without restarting the exe per test.
+
 ### Examples
 
 ```bash
@@ -141,11 +153,11 @@ Trowser.exe --run tests/full-suite.csx --url https://example.com --output report
 - Documentation below isn't 100% up-to-date, but give you the basics. See references documents for full documentation.
 
 ### Browser
-- Address bar with URL entry (Enter to navigate, or type a search query)
+- Address bar with URL entry (Enter to navigate, or type a search query). Typed URLs are remembered for completion — there is no bookmark bar. Down arrow lists matches; Shift+Delete removes one. Crawls, scripts, and link clicks are not stored.
 - Back / Forward / Refresh / Stop navigation buttons
 - Page title in the window title bar
 - Status bar showing load status and current URL
-- F12 to open Chrome DevTools
+- F12 to open Chrome DevTools. If DevTools is already open, a tab the page opens (`window.open` / `target=_blank`) starts with DevTools so you can follow its traffic from the first request. Ctrl+T, reports, and script/API new tabs do not.
 - Search with Ctrl+F
 
 ### Script Console
@@ -305,7 +317,7 @@ All interaction methods support **CSS selectors** and **semantic locators** (`By
 | `Select(selector, value)` | Select a dropdown option by value |
 | `Hover(selector)` | Hover over an element (triggers tooltips/menus) |
 | `PressKey(key, selector?, modifiers?)` | Send keyboard key press |
-| `Scroll(selector?, direction, scrollIntoView)` | Scroll page/element. Directions: `up`, `down`, `top`, `bottom`. Set `scrollIntoView: true` to scroll an element into view. |
+| `Scroll(selector?, direction, scrollIntoView, x?, y?)` | Scroll page/element. Directions: `up`, `down`, `top`, `bottom`. Or pass `x`/`y` for an absolute position. Set `scrollIntoView: true` to scroll an element into view. |
 
 ### Element Inspection
 
@@ -390,7 +402,7 @@ All network requests/responses are captured automatically.
 
 Each `NetworkEntry` has: `Method`, `Url`, `StatusCode`, `ReasonPhrase`, `ResourceType`, `RequestHeaders`, `ResponseHeaders`, `ContentType`, `Path`, `Host`, `IsError`, `IsSuccess`, `RequestBody`, `ResponseBody` (for Fetch/XHR).
 
-**Additional scripting features** (see [scripting-reference.md](scripting-reference.md)): Performance (Web Vitals), Security (Retire.js CVE scan), Security Headers, HTML validation, Monkey testing, Smart Monkey, Cookie management, Network mocking (`MockResponse`), Request interception (breakpoints), Viewport, Tab management, WebMCP tools.
+**Additional scripting features** (see [scripting-reference.md](scripting-reference.md)): Performance (Web Vitals), Security (Retire.js CVE scan), Security Headers, HTML validation, Monkey testing, Monkey Trowser, Cookie management, Network mocking (`MockResponse`), Request interception (breakpoints), Viewport, Tab management, WebMCP tools.
 
 ### Accessibility (WCAG)
 
@@ -474,7 +486,7 @@ When running in GUI mode, Trowser starts an HTTP API server on `http://localhost
 | `--scope <patterns>` | Restrict navigation to matching URL patterns (comma-separated, `*.*` = no restrictions) |
 | `--proxy <url>` | Route all browser traffic through a proxy (e.g. OWASP ZAP) |
 
-The API is enabled by default in GUI mode and disabled in CLI mode (`--run`). See [Security](#security) for details on authentication and safe mode. Full API reference: **[trowser-api-reference.md](trowser-api-reference.md)**. Endpoint index (auto-generated): **[trowser-api-index.md](trowser-api-index.md)**. See **[DOCUMENTATION.md](DOCUMENTATION.md)** for the doc map.
+The API is enabled by default in GUI mode and disabled in CLI mode (`--run`). See [Security](#security) for details on authentication and safe mode. Full API reference: **[trowser-api-reference.md](trowser-api-reference.md)**. Endpoint index (auto-generated): **[trowser-api-index.md](trowser-api-index.md)**. See **[DOCUMENTATION.md](../DOCUMENTATION.md)** for the doc map.
 
 ### Connect an external MCP agent
 
@@ -485,7 +497,7 @@ Trowser speaks **Streamable HTTP** MCP at `POST /mcp` (not stdio). Hands-on setu
 1. Start Trowser, turn the API on in the status bar if needed.
 2. Open **Settings → Security**.
 3. Enable **Keep API key for next session** (stable key across restarts).
-4. Select the agent in **MCP client config** (OpenCode default, Cursor, Claude Code, Copilot CLI) and click **Copy**.
+4. Open **LLM Settings**, select the agent in **MCP client config** (OpenCode default, Cursor, Claude Code, Copilot CLI) and click **Copy**.
 5. Paste into the agent’s config file and reconnect MCP.
 
 Copied configs **embed the API key** so they work immediately (localhost + Keep API key). The URL uses `?mode=core` (interact, quality audits, basic security scan). For security testing use `?mode=security`. Override with header `X-Trowser-Mcp-Mode: core|security` (`full` is an alias of security).
@@ -501,7 +513,7 @@ Other MCP clients with Streamable HTTP + Bearer headers can reuse the Cursor or 
 
 **Optional env-var auth:** For shareable configs you can use `Bearer ${env:TROWSER_API_KEY}` (Cursor), `Bearer {env:TROWSER_API_KEY}` (OpenCode), or `Bearer ${TROWSER_API_KEY}` (Claude Code / Copilot CLI). On Windows the User env var is only visible to apps started **after** it was set — fully quit and restart Cursor. Prefer embedding the key in a **user-level** mcp.json for day-to-day use; do not commit keys to git.
 
-Example (Cursor — embedded key from Settings → Copy):
+Example (Cursor — embedded key from LLM Settings → Copy):
 
 ```json
 {
@@ -516,7 +528,7 @@ Example (Cursor — embedded key from Settings → Copy):
 }
 ```
 
-**External MCP Mode:** Core (default) exposes navigate/interact/wait/fetch, quality audits (`browser_audit_all`, a11y, performance, SEO, resource, …), and a basic security scan (`browser_security_auto_scan`). Copied configs use Core. For security testing use `?mode=security` (complete MCP surface: specialist scanners + intercept). `?mode=full` is an alias of security. Screenshot stays off `tools/list` in both packs — use `GET /api/screenshot`. REST is unchanged (always full API surface; safe mode still applies). Built-in Chat Interaction Mode (Chat / Economical / Full) is separate.
+**External MCP Mode:** Core (default) exposes navigate/interact/wait/fetch, quality audits (`browser_audit_all`, a11y, performance, SEO, resource, …), and a basic security scan (`browser_security_auto_scan`). Copied configs use Core. For security testing use `?mode=security` (complete MCP surface: specialist scanners + intercept + screenshot). `?mode=full` is an alias of security. Screenshot is off Core `tools/list` (token cost); it is listed in built-in Economical/Full and external security. REST is unchanged (always full API surface; safe mode still applies). Built-in Chat Interaction Mode (Chat / Economical / Full) is separate — Economical is everyday live testing, not the same allow-list as Core.
 
 **Why not auto-install from agent marketplaces?** Localhost + a rotating/session API key means a registry listing still needs a running Trowser and a pasted key. The Settings **Copy** button is the high-payoff path; marketplace packaging adds little until keys can be negotiated automatically.
 
@@ -532,7 +544,8 @@ All responses are JSON with the format `{ "success": true/false, "data": {...} }
 | `GET /api/interactive` | All interactive elements with ref numbers, CSS selectors, and visibility |
 | `GET /api/screenshot` | Capture screenshot, returns file path. Add `?base64=true` for base64 data |
 | `GET /api/console` | Browser console messages |
-| `GET /api/network` | Network traffic log. Filter with `?errors=true`, `?url=X`, `?method=GET`, `?status=404`, `?type=Script`, `?includeBody=true` |
+| `GET /api/network` | Network traffic log. Filter with `?errors=true`, `?url=X`, `?method=GET`, `?status=404`, `?type=Script`, `?includeBody=true`, `?id=N` |
+| `GET /api/network/{id}` | One log entry, with headers and any captured body |
 | `GET /api/assertions` | Current test assertion results |
 | `GET /api/info` | Server info, current URL, entry counts |
 | `GET /api/ping` | Health check |
@@ -565,12 +578,13 @@ All action endpoints accept `{ "ref": N }` (preferred), `{ "selector": "..." }`,
 | `POST /api/batch` | `{ "actions": [...] }` | Execute multiple actions in one request |
 | `POST /api/accessibility` | `{ "level": "AA" }` | Run WCAG accessibility audit |
 | `POST /api/performance` | `{}` | Measure Web Vitals |
-| `POST /api/security` | `{}` | Scan for JS CVE vulnerabilities |
-| `POST /api/security-headers` | `{}` | Analyze HTTP security headers |
+| `POST /api/security` | `{}` | Passive security overview (Security Scan quicktest) |
+| `POST /api/security/js-libraries` | `{}` | Retire.js JS CVE scan |
+| `POST /api/security/headers` | `{}` | Analyze HTTP security headers |
 | `POST /api/validate-html` | `{}` | Validate HTML markup |
 | `POST /api/compatibility` | `{}` | Backward compatibility analysis |
 | `POST /api/monkey-test` | `{ "actions", "delay", "seed" }` | Random robustness testing |
-| `POST /api/smart-monkey` | `{ "followLinks", "maxPages", ... }` | Smart systematic robustness test |
+| `POST /api/monkey-trowser` | `{ "followLinks", "maxPages", ... }` | Monkey Trowser systematic robustness test |
 | `POST /api/assert/*` | Various | Page-contains, element-visible, url, title, etc. |
 | `POST /api/assert/reset` | *(empty)* | Reset assertion results |
 | `POST /api/dialog/handle` | `{ "accept", "promptText"? }` | Configure native dialog handling (call before triggering) |
@@ -648,8 +662,11 @@ These methods are also available in `.csx` scripts:
 |----------|--------|
 | Ctrl+` | Toggle script console |
 | F5 | Refresh page |
-| F12 | Open DevTools |
-| Ctrl+L | Focus address bar |
+| F12 | Open DevTools (page-opened tabs inherit it while it is in use) |
+| Ctrl+L | Toggle AI Assistant |
+| Down (address bar) | Show / cycle typed-URL suggestions |
+| Tab (address bar) | Accept the highlighted completion |
+| Shift+Delete (suggestion) | Remove that URL from completion |
 | Alt+Left | Go back |
 | Alt+Right | Go forward |
 
@@ -708,7 +725,7 @@ Internal URLs (`about:`, `data:`, `blob:`) are always allowed. The scope can als
 - **WPF** application shell with dark theme
 - **WebView2** (Chromium) browser engine
 - **Roslyn C# Scripting** for the built-in test automation engine
-- **axe-core 4.10.3** for automated WCAG accessibility auditing
+- **axe-core 4.14.0** for automated WCAG accessibility auditing
 - **Embedded HTTP API** for real-time LLM interaction (localhost, port 6923)
 - `AutomationContext` -- automation API exposed as script globals
 - `TrowserApiServer` -- HTTP REST server bridging LLMs to the automation context
@@ -718,7 +735,7 @@ Internal URLs (`about:`, `data:`, `blob:`) are always allowed. The scope can als
 - `ScriptEngine` -- Roslyn integration that runs `.csx` scripts
 
 ## Roadmap
-I see five different paths to take:
+See VISION.md, these five paths were identified in 1.0 release:
 - Rikard's tool (test idea collection, more things that help me)
 - API enhancements and competition with Microsoft Playwright/Copilot
 - Focus on a specific area, e.g. security testing
@@ -727,15 +744,15 @@ I see five different paths to take:
 
 ## Third-party enablers
 
-This tool bundles the following open-source libraries:
+This tool bundles the following open-source libraries (pinned versions; see `scripts/vendored-libs.json`):
 
-- retire.js (Apache-2.0)
-- axe-core (MPL-2.0)
-- html-validate (MIT)
-- gremlins.js (MIT)
-- web-vitals (Apache-2.0)
-- csp-evaluator (Apache-2.0)
-- tldts (MIT)
-- nuclei-templates (MIT)
+- retire.js — `jsrepository.json` vulnerability database (Apache-2.0)
+- axe-core 4.14.0 (MPL-2.0)
+- html-validate 11.17.0 (MIT)
+- gremlins.js 2.2.0 (MIT)
+- web-vitals 6.2.3 (Apache-2.0)
+- csp-evaluator 1.1.8 (Apache-2.0)
+- tldts 7.4.19 (MIT)
+- nuclei-templates — curated subset (MIT)
 
 Full license texts are included in the `licenses/` folder of the distributable.

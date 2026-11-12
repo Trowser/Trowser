@@ -1,0 +1,25 @@
+id: nginx-conf-exposure
+
+info:
+  name: nginx.conf Exposure
+  author: trowser
+  severity: medium
+  description: Detects an exposed nginx.conf file at the site origin.
+  tags: exposure,config,misconfig,nginx,legacy
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/nginx.conf"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "location"
+          - "server_name"
+          - "listen"
+        condition: or
+        part: body

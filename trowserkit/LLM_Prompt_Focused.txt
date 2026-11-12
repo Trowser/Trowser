@@ -16,7 +16,6 @@ If there is a file called ServiceSpecifics.md use that information as guidance a
 I know this software very well, so feel free to pause the testing and ask me clarifying questions (why is this thing here, what is important, should I go here or there etc.)
 
 API key is trowser_XXX
-Finalize by creating automated regression tests with the CLI interface, which is documented in scripting-reference.md and script-help.html
 
 Create a test report for this functionality in an .md file in this folder. Add a section with things you think a human tester should have a look at (where your testing might have holes).
 Explain the heuristics and oracles that helped you, if applicable.

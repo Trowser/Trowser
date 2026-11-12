@@ -1,0 +1,356 @@
+# Trowser C# Scripting — LLM cheat sheet
+
+Use this when writing repeatable tests. Output is C# (.csx), NOT MCP tool-call JSON and NOT raw REST.
+
+Run via: Script Console, `browser_run_script` (Assistant), or `Trowser.exe --run file.csx`.
+Full reference: trowserkit/scripting-reference.md (and Script Console Help).
+
+Call `browser_scripting_help` with topic=... for a section. topic=topics lists sections.
+
+---
+## topic:overview
+
+### Hard rules
+- Scripts are C# with async/await. Almost every API returns Task — always `await`.
+- Locators: CSS, shadow `>>>`, or `ByRole` / `ByLabel` / `ByText` / `ByPlaceholder` / `ByTestId` / `ByFrame`.
+- `Type(selector, text)` CLEARS the field first. Append with `PressKey` per character if needed.
+- Prefer semantic locators over brittle CSS. Snapshot `ref` numbers are for MCP live tools — resolve elements inside the script after navigation (refs go stale).
+- Group checks with `Assert.Section("…")`. Assertions are non-throwing and tracked; summary prints at end.
+- Check console + network errors for pages you exercise. Multi-page: `ClearNetworkLog()` / `ClearConsoleLog()` between pages when session growth matters.
+- Watch/per-page scripts: prefer `GetPageConsoleErrors()` and `Network.FindPageErrors()` over full-session APIs.
+- Deeper/mutating security probes need explicit intent and `safetyMode: "active"` (or higher) where applicable — do not invent severity.
+
+### Minimal template
+```csharp
+Assert.Section("Structure");
+Assert.NotEmpty(await GetTitle(), "Has title");
+Assert.True(await Exists("h1"), "Has heading");
+
+Assert.Section("Errors");
+Assert.Equal(0, GetConsoleErrors().Count, "No JS errors");
+Assert.Equal(0, Network.FindErrors().Count, "No network errors");
+
+Assert.Section("Accessibility");
+await AssertAccessible("AA");
+```
+
+### Core API (most scripts)
+Navigation: `Navigate`, `GoBack`, `GoForward`, `GetCurrentUrl`, `GetTitle`
+Interact: `Click`, `Type`, `Select`, `Hover`, `PressKey`, `Scroll`
+Inspect: `GetText`, `GetAttribute`, `Exists`, `Count`, `GetPageText`, `GetAllPageText`
+Wait: `WaitForElement`, `WaitForIdle`, `WaitForNavigation`, `WaitForFinalNavigation`, `WaitForRequest`, `Sleep`
+Assert: `Assert.*`, `AssertPageContains`, `AssertElementVisible`, `AssertUrl`, `AssertTitle`, `AssertAccessible`, `AssertPerformance`, `AssertSecure`
+Errors: `GetConsoleErrors`, `GetPageConsoleErrors`, `Network.FindErrors`, `Network.FindPageErrors`, `ClearConsoleLog`, `ClearNetworkLog`
+HTTP: `Fetch`, `FetchBatchAsync`, `FetchRaw` (HTTP/1.x bytes; no session overrides)
+Faults: `MockResponse`, `ClearMocks`
+Session: `ClearSession` (prefer over `ClearAll` when login must survive)
+
+For MCP↔C# translation: topic=map. For asserts detail: topic=assert. For Laws: topic=laws. For security APIs: topic=security.
+
+---
+## topic:map
+
+Convert live MCP / REST actions into C# scripting. Never paste MCP JSON as a "script".
+
+| Live (MCP / REST idea) | C# script |
+|---|---|
+| `browser_navigate` / POST /api/navigate | `await Navigate(url);` |
+| `browser_click` with ref/role/name | `await Click(ByRole("button", "Submit"));` |
+| `browser_click` byText | `await Click(ByText("Sign in"));` |
+| `browser_type` | `await Type(ByLabel("Email"), "user@example.com");` |
+| `browser_select_option` | `await Select(ByLabel("Country"), "us");` |
+| `browser_hover` | `await Hover(ByRole("link", "Components"));` |
+| `browser_press_key` | `await PressKey("Tab");` |
+| `browser_scroll` | `await Scroll(direction: "down");` |
+| `browser_snapshot` (live only) | Prefer `GetTitle` / `Exists` / `GetPageText` inside scripts |
+| `browser_console` errors | `GetConsoleErrors()` or `GetPageConsoleErrors()` |
+| `browser_network` errors | `Network.FindErrors()` or `Network.FindPageErrors()` |
+| `browser_wait` / idle | `await WaitForIdle();` / `await WaitForElement(sel);` |
+| `browser_fetch` | `await Fetch(url, "POST", body: "{…}");` |
+| `browser_mock` add | `MockResponse("/api/data", statusCode: 500, body: "{\"error\":\"fail\"}");` |
+| `browser_accessibility` | `await AssertAccessible("AA");` |
+| `browser_security_js_libraries` | `await AssertSecure();` |
+| `browser_security` (overview) | Full Security Scan quicktest modules via REST/MCP |
+| `browser_clear_session` | `await ClearSession();` |
+| `browser_clear_all` | `await ClearAll();` // wipes more; prefer ClearSession |
+| `browser_laws` / Laws MCP | `Law(...)` + `await CheckLaws()` in script; persist via MCP `browser_laws` action add |
+| `browser_shadow_check` | Shadow Heavy (all Laws); Light runs on navigation when Shadow+laws on |
+
+Locator mapping:
+- ByRole(role, name) ↔ role + name
+- ByLabel(text) ↔ label
+- ByText(text) ↔ byText (MCP also accepts text as locator alias on click; on type, text/value are content)
+- ByPlaceholder(text) ↔ placeholder
+- ByTestId(id) ↔ testId
+
+---
+## topic:interaction
+
+```csharp
+await Click("#submit");
+await Click(ByRole("button", "Submit"));
+await Click(ByText("Sign in"));
+await Type(ByLabel("Email"), "a@b.com");
+await Type(ByPlaceholder("Search…"), "query");
+await Select(ByLabel("Country"), "us");
+await Hover(ByRole("link", "Help"));
+await PressKey("Enter");
+await PressKey("Tab");
+await Scroll(direction: "down");          // up, down, top, bottom
+await Scroll("#footer", scrollIntoView: true);
+await Click(sel, "right", 1);             // right-click
+await Click(sel, "left", 2);              // double-click
+await RapidClick("#checkout", 3);         // multi-submit, no nav between clicks
+await Drag("#card", "#done");
+await SetFileInput("input[type=file]", new[] { @"C:\data\sample.pdf" });
+await Reload();
+```
+
+Auto-wait: Click/Type/Select/PressKey wait visible+enabled; Hover waits visible; GetText/GetAttribute wait exist.
+Shadow DOM: CSS and locators pierce shadow; use `host >>> inner` when needed.
+Frames: `await Click(ByFrame("child", "#in-frame"));` (same-origin).
+
+---
+## topic:assert
+
+```csharp
+Assert.Section("Login");
+Assert.True(condition, "msg");
+Assert.False(condition, "msg");
+Assert.Equal(expected, actual, "msg");          // expected FIRST
+Assert.NotEqual(a, b, "msg");
+Assert.Contains(substring, actual, "msg");
+Assert.NotContains(substring, actual, "msg");
+Assert.Matches(pattern, actual, "msg");
+Assert.Null(value, "msg");
+Assert.NotNull(value, "msg");
+Assert.NotEmpty(value, "msg");
+Assert.GreaterThan(threshold, actual, "msg");
+Assert.LessThan(threshold, actual, "msg");
+Assert.CountEquals(n, collection, "msg");
+Assert.Pass("msg");
+Assert.Fail("msg");
+
+await AssertPageContains("Welcome");
+await AssertPageNotContains("Error");
+await AssertElementVisible("#ok");
+await AssertElementNotVisible("#spinner");
+await AssertElementText("h1", "Home");
+await AssertElementContainsText("h1", "Home");
+await AssertElementAttribute("#a", "href", "/x");
+await AssertUrl("https://example.com/");
+await AssertTitle("Example");
+await AssertElementCount(".item", 3);
+
+await AssertAccessible("AA");
+await AssertPerformance();
+await AssertPerformanceMetric("LCP", 2500, "LCP under 2.5s");
+await AssertSecure();
+await AssertSecurityHeaders(minSeverity: Severity.Medium);
+await AssertCors(minSeverity: Severity.Medium);
+```
+
+---
+## topic:wait
+
+```csharp
+await WaitForElement("#ready");
+await WaitForIdle();                              // quiet network/DOM
+await WaitForIdle(500, 5000);
+await WaitForNavigation();
+await WaitForFinalNavigation(quietPeriodMs: 500, timeoutMs: 15000);
+await WaitForRequest("/api/data", "POST", 200);
+await Sleep(250);
+```
+
+Cancellation is cooperative: stop happens at the next await checkpoint (Sleep, Navigate, Click, WaitFor*, Fetch, …).
+
+---
+## topic:network
+
+```csharp
+Assert.Equal(0, GetConsoleErrors().Count, "No JS errors");
+Assert.Equal(0, Network.FindErrors().Count, "No HTTP errors");
+
+// Watch / per-page:
+Assert.Equal(0, GetPageConsoleErrors().Count, "No JS errors on this page");
+Assert.Equal(0, Network.FindPageErrors().Count, "No HTTP errors on this page");
+
+ClearConsoleLog();
+ClearNetworkLog();
+
+var log = GetNetworkLog();
+var entry = Network.Find("/api/users", "POST");
+Assert.Equal(200, entry.StatusCode);
+
+await SetNetworkThrottle("3G");
+await ClearNetworkThrottle();
+```
+
+---
+## topic:fetch
+
+```csharp
+var result = await Fetch("/api/users", "GET");
+var doc = System.Text.Json.JsonDocument.Parse(result);
+Assert.Equal(200, doc.RootElement.GetProperty("status").GetInt32(), "Users OK");
+
+var response = await Fetch("/api/users", "POST",
+    headers: new Dictionary<string, string> { ["Content-Type"] = "application/json" },
+    body: "{\"name\":\"Alice\"}");
+
+var batch = new List<FetchBatchRequestItem>
+{
+    new() { Url = "/api/a", Method = "GET" },
+    new() { Url = "/api/b", Method = "GET" }
+};
+var batchResults = await FetchBatchAsync(batch, concurrent: true);
+```
+
+Prefer Fetch over ad-hoc ExecuteJs fetch for structured evidence. Result JSON includes durationMs (HTTP round-trip).
+
+---
+## topic:mock
+
+```csharp
+MockResponse("/api/data", statusCode: 500, body: "{\"error\":\"fail\"}");
+await Click("#load-data");
+await WaitForIdle();
+await AssertPageNotContains("unhandled", "No crash on 500");
+ClearMocks();
+```
+
+Use for fault injection without hitting the real backend. Remove with `RemoveMock(pattern)` or `ClearMocks()`.
+
+---
+## topic:security
+
+Basic / often default:
+```csharp
+await AssertSecure();
+await AssertSecurityHeaders(minSeverity: Severity.Medium);
+await AssertCors(minSeverity: Severity.Medium);
+await AssertAccessible("AA");
+```
+
+Orchestrated / deeper (only when user asks; many need active safety):
+```csharp
+// Examples — check scripting-reference for parameters and safetyMode
+await PrintAttackSurfaceReport();
+await RunAutoScan(/* … */);
+await PrintCacheMapReport();
+await AssertCacheMapClean();
+await PrintCachePollutionReport(); // live-key; can store an error on the shared URL
+await RunSecretsHarvest(/* … */);
+await RunJwtAnalysis(/* … */);
+await RunFirewallTest(/* … */);
+await RunCsrfTest();
+await RunOpenRedirectScan(new OpenRedirectOptions());
+await PrintNucleiReport(maxTemplates: 20); // safetyMode defaults to "safe"
+```
+
+Client-side browser lane (browse first; many use mocks — not `--safe`):
+```csharp
+await PrintClientSurfaceReport(); // triage checklist only
+await PrintXssiScanReport(); // after JSON/JSONP API traffic in the log
+await PrintPostMessageAuditReport(new Trowser.Security.PostMessageAuditOptions { SafetyMode = "safe" });
+await PrintPostMessageAuditReport(new Trowser.Security.PostMessageAuditOptions { SafetyMode = "active", Depth = "deep" });
+await TraceInputAsync(new Trowser.Security.TraceInputOptions { Source = "url-query", QueryParam = "q", SafetyMode = "active" });
+await PrintDomFlowsReport("observe");
+await PrintXsLeaksReport(new Trowser.Security.XsLeaks.XsLeakScanner.XsLeakOptions { AutoStates = true }, "safe");
+```
+
+Also in scripting-reference: path traversal, SSRF orchestrator, parser/cmd/NoSQL/LDAP, stored XSS/SSTI, prototype pollution (server + client), deserialization, file upload, Next.js RSC, supply chain, race, CAPTCHA replay, workflow skip, rate limit, ReDoS, body size, costly operations, session fixation, password-reset, account enumeration, logout invalidation, fail-open, missing parameters, WebSocket fuzz, LLM discover/chat/red-team, Swaggering (`PrintSwaggeringReport`), form attack (`AttackForm`), CORS sweep, session-id analysis, DOM XSS audit (`RunDomXssAuditAsync`), gadget chains/radar. Script scanners bypass the REST safety gate except `RunNucleiScan`. No C# helper for SAML replay, Shadow, host-header, JWT forge, brute-force, load-test.
+
+Prefer browse key flows first, then focused scans. Treat scanner output as hypotheses until corroborated.
+
+---
+## topic:template
+
+```csharp
+// Smoke / regression starter — tailor to the mission
+Assert.Section("Page");
+var title = await GetTitle();
+Assert.NotEmpty(title, "Has title");
+Assert.True(await Exists("h1"), "Has heading");
+
+Assert.Section("Primary flow");
+// await Click(ByRole("button", "…"));
+// await Type(ByLabel("…"), "…");
+// await WaitForIdle();
+
+Assert.Section("Errors");
+Assert.Equal(0, GetConsoleErrors().Count, "No JS errors");
+Assert.Equal(0, Network.FindErrors().Count, "No network errors");
+
+Assert.Section("Quality");
+await AssertAccessible("AA");
+// await AssertPerformance();
+await AssertSecure();
+```
+
+CLI: `Trowser.exe --run test.csx [--url https://…] [--visible] [--timeout 120]`
+Exit codes: 0 success, 1 assertion failure, 2 script/runtime error.
+
+---
+## topic:laws
+
+Laws are small read-only invariants (`.csx`) — not full test scripts. No Navigate, Click, Fetch, or mocks inside a Law file.
+
+### Fluent API (in scripts or Law files)
+```csharp
+Site("example.com"); // optional host filter for following Laws in this file
+Law("Page has title")
+    .OnPage("/app/*")
+    .Expect((PageFacts p) => !string.IsNullOrWhiteSpace(p.Title));
+Law("No 500 on API")
+    .OnResponse("GET /api/*")
+    .Expect((ResponseFacts r) => r.Status < 500);
+Law("Cart total = sum of lines")
+    .OnPage("/cart*")
+    .When((PageFacts p) => p.Count(".line") > 0)
+    .Expect((PageFacts p) => p.Number(".total").ApproxEquals(p.Numbers(".line .price"), 0.01))
+    .Severity(Severity.High).Confirm();
+```
+
+Type lambda parameters: `(PageFacts p)`, `(ResponseFacts r)`, `(ConsoleFacts c)`.
+PageFacts: `p.Url`, `p.Path`, `p.Host`, `p.Title`, `p.Text("css")`, `p.Texts("css")`, `p.Value("input")`, `p.Exists`, `p.Visible`, `p.Count`, `p.Attr("sel","attr")`, `p.Number`, `p.Numbers`.
+ResponseFacts: `r.Status`, `r.Method`, `r.Url`, `r.Body`, `r.Header(n)`, `r.Cookie(n)`, `r.Json.String/Number/HasValue("items[0].id")`, `r.Json.Count("items")`, `r.Json.Numbers("items","price")`, `r.Json.IsValid`.
+Optional: `.When(...)`, `.Forbid(...)` (fails when true), `.Severity(...)`, `.Tags(...)`, `.Confirm()`.
+Triggers: `OnPage` (Shadow Light+Heavy), `OnResponse`/`OnConsole` (live traffic), `OnAction`/`OnTimer` (page facts, Shadow Heavy only).
+Sandbox: LINQ, collections, strings, math, Regex, JSON and fact types only; I/O, reflection, Task.Run, Environment are rejected. `--safe` blocks validate/add/replace/delete/author/accept.
+
+### Script Console vs saved Laws
+- **Try in Script Console:** include `await CheckLaws();` at the end — evaluates Laws declared **in this Run only** (default).
+- **Full suite:** `await CheckLaws(allLoaded: true);` — embedded + user folder Laws (page-fact triggers).
+- **Save to disk:** omit `CheckLaws()` from the file; use UI “Save as Law” or MCP `browser_laws` action `add`.
+
+User folder: `Documents/Trowser Quicktests/Laws/`. Embedded templates live under Quicktests/Laws in the app.
+
+### MCP playbook (for agents)
+1. `browser_scripting_help` topic=laws (this section).
+2. `browser_laws` action `author` or write code → action `validate`.
+3. `browser_laws` action `add` with compilable source (no CheckLaws line).
+4. `browser_security_shadow` with `enabled=true`, `laws=true`.
+5. `browser_navigate` to the app under test.
+6. `browser_laws` action `check` (page Laws, cheap) or `browser_shadow_check` (Heavy — all triggers + heavy quicktests).
+7. Shadow findings may include Law failures; `browser_laws` action `list` shows ids for `disabledLaws` mute.
+
+Proposals: action `proposals`, `accept` / `reject` (mining / LLM suggestions).
+
+---
+## topic:topics
+
+Available topics for browser_scripting_help:
+- overview — rules, core API, mini template (default)
+- map — MCP/REST → C# translation (use when converting a live session into a script)
+- interaction — click/type/select/hover/keys/scroll/locators
+- assert — Assert.* and page/element assertions
+- wait — WaitFor*, Sleep, cancellation
+- network — console/network logs, throttle, page-scoped APIs
+- fetch — Fetch / FetchBatchAsync
+- mock — MockResponse fault injection
+- security — basic AssertSecure* + deeper scan pointers
+- laws — Site/Law/CheckLaws, Shadow Light/Heavy, MCP browser_laws playbook
+- template — starter smoke script + CLI notes
+- topics — this list

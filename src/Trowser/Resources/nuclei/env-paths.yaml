@@ -1,0 +1,49 @@
+id: env-paths-exposure
+
+info:
+  name: Environment File Exposure (path sweep)
+  author: trowser
+  severity: low
+  description: Probes common .env paths at the site origin for leaked secrets (not HTML error pages).
+  tags: exposure,config,env,info-leak,secret
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}{{paths}}"
+    payloads:
+      paths:
+        - "/.env"
+        - "/.env.local"
+        - "/.env.production"
+        - "/.env.production.local"
+        - "/.env.development.local"
+        - "/.env.dev"
+        - "/.env.backup"
+        - "/.env.old"
+        - "/.env.bak"
+        - "/api/.env"
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+          - "<HTML"
+        part: body
+        negative: true
+      - type: word
+        words:
+          - "APP_"
+          - "DB_"
+          - "SECRET"
+          - "PASSWORD"
+          - "TOKEN"
+          - "API_KEY"
+          - "DATABASE_URL"
+        condition: or
+        part: body

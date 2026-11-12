@@ -1,0 +1,10 @@
+AI Security testing
+
+You will now do advanced security testing with the help of Trowser (a testing browser), API documentation in trowser-api-reference.md.
+Trowser is available at localhost:6923 with API key trowser_XXX
+I want you to analyze https://brokencrystals.com/ to understand what vulnerabilities might be there.
+Then select applicable Nuclei templates that might find a vulnerability at this site.
+Run the templates and report your findings in an .md report.
+SecurityTestingWithTrowser.md is an important document with generic guidelines for security testing with Trowser, and includes Trowser API suggestions.
+
+Also write a report with bugs and enhancements for Trowser API and the documentation.

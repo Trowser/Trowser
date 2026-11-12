@@ -1,0 +1,22 @@
+id: robots-txt
+
+info:
+  name: Robots.txt Detected
+  author: projectdiscovery
+  severity: info
+  description: Checks for robots.txt at the site origin (reconnaissance signal).
+  tags: exposure,recon,robots
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/robots.txt"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "User-agent"
+        part: body

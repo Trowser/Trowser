@@ -1,0 +1,27 @@
+{
+  "name": "trowser",
+  "version": "1.0.0",
+  "description": "Build helper for vendored front-end libraries used by Trowser. The application is the .NET project in src/Trowser.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Trowser/Trowser.git"
+  },
+  "keywords": [],
+  "author": "Trowser contributors",
+  "license": "MIT",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Trowser/Trowser/issues"
+  },
+  "homepage": "https://github.com/Trowser/Trowser#readme",
+  "dependencies": {
+    "csp_evaluator": "^1.1.8"
+  }
+}

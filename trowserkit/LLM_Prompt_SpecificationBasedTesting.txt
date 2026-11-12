@@ -6,7 +6,7 @@ You should test the tool and make sure the requirements are well covered by your
 Beware that there as always also are implicit requirements, so make sure to also do exploratory testing to discover more bugs. Use testheuristics.md (in current folder) for further test inspiration.
 Testers are very picky so we want to find all important bugs so we can fix them.
 
-You should use the testing browser Trowser and its APIs, full documentation available in trowser-api-reference.md.
+You should use the testing browser Trowser and its APIs, full documentation available in trowser-api-core.md.
 The API supports navigation, interaction, and mpst of what you'd want from a browser API.
 It also has audits (POST api/audit-all) that are useful as a starting point before going deeper in an are.
 I have navigated my Trowser instance at localhost:6923 to https://www.thetesteye.com/exercises/RTD/good/index.html that you can use with API key trowser_XXX.

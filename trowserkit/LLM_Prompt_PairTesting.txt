@@ -20,7 +20,7 @@ Here you should follow along with the other instance, but add your perspective a
 Follow what I do in my instance, and take extra considerations to notes that are testing instructions or tips.
 First you do quick audits on each new page, secondly you test error handling, and if there is time you do new tests you haven't tried earlier.
 
-Use the Trowser REST API (trowser-api-reference.md) to get information about the page and interact.
+Use the Trowser REST API (trowser-api-core.md) to get information about the page and interact.
 Use testheuristics.md (in current folder) for further test inspiration.
 
 Create a test report for this functionality in an .md file in this folder.

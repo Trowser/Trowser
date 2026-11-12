@@ -110,7 +110,7 @@ tags:
   - name: Auditing
     description: Accessibility, performance, security, HTML validation, compatibility, link checking, and consistency audits
   - name: Robustness
-    description: Monkey testing, smart monkey, and fault-injection (interrupter)
+    description: Monkey testing, Monkey Trowser, and fault-injection (interrupter)
 
   - name: Security Testing
     description: Vulnerability scanning, injection probes, auth testing, and security analysis
@@ -132,6 +132,8 @@ tags:
     description: Ambient UI overlays - security shadow, power mode, red team whisper
   - name: Utilities
     description: Test data, inspiration, and misc helpers
+  - name: Repro & Verification
+    description: Capture a .trw from the checkpoint trail and verify it over k runs
 components:
   securitySchemes:
     BearerAuth:
@@ -972,7 +974,7 @@ paths:
           in: query
           schema:
             type: boolean
-          description: Include data: URLs (default false)
+          description: Include data, URLs (default false)
         - name: preferInteractive
           in: query
           schema:
@@ -1019,6 +1021,8 @@ paths:
                       resourceType: Document
                       isError: false
                       timestamp: "2025-02-17T12:34:56.789Z"
+                      durationMs: 12
+                      servedFromCache: false
 
 
   /api/network/clear:
@@ -1671,11 +1675,26 @@ paths:
                   type: boolean
                   default: false
                   description: Scroll element into viewport center
+                x:
+                  type: number
+                  description: Absolute horizontal scroll position (CSS pixels). Alias of scrollX.
+                y:
+                  type: number
+                  description: Absolute vertical scroll position (CSS pixels). Alias of scrollY.
+                scrollX:
+                  type: number
+                scrollY:
+                  type: number
             examples:
               scrollDown:
                 summary: Scroll page down
                 value:
                   direction: down
+              scrollAbsolute:
+                summary: Scroll to an absolute position
+                value:
+                  x: 0
+                  y: 420
               scrollIntoView:
                 summary: Scroll element into view
                 value:
@@ -3226,6 +3245,9 @@ paths:
                       body:
                         type: string
                         description: Response body as a string
+                      durationMs:
+                        type: integer
+                        description: HTTP round-trip in milliseconds (excludes delayMs and API gate wait)
               example:
                 success: true
                 data:
@@ -3235,6 +3257,7 @@ paths:
                   headers:
                     content-type: "application/json; charset=utf-8"
                   body: '{"id": 42, "name": "Updated"}'
+                  durationMs: 42
         "403":
           description: Blocked by safe mode
         "500":
@@ -3426,7 +3449,7 @@ paths:
       operationId: securityCve
       tags: [Auditing]
       summary: JavaScript CVE scan (Retire.js)
-      description: Detects vulnerable libraries via func, uri, filename patterns.
+      description: Detects vulnerable libraries via func (including Bootstrap plugin APIs), uri, filename, and filecontent patterns inside fetched bundles. Response includes caveats when few large bundled JS files are present.
       requestBody:
         content:
           application/json:
@@ -3435,22 +3458,6 @@ paths:
       responses:
         "200":
           description: CVE scan results
-
-
-  /api/security-headers:
-    post:
-      operationId: securityHeaders
-      tags: [Auditing]
-      summary: HTTP security header analysis (OWASP)
-      description: "Checks CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, server disclosure."
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-      responses:
-        "200":
-          description: Security header analysis
 
 
   /api/security/cors:
@@ -3492,12 +3499,19 @@ paths:
                   type: integer
                   default: 0
                   description: "0 = parallel (fast), >0 = sequential with delay"
+                spaMode:
+                  type: boolean
+                  default: true
+                  description: "Exclude HTML responses that match an invalid-path baseline (status, title, similar body length). API-shaped bodies are kept. Set false to include shell duplicates; baselineNote then warns."
+                baselineFilter:
+                  type: boolean
+                  description: "Alias for spaMode. Omitted does not override an explicit spaMode: false."
             example:
               wordlist: api
               basePath: "/"
       responses:
         "200":
-          description: Discovery results
+          description: "Discovery results. Includes spaMode, spaFilteredCount, and baselineNote when shell duplicates were excluded or kept rows still match the invalid-path baseline."
 
 
   /api/validate-html:
@@ -3697,14 +3711,14 @@ paths:
           description: Monkey test results
 
 
-  /api/smart-monkey:
+  /api/monkey-trowser:
     post:
-      operationId: smartMonkey
+      operationId: monkeyTrowser
       tags: [Robustness]
-      summary: Smart robustness testing
+      summary: Monkey Trowser robustness testing
       description: |
         Systematic: clicks every element, fuzzes forms, crawls links within scope.
-        **Requires scope to be set** and `safetyMode: active`.
+        Auto-scope from current page when unset. Requires `safetyMode: active`.
       requestBody:
         required: true
         content:
@@ -3731,6 +3745,9 @@ paths:
                 maxActionsPerPage:
                   type: integer
                   default: 100
+                scope:
+                  type: string
+                  description: Optional navigation scope for this run only (same format as Settings)
             example:
               safetyMode: active
               followLinks: true
@@ -3738,7 +3755,7 @@ paths:
               maxPages: 5
       responses:
         "200":
-          description: Smart monkey results
+          description: Monkey Trowser results
 
 
   /api/interrupter:
@@ -4169,10 +4186,11 @@ paths:
     get:
       operationId: get_identity
       tags: [Portable Identity]
-      summary: GET /api/identity - identity
+      summary: Deprecated — use GET /api/session/identity or GET /api/identities
+      deprecated: true
       responses:
-        "200":
-          description: Success
+        "410":
+          description: Renamed to GET /api/session/identity (live session) or GET /api/identities (catalog)
         "403":
           description: Blocked by safe mode
         "503":
@@ -4257,26 +4275,6 @@ paths:
       tags: [Utilities]
       summary: Get a random testing inspiration message.
       description: Gate-free - safe for passive polling.
-      responses:
-        "200":
-          description: Success
-        "403":
-          description: Blocked by safe mode
-        "503":
-          description: Server busy
-
-
-  /api/mandelbrot:
-    post:
-      operationId: post_mandelbrot
-      tags: [Utilities]
-      summary: POST /api/mandelbrot - mandelbrot
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
       responses:
         "200":
           description: Success
@@ -5324,56 +5322,6 @@ paths:
       operationId: post_security_deserialization_scan
       tags: [Security Testing]
       summary: "**Deserialization scan** for JSON sinks + fixed paths (`/b2b/v2/orders`, `/api/serialize`, ...): baseline â†’ **node-seriali..."
-      description: |
-        May require safetyMode in the request body (passive, safe, active, aggressive).
-        Legacy confirmBackend true is accepted as alias for active.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              allOf:
-                - $ref: '#/components/schemas/SafetyModeRequest'
-                - type: object
-      responses:
-        "200":
-          description: Success
-        "403":
-          description: Blocked by safe mode
-        "503":
-          description: Server busy
-
-
-  /api/security/evidence/export:
-    post:
-      operationId: post_security_evidence_export
-      tags: [Security Testing]
-      summary: POST /api/security/evidence/export - security evidence export
-      description: |
-        May require safetyMode in the request body (passive, safe, active, aggressive).
-        Legacy confirmBackend true is accepted as alias for active.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              allOf:
-                - $ref: '#/components/schemas/SafetyModeRequest'
-                - type: object
-      responses:
-        "200":
-          description: Success
-        "403":
-          description: Blocked by safe mode
-        "503":
-          description: Server busy
-
-
-  /api/security/evidence/rerun:
-    post:
-      operationId: post_security_evidence_rerun
-      tags: [Security Testing]
-      summary: POST /api/security/evidence/rerun - security evidence rerun
       description: |
         May require safetyMode in the request body (passive, safe, active, aggressive).
         Legacy confirmBackend true is accepted as alias for active.
@@ -6611,10 +6559,10 @@ paths:
     post:
       operationId: post_security_smuggling
       tags: [Security Testing]
-      summary: "HTTP Request Smuggling detection via raw TCP probing (timing + differential-response confirmation)."
+      summary: "HTTP Request Smuggling via raw TCP: confirmed = repeated differential 404; everything else is informational."
       description: |
-        Requires safetyMode: active. Runs CL-TE/TE-CL timing probes and PortSwigger-style
-        differential-response confirmation (canary /404 prefix), plus TE-TE/CL-CL/HEADER checks.
+        Requires safetyMode: active. Confirmed means a repeated canary 404 from a CL.TE/TE.CL
+        prefix. Timing, TE obfuscation, duplicate Content-Length, and HEADER hygiene are notes.
         Legacy confirmBackend true is accepted as alias for active.
       requestBody:
         required: true
@@ -7158,6 +7106,45 @@ paths:
           description: Server busy
 
 
+  /api/security/websocket-authz:
+    post:
+      operationId: post_security_websocket_authz
+      tags: [Security Testing]
+      summary: POST /api/security/websocket-authz - security websocket authz
+      description: |
+        Sends one captured WebSocket frame on a peer's already-open socket and classifies the next frames.
+        May require safetyMode in the request body (safe for subscribe/query/ping, active for other frames).
+        Legacy confirmBackend true is accepted as alias for active.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/SafetyModeRequest'
+                - type: object
+                  properties:
+                    connectionId:
+                      type: integer
+                    frameId:
+                      type: integer
+                    message:
+                      type: string
+                    peer:
+                      type: string
+                    responseWaitMs:
+                      type: integer
+      responses:
+        "200":
+          description: Success
+        "400":
+          description: Missing socket, missing frame, or safetyMode too low for a write-like frame
+        "403":
+          description: Blocked by safe mode
+        "503":
+          description: Server busy
+
+
   /api/security/websocket-fuzz:
     post:
       operationId: post_security_websocket_fuzz
@@ -7530,7 +7517,7 @@ paths:
     get:
       operationId: get_vpx_export
       tags: [VPX]
-      summary: "Export session findings as a **VPX 1.0** document (Vulnerability Proof eXchange). Spec: `VPX/spec/VPX-1.0.md`."
+      summary: "Export session findings as a **VPX 1.1** document (Vulnerability Proof eXchange). Spec: `securitykit/VPX/spec/VPX-1.1.md` (repo root). VPX 1.0 is still accepted on import."
       description: Gate-free - safe for passive polling.
       responses:
         "200":
@@ -7545,7 +7532,7 @@ paths:
     post:
       operationId: post_vpx_import
       tags: [VPX]
-      summary: "Import a VPX 1.0 document into the session - registers findings for proof queue (`source: vpx-import`), surfaces, proofs..."
+      summary: "Import a VPX 1.1 document into the session (VPX 1.0 also accepted) - registers findings for proof queue (`source: vpx-import`), surfaces, runs, assessments, proofs..."
       requestBody:
         required: true
         content:
@@ -8104,6 +8091,1104 @@ paths:
       operationId: get_scripting_help
       tags: [Other]
       summary: "Curated C# scripting (.csx) cheat sheet for LLMs/agents."
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/cache-map:
+    post:
+      operationId: post_security_cache_map
+      tags: [Security Testing]
+      summary: "Cache **identification + key-mapping indication**."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/cache-pollution-scan:
+    post:
+      operationId: post_security_cache_pollution_scan
+      tags: [Security Testing]
+      summary: "**Live-key error pollution** (first dig-deep once a cache is identified)."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/session-memory:
+    get:
+      operationId: get_session_memory
+      tags: [Other]
+      summary: "Volatile session memory for the built-in AI Assistant (focus, tasks, last compact handoff). **Gate-free**."
+      responses:
+        "200":
+          description: Success
+
+    post:
+      operationId: post_session_memory
+      tags: [Other]
+      summary: "Update session memory. Body: `{ \"action\": \"get\"/\"set_focus\"/\"add_task\"/\"update_task\", ... }`. **Gate-free**."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/pointer:
+    post:
+      operationId: post_pointer
+      tags: [Other]
+      summary: "POST /api/pointer — pointer"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/pointers:
+    get:
+      operationId: get_pointers
+      tags: [Other]
+      summary: "GET /api/pointers — pointers"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/checkpoint:
+    post:
+      operationId: post_checkpoint
+      tags: [Other]
+      summary: "POST /api/checkpoint — checkpoint"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/checkpoints:
+    get:
+      operationId: get_checkpoints
+      tags: [Other]
+      summary: "GET /api/checkpoints — checkpoints"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/decision:
+    post:
+      operationId: post_decision
+      tags: [Other]
+      summary: "POST /api/decision — decision"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/decisions:
+    get:
+      operationId: get_decisions
+      tags: [Other]
+      summary: "GET /api/decisions — decisions"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/journal/import:
+    post:
+      operationId: post_journal_import
+      tags: [Journal]
+      summary: "Import a trowser-journal JSON bundle (entries + pointers)."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/repro/verify:
+    post:
+      operationId: post_repro_verify
+      tags: [Repro & Verification]
+      summary: "Replay a .trw / bundle / workflow k times: { \"trwPath\"/\"bundlePath\"/\"workflow\", \"runs\": 3, \"clearSession\": true, \"identity\", \"expect\", \"safetyMode\": \"active\" }."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/repro/capture:
+    post:
+      operationId: post_repro_capture
+      tags: [Repro & Verification]
+      summary: "Build a .trw from journal actions since a checkpoint: { \"checkpointId\", \"name\", \"path\", \"oracle\" }."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/fetch-raw:
+    post:
+      operationId: post_fetch_raw
+      tags: [Fetch]
+      summary: "Send HTTP/1.x bytes on a new TCP/TLS connection (not `HttpClient`, not WebView2)."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/header-overrides:
+    get:
+      operationId: get_header_overrides
+      tags: [Other]
+      summary: "List session header overrides."
+      responses:
+        "200":
+          description: Success
+
+    put:
+      operationId: put_header_overrides
+      tags: [Other]
+      summary: "Replace the override list: `{ \"headers\": [{ \"name\": \"User-Agent\", \"value\": \"…\", \"enabled\": true }] }`."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+    delete:
+      operationId: delete_header_overrides
+      tags: [Other]
+      summary: "Clear all session header overrides. Blocked in `--safe`."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/record/status:
+    get:
+      operationId: get_record_status
+      tags: [Other]
+      summary: "Recording status: { recording, startUrl, startedAt, actionCount }"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/record/start:
+    post:
+      operationId: post_record_start
+      tags: [Other]
+      summary: "Start interaction recording to a temp .csx (human DOM actions). 409 if already recording."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/record/stop:
+    post:
+      operationId: post_record_stop
+      tags: [Other]
+      summary: "Stop recording: { description?, toJournal?, path? }."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/auth-control-identifier:
+    post:
+      operationId: post_security_auth_control_identifier
+      tags: [Security Testing]
+      summary: "Identify which cookies, headers, and token fields **actually gate** a captured request."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/costly-operations:
+    post:
+      operationId: post_security_costly_operations
+      tags: [Security Testing]
+      summary: "analyzes captured traffic and optional DOM for operations that can be expensive on one or a few requests (rate limits may not help)."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/openapi-smoke:
+    post:
+      operationId: post_security_openapi_smoke
+      tags: [Security Testing]
+      summary: "POST /api/security/openapi-smoke — security openapi smoke"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/swaggering:
+    post:
+      operationId: post_security_swaggering
+      tags: [Security Testing]
+      summary: "discover OpenAPI/Swagger (traffic + well-known paths), build an operation catalog, run **session-authenticated** probes…"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/authz/model:
+    get:
+      operationId: get_authz_model
+      tags: [Authorization Testing]
+      summary: "Access model — read declared intent and identities for one host."
+      responses:
+        "200":
+          description: Success
+
+    put:
+      operationId: put_authz_model
+      tags: [Authorization Testing]
+      summary: "Access model — set per-resource intent and identities for one host."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/authz/shadow:
+    post:
+      operationId: post_authz_shadow
+      tags: [Authorization Testing]
+      summary: "Live Authz Shadow. Watches browsing and replays successful Document/XHR/Fetch requests through registered peers."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/authz/coverage:
+    post:
+      operationId: post_authz_coverage
+      tags: [Authorization Testing]
+      summary: "BAC coverage report for one host."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/client-prototype-pollution:
+    post:
+      operationId: post_security_client_prototype_pollution
+      tags: [Security Testing]
+      summary: "Client-side prototype pollution via URL query/hash and postMessage canaries, then optional gadget→sink escalation."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/client-surface:
+    post:
+      operationId: post_security_client_surface
+      tags: [Security Testing]
+      summary: "Client-side attack-surface map (browser-native sibling of `/api/security/attack-surface`)."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/postmessage:
+    post:
+      operationId: post_security_postmessage
+      tags: [Security Testing]
+      summary: "Enumerate `message` listeners (from the runtime sensor), grade origin checks (`none` / `weak` / `strict`), and fuzz with…"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/xss-dom-audit:
+    post:
+      operationId: post_security_xss_dom_audit
+      tags: [Security Testing]
+      summary: "POST /api/security/xss-dom-audit — security xss dom audit"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/dom-flows:
+    post:
+      operationId: post_security_dom_flows
+      tags: [Security Testing]
+      summary: "DOM XSS flow graph: source→JS→mutation→sink→consequence chains (observe or probe)."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/xs-leaks:
+    post:
+      operationId: post_security_xs_leaks
+      tags: [Security Testing]
+      summary: "XS-Leaks differential scanner: can an attacker distinguish two victim states?"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/dom-xss-audit:
+    post:
+      operationId: post_security_dom_xss_audit
+      tags: [Security Testing]
+      summary: "POST /api/security/dom-xss-audit — security dom xss audit"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/gadget-chains:
+    post:
+      operationId: post_security_gadget_chains
+      tags: [Security Testing]
+      summary: "POST /api/security/gadget-chains — security gadget chains"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/gadget-radar:
+    post:
+      operationId: post_security_gadget_radar
+      tags: [Security Testing]
+      summary: "POST /api/security/gadget-radar — security gadget radar"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/service-worker-audit:
+    post:
+      operationId: post_security_service_worker_audit
+      tags: [Security Testing]
+      summary: "POST /api/security/service-worker-audit — security service worker audit"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/xssi-scan:
+    post:
+      operationId: post_security_xssi_scan
+      tags: [Security Testing]
+      summary: "POST /api/security/xssi-scan — security xssi scan"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/click-at:
+    post:
+      operationId: post_click_at
+      tags: [Element Interaction]
+      summary: "CDP click at viewport x/y (CSS px); hits painted targets including cross-origin iframes"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/race-lab/baseline:
+    post:
+      operationId: post_race_lab_baseline
+      tags: [Other]
+      summary: "POST /api/race-lab/baseline — race lab baseline"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/race-lab/profiles:
+    get:
+      operationId: get_race_lab_profiles
+      tags: [Other]
+      summary: "GET /api/race-lab/profiles — race lab profiles"
+      responses:
+        "200":
+          description: Success
+
+    post:
+      operationId: post_race_lab_profiles
+      tags: [Other]
+      summary: "POST /api/race-lab/profiles — race lab profiles"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/race-lab/profiles/export:
+    post:
+      operationId: post_race_lab_profiles_export
+      tags: [Other]
+      summary: "POST /api/race-lab/profiles/export — race lab profiles export"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/race-lab/profiles/import:
+    post:
+      operationId: post_race_lab_profiles_import
+      tags: [Other]
+      summary: "POST /api/race-lab/profiles/import — race lab profiles import"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/race-lab/run:
+    post:
+      operationId: post_race_lab_run
+      tags: [Other]
+      summary: "POST /api/race-lab/run — race lab run"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/race-lab/synchronize:
+    post:
+      operationId: post_race_lab_synchronize
+      tags: [Other]
+      summary: "POST /api/race-lab/synchronize — race lab synchronize"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/peer/spawn:
+    post:
+      operationId: post_peer_spawn
+      tags: [Peer Management]
+      summary: "POST /api/peer/spawn — peer spawn"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/peer/stop:
+    post:
+      operationId: post_peer_stop
+      tags: [Peer Management]
+      summary: "POST /api/peer/stop — peer stop"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/session/cookie-header:
+    get:
+      operationId: get_session_cookie_header
+      tags: [Other]
+      summary: "GET /api/session/cookie-header — session cookie header"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/laws:
+    get:
+      operationId: get_laws
+      tags: [Other]
+      summary: "GET /api/laws — laws"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/laws/add:
+    post:
+      operationId: post_laws_add
+      tags: [Other]
+      summary: "POST /api/laws/add — laws add"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/laws/author:
+    post:
+      operationId: post_laws_author
+      tags: [Other]
+      summary: "POST /api/laws/author — laws author"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/laws/proposals:
+    get:
+      operationId: get_laws_proposals
+      tags: [Other]
+      summary: "GET /api/laws/proposals — laws proposals"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/laws/proposals/accept:
+    post:
+      operationId: post_laws_proposals_accept
+      tags: [Other]
+      summary: "POST /api/laws/proposals/accept — laws proposals accept"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/laws/proposals/reject:
+    post:
+      operationId: post_laws_proposals_reject
+      tags: [Other]
+      summary: "POST /api/laws/proposals/reject — laws proposals reject"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/laws/validate:
+    post:
+      operationId: post_laws_validate
+      tags: [Other]
+      summary: "POST /api/laws/validate — laws validate"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/shadow/check:
+    post:
+      operationId: post_shadow_check
+      tags: [Other]
+      summary: "POST /api/shadow/check — shadow check"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/laws/check:
+    post:
+      operationId: post_laws_check
+      tags: [Other]
+      summary: "POST /api/laws/check — laws check"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/laws/delete:
+    post:
+      operationId: post_laws_delete
+      tags: [Other]
+      summary: "POST /api/laws/delete — laws delete"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/laws/replace:
+    post:
+      operationId: post_laws_replace
+      tags: [Other]
+      summary: "POST /api/laws/replace — laws replace"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/llm-endpoint-discover:
+    get:
+      operationId: get_security_llm_endpoint_discover
+      tags: [Security Testing]
+      summary: "GET /api/security/llm-endpoint-discover — security llm endpoint discover"
+      responses:
+        "200":
+          description: Success
+
+    post:
+      operationId: post_security_llm_endpoint_discover
+      tags: [Security Testing]
+      summary: "POST /api/security/llm-endpoint-discover — security llm endpoint discover"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/headers:
+    post:
+      operationId: post_security_headers
+      tags: [Auditing]
+      summary: "Analyze HTTP response headers for security misconfigurations (OWASP)"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/js-libraries:
+    post:
+      operationId: post_security_js_libraries
+      tags: [Security Testing]
+      summary: "Retire.js scan for known vulnerable JavaScript library versions on the current page"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/network/{id}:
+    get:
+      operationId: get_network_id
+      tags: [Console & Network]
+      summary: "One captured network entry by id, with request/response headers and any captured body."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+
+
+  /api/orchestrate/runs/{runId}:
+    get:
+      operationId: get_orchestrate_runs_runId
+      tags: [Security Orchestration]
+      summary: "Poll an async playbook run started with POST /api/orchestrate/{id} and \"async\": true (gate-free)"
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+
+
+  /api/security/sse-audit:
+    post:
+      operationId: post_security_sse_audit
+      tags: [Security Testing]
+      summary: "POST /api/security/sse-audit — security sse audit"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/sse/connections:
+    get:
+      operationId: get_sse_connections
+      tags: [Other]
+      summary: "GET /api/sse/connections — sse connections"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/sse/messages:
+    get:
+      operationId: get_sse_messages
+      tags: [Other]
+      summary: "GET /api/sse/messages — sse messages"
+      responses:
+        "200":
+          description: Success
+
+
+  /api/checkpoint/{id}:
+    get:
+      operationId: get_checkpoint_id
+      tags: [Other]
+      summary: "Fetch a checkpoint with a summary of activity **since** it (GUI actions, errors, pointers). **Gate-free**."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+
+
+  /api/pointer/{id}:
+    get:
+      operationId: get_pointer_id
+      tags: [Other]
+      summary: "Fetch a single pointer by id. **Gate-free**."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+
+    delete:
+      operationId: delete_pointer_id
+      tags: [Other]
+      summary: "Remove a pointer by id."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/pointer/{id}/resolve:
+    post:
+      operationId: post_pointer_id_resolve
+      tags: [Other]
+      summary: "Re-resolve a pointer's anchor against the current DOM and update its status."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/decision/{id}:
+    get:
+      operationId: get_decision_id
+      tags: [Other]
+      summary: "Fetch a single decision, wrapped the same way as `POST /api/decision`."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+
+    delete:
+      operationId: delete_decision_id
+      tags: [Other]
+      summary: "Withdraw a pending question the agent no longer needs answered, so it stops asking for attention."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/decision/{id}/answer:
+    post:
+      operationId: post_decision_id_answer
+      tags: [Other]
+      summary: "Record an answer. Fields: `option` (key or label, **required**), `note` (required for Other — the custom text; use the l…"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
       responses:
         "200":
           description: Success

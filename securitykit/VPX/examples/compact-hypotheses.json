@@ -1,0 +1,134 @@
+{
+  "vpxVersion": "1.1",
+  "documentId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "createdAt": "2026-05-23T09:00:00Z",
+  "profile": "compact",
+  "target": {
+    "baseUrl": "https://staging.example.com",
+    "repository": "github.com/acme/webapp",
+    "commit": "abc123def456"
+  },
+  "policy": {
+    "cvssCap": 7.0,
+    "proofRequiredAbove": "medium",
+    "deferBelowPriority": 40
+  },
+  "runs": [
+    {
+      "id": "run-llm-sast",
+      "stage": "source-analysis",
+      "actor": { "type": "llm", "name": "llm-sast", "version": "1" },
+      "startedAt": "2026-05-23T09:00:00Z",
+      "completedAt": "2026-05-23T09:04:00Z"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "surf-users-search",
+      "route": "/api/users",
+      "method": "GET",
+      "params": [{ "name": "q", "in": "query", "type": "string" }],
+      "auth": { "required": true, "roles": ["user"], "mechanism": "session-cookie" }
+    },
+    {
+      "id": "surf-settings-post",
+      "route": "/api/settings",
+      "method": "POST",
+      "params": [{ "name": "theme", "in": "body", "type": "string" }],
+      "auth": { "required": true, "roles": ["user"], "mechanism": "session-cookie" }
+    }
+  ],
+  "findings": [
+    {
+      "id": "f-sqli-001",
+      "fingerprint": {
+        "algorithm": "vpx-fingerprint-1",
+        "value": "sha256:b356f927f422a817d8b8a0677de4ef1b78233444f9bc9c3935cfb4b0d8e0ba77"
+      },
+      "kind": "sqli",
+      "severity": "high",
+      "title": "SQL injection via search query parameter",
+      "description": "User-controlled search parameter is interpolated into SQL query without parameterization, enabling boolean-based and time-based blind SQL injection.",
+      "status": "hypothesis",
+      "surfaceId": "surf-users-search",
+      "param": "q",
+      "origin": {
+        "tool": "llm-sast",
+        "file": "src/Api/UserSearchController.cs",
+        "line": 87
+      },
+      "trace": [
+        "Request.Query[\"q\"] → SearchController.Search",
+        "→ BuildSearchQuery(q)",
+        "→ SqlCommand.ExecuteReader"
+      ],
+      "proofHints": {
+        "category": "sqli",
+        "oracle": "error-or-timing",
+        "identity": "authenticated-user"
+      },
+      "reportedByRunIds": ["run-llm-sast"],
+      "assessmentIds": ["assessment-sqli-001"],
+      "owasp": "A05",
+      "cwe": ["CWE-89"],
+      "cvss": 8.1,
+      "confidence": 0.72,
+      "proofPriority": 91,
+      "remediation": "Replace string interpolation with parameterized SqlCommand."
+    },
+    {
+      "id": "f-csrf-002",
+      "fingerprint": {
+        "algorithm": "vpx-fingerprint-1",
+        "value": "sha256:9b71047e141c8fcde9f14b6b17c80bde07514d7b576afbfb1e55e45485f97c72"
+      },
+      "kind": "csrf",
+      "severity": "medium",
+      "title": "Missing CSRF token on settings update",
+      "description": "POST /api/settings accepts state-changing requests without CSRF token validation. Combined with CORS wildcard, this enables cross-origin state modification.",
+      "status": "hypothesis",
+      "surfaceIds": ["surf-settings-post", "surf-users-search"],
+      "origin": {
+        "tool": "llm-sast",
+        "file": "src/Api/SettingsController.cs",
+        "line": 23
+      },
+      "proofHints": {
+        "category": "csrf",
+        "oracle": "data-change",
+        "identity": "authenticated-user"
+      },
+      "reportedByRunIds": ["run-llm-sast"],
+      "assessmentIds": ["assessment-csrf-002"],
+      "owasp": "A01",
+      "cwe": ["CWE-352"],
+      "confidence": 0.65,
+      "proofPriority": 70,
+      "relatedFindingIds": ["f-sqli-001"],
+      "tags": ["application", "authentication"]
+    }
+  ],
+  "assessments": [
+    {
+      "id": "assessment-sqli-001",
+      "findingId": "f-sqli-001",
+      "runId": "run-llm-sast",
+      "phase": "source-analysis",
+      "conclusion": "supports",
+      "confidence": 0.72,
+      "rationale": "Untrusted query input is interpolated into SQL."
+    },
+    {
+      "id": "assessment-csrf-002",
+      "findingId": "f-csrf-002",
+      "runId": "run-llm-sast",
+      "phase": "source-analysis",
+      "conclusion": "supports",
+      "confidence": 0.65,
+      "rationale": "State-changing POST has no CSRF token check."
+    }
+  ],
+  "proofs": [],
+  "artifacts": [],
+  "verdicts": []
+}

@@ -1,0 +1,102 @@
+{
+  "vpxVersion": "1.1",
+  "documentId": "d4e5f6a7-b8c9-0123-def4-567890abcdef",
+  "createdAt": "2026-05-23T16:00:00Z",
+  "updatedAt": "2026-05-23T16:05:00Z",
+  "profile": "full",
+  "target": {
+    "baseUrl": "https://demo.testfire.net",
+    "environment": "staging"
+  },
+  "runs": [
+    {
+      "id": "run-trowser-autoscan",
+      "stage": "proof",
+      "actor": { "type": "tool", "name": "trowser", "version": "1.1" },
+      "startedAt": "2026-05-23T16:00:00Z",
+      "completedAt": "2026-05-23T16:05:00Z"
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "surf-post-bank-login",
+      "route": "/bank/login.aspx",
+      "method": "POST",
+      "params": [
+        { "name": "uid", "in": "body", "type": "string" },
+        { "name": "passw", "in": "body", "type": "string" }
+      ],
+      "auth": { "required": false, "mechanism": "none" },
+      "discoveredFrom": "runtime",
+      "routeConfidence": "verified"
+    }
+  ],
+  "findings": [
+    {
+      "id": "f-runtime-sqli-001",
+      "fingerprint": {
+        "algorithm": "vpx-fingerprint-1",
+        "value": "sha256:ace48b8d5760e549b2c03af315e1e2e05a9907afe02c8748b8f4546dfbef3755"
+      },
+      "kind": "sqli",
+      "severity": "high",
+      "title": "SQL error when submitting malformed uid on login",
+      "status": "hypothesis",
+      "surfaceId": "surf-post-bank-login",
+      "param": "uid",
+      "origin": { "tool": "trowser-autoscan", "rule": "sqli-indicator" },
+      "investigationHints": {
+        "codeSearchQueries": ["login.aspx", "uid", "SqlException", "SELECT"],
+        "suggestedFiles": ["**/login*.aspx.cs", "**/bank/**"],
+        "notes": "Response references Microsoft SQL Server syntax error near uid value"
+      },
+      "proofHints": { "category": "sqli", "oracle": "error", "identity": "anonymous" },
+      "reportedByRunIds": ["run-trowser-autoscan"],
+      "proofPriority": 85
+    }
+  ],
+  "assessments": [],
+  "proofs": [
+    {
+      "id": "proof-runtime-001",
+      "findingId": "f-runtime-sqli-001",
+      "runId": "run-trowser-autoscan",
+      "executedAt": "2026-05-23T16:04:00Z",
+      "outcome": "exploited",
+      "tool": { "name": "trowser", "version": "1.1" },
+      "workflow": { "type": "verify-workflow" },
+      "injection": {
+        "surfaceId": "surf-post-bank-login",
+        "param": "uid",
+        "payload": "admin' OR '1'='1'--"
+      },
+      "identity": { "name": "anonymous", "mechanism": "none" },
+      "oracle": {
+        "type": "error",
+        "observed": true,
+        "actualSignal": "HTTP 500; body contains 'Unclosed quotation mark after the character string'"
+      },
+      "evidenceSummary": "POST /bank/login.aspx uid=admin' OR '1'='1'-- → 500 with SQL Server error in HTML body",
+      "elapsedMs": 2100
+    }
+  ],
+  "artifacts": [],
+  "verdicts": [
+    {
+      "id": "verdict-runtime-001",
+      "findingId": "f-runtime-sqli-001",
+      "runId": "run-trowser-autoscan",
+      "basedOnProofIds": ["proof-runtime-001"],
+      "updatedAt": "2026-05-23T16:05:00Z",
+      "exploitability": "confirmed",
+      "disposition": "fix-now",
+      "effectiveSeverity": "critical",
+      "confidence": 0.9,
+      "justification": "Unauthenticated login request triggers SQL Server syntax error with classic injection payload.",
+      "remediation": {
+        "strategy": "parameterized-query",
+        "fixPattern": "Use parameterized queries for uid/passw authentication lookup"
+      }
+    }
+  ]
+}

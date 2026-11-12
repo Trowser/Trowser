@@ -1,0 +1,608 @@
+<Window x:Class="Trowser.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Trowser"
+        xmlns:conv="clr-namespace:Trowser.Converters"
+        xmlns:chat="clr-namespace:Trowser.Chat"
+        xmlns:sl="clr-namespace:Trowser.SessionLog"
+        mc:Ignorable="d"
+        Title="Trowser" Height="768" Width="1200"
+        Icon="Resources/trowser.ico"
+        WindowState="Maximized"
+        StateChanged="Window_StateChanged"
+        KeyDown="Window_KeyDown"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="32"
+                      ResizeBorderThickness="6"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <Style x:Key="AddressBarSuggestionItem" TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" Padding="0">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#094771"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Button style for nav bar -->
+        <Style x:Key="NavButton" TargetType="Button">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="Background" Value="#2D2D30"/>
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="BorderBrush" Value="#3F3F46"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="4,2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#3E3E42"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#007ACC"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Nav bar button — orange highlight (Strange moment !?) -->
+        <Style x:Key="NavButtonHighlight" TargetType="Button">
+            <Setter Property="Width" Value="36"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="Background" Value="#f57e23"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#d96d1a"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="4,2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#ff9142"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#d96d1a"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Window caption buttons (minimize / maximize / close) -->
+        <Style x:Key="CaptionButton" TargetType="Button">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#3E3E42"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#4E4E52"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CloseCaptionButton" TargetType="Button">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#E81123"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#F1707A"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid x:Name="RootGrid" Background="#1E1E1E">
+        <Grid.RowDefinitions>
+            <!-- Title + tab strip (custom window chrome) -->
+            <RowDefinition Height="32"/>
+            <!-- Navigation bar -->
+            <RowDefinition Height="40"/>
+            <!-- Web content -->
+            <RowDefinition Height="*"/>
+            <!-- Script console splitter -->
+            <RowDefinition Height="Auto"/>
+            <!-- Script console -->
+            <RowDefinition Height="Auto"/>
+            <!-- Status bar -->
+            <RowDefinition Height="24"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title + Tab Strip (combined window chrome, Chrome/Firefox style) -->
+        <Border Grid.Row="0" Background="#252526" BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
+            <DockPanel LastChildFill="True">
+                <!-- Trowser icon (far left) -->
+                <Image DockPanel.Dock="Left" Source="Resources/trowser.ico"
+                       Width="24" Height="24" Margin="10,0,8,0"
+                       VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                <!-- Window controls (far right): minimize, maximize/restore, close -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                            VerticalAlignment="Stretch"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button x:Name="MinimizeButton" Style="{StaticResource CaptionButton}"
+                            Content="&#xE921;" Click="MinimizeButton_Click" ToolTip="Minimize"/>
+                    <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}"
+                            Content="&#xE922;" Click="MaximizeButton_Click" ToolTip="Maximize"/>
+                    <Button x:Name="CloseButton" Style="{StaticResource CloseCaptionButton}"
+                            Content="&#xE8BB;" Click="CloseButton_Click" ToolTip="Close"/>
+                </StackPanel>
+
+                <!-- New tab button (to the left of the window controls) -->
+                <Button x:Name="NewTabButton" Content="+" DockPanel.Dock="Right"
+                        Click="NewTabButton_Click" ToolTip="New Tab (Ctrl+T)"
+                        Width="30" Height="26" Margin="4,0,8,0"
+                        Background="#252526" Foreground="#CCCCCC"
+                        BorderBrush="#3F3F46" BorderThickness="1"
+                        FontSize="16" FontWeight="Light" Cursor="Hand"
+                        VerticalAlignment="Center"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="4" Padding="0">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#3E3E42"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter Property="Background" Value="#007ACC"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Tab items container (fills remaining space; empty area drags the window) -->
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                              VerticalAlignment="Stretch" Padding="4,0,0,0">
+                    <StackPanel x:Name="TabStrip" Orientation="Horizontal" VerticalAlignment="Stretch"/>
+                </ScrollViewer>
+            </DockPanel>
+        </Border>
+
+        <!-- Navigation Bar -->
+        <Border Grid.Row="1" Background="#2D2D30" BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
+            <DockPanel Margin="6,4">
+                <!-- Nav buttons -->
+                <Button x:Name="BackButton" Content="&#x2190;" Style="{StaticResource NavButton}"
+                        Click="BackButton_Click" DockPanel.Dock="Left" ToolTip="Back"/>
+                <Button x:Name="ForwardButton" Content="&#x2192;" Style="{StaticResource NavButton}"
+                        Click="ForwardButton_Click" DockPanel.Dock="Left" ToolTip="Forward"/>
+                <Button x:Name="RefreshButton" Content="&#x21BB;" Style="{StaticResource NavButton}"
+                        Click="RefreshButton_Click" DockPanel.Dock="Left" ToolTip="Refresh"/>
+                <Button x:Name="StopButton" Content="&#x2715;" Style="{StaticResource NavButton}"
+                        Click="StopButton_Click" DockPanel.Dock="Left" ToolTip="Stop"/>
+                <Button x:Name="HomeButton" Content="&#x2302;" Style="{StaticResource NavButton}"
+                        Click="HomeButton_Click" DockPanel.Dock="Left" ToolTip="Home — return to start page and clear captured traffic (Alt+Home)"/>
+
+                <!-- Record button -->
+                <Button x:Name="RecordButton" Content="&#x23FA;" Style="{StaticResource NavButton}"
+                        Click="RecordButton_Click" DockPanel.Dock="Left" ToolTip="Record user actions to a .csx script"
+                        Width="42" Foreground="#CCCCCC"/>
+
+                <!-- Play script button -->
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <Button x:Name="PlayButton" Content="&#x25B6;" Style="{StaticResource NavButton}"
+                            Click="PlayButton_Click" ToolTip="Run a .csx script or .trw / .json scenario file"
+                            Width="64" Background="#16825B" Foreground="White"/>
+                    <Button x:Name="PausePlayButton" Content="II" Style="{StaticResource NavButton}" Width="32"
+                            Click="PausePlay_Click" Margin="2,0,0,0" FontWeight="ExtraBold"
+                            Background="#CCA700" Foreground="#1E1E1E" Visibility="Collapsed"
+                            ToolTip="Pause script or scenario"/>
+                    <Button x:Name="StopPlayButton" Content="&#x25A0;" Style="{StaticResource NavButton}" Width="32"
+                            Click="StopPlay_Click" Margin="2,0,0,0"
+                            Background="#C72E2E" Foreground="White" Visibility="Collapsed"
+                            ToolTip="Stop script or scenario"/>
+                </StackPanel>
+
+                <!-- More menu (Script Console, LLM Settings, Settings) -->
+                <Button x:Name="MoreMenuButton" Content="&#x22EF;" Style="{StaticResource NavButton}"
+                        Click="MoreMenuButton_Click" DockPanel.Dock="Right" ToolTip="More options"
+                        Width="36" FontSize="18" FontWeight="Bold">
+                    <!-- ContextMenu built in code-behind (MoreMenuButton_Click) -->
+                </Button>
+
+                <!-- Tester note button -->
+                <Button x:Name="NoteButton" Content="&#x1F4DD;" Style="{StaticResource NavButton}"
+                        Click="NoteButton_Click" DockPanel.Dock="Right" ToolTip="Add a tester note (Ctrl+Shift+T)"
+                        Width="42" FontSize="16"/>
+
+                <!-- Chat panel toggle (badge when a decision is waiting on the human) -->
+                <Grid DockPanel.Dock="Right" Width="42" Margin="2,0">
+                    <Button x:Name="ChatToggleButton" Content="&#x1F4AC;" Style="{StaticResource NavButton}"
+                            Click="ChatToggleButton_Click" ToolTip="AI Assistant (Ctrl+L)"
+                            Width="42" Margin="0" FontSize="16"/>
+                    <Border x:Name="ChatAttentionBadge" Visibility="Collapsed"
+                            Background="#F5A623" CornerRadius="7"
+                            MinWidth="14" Height="14"
+                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Margin="0,-2,-2,0" Padding="3,0" IsHitTestVisible="False">
+                        <TextBlock x:Name="ChatAttentionBadgeCount" Text="0" Foreground="#1E1E1E"
+                                   FontSize="9" FontWeight="Bold" FontFamily="Segoe UI"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
+
+                <!-- Strange moment — open AI Assistant with an investigation prompt -->
+                <Button x:Name="StrangeMomentButton" Content="!?" Style="{StaticResource NavButtonHighlight}"
+                        Click="StrangeMomentButton_Click" DockPanel.Dock="Right"
+                        ToolTip="Interesting — ask the AI about this moment (Ctrl+Shift+L)"
+                        Width="42" FontSize="14" FontWeight="SemiBold"/>
+
+                <!-- HTTP Request Editor -->
+                <Button x:Name="RequestEditorButton" Content="&#x270F;" Style="{StaticResource NavButton}"
+                        Click="RequestEditorButton_Click" DockPanel.Dock="Right"
+                        ToolTip="Edit and send HTTP requests (Ctrl+Shift+R)"
+                        Width="42" FontSize="16"/>
+
+                <!-- Address bar with typed-URL completion (popup, no bookmark chrome) -->
+                <Grid Margin="6,0">
+                    <Border x:Name="AddressBarHost" CornerRadius="4" Background="#1E1E1E"
+                            BorderBrush="#3F3F46" BorderThickness="1">
+                        <TextBox x:Name="AddressBar"
+                                 Background="Transparent"
+                                 Foreground="#CCCCCC"
+                                 CaretBrush="#CCCCCC"
+                                 BorderThickness="0"
+                                 VerticalContentAlignment="Center"
+                                 Padding="8,0"
+                                 FontSize="13"
+                                 FontFamily="Segoe UI"
+                                 SpellCheck.IsEnabled="False"
+                                 ToolTip="Type a URL or search. Down arrow lists typed addresses; Shift+Delete removes one."
+                                 PreviewKeyDown="AddressBar_PreviewKeyDown"
+                                 PreviewTextInput="AddressBar_PreviewTextInput"
+                                 TextChanged="AddressBar_TextChanged"
+                                 LostKeyboardFocus="AddressBar_LostKeyboardFocus"
+                                 GotKeyboardFocus="AddressBar_GotKeyboardFocus"
+                                 Text=""/>
+                    </Border>
+                    <Popup x:Name="AddressBarPopup"
+                           Placement="Bottom"
+                           PlacementTarget="{Binding ElementName=AddressBarHost}"
+                           StaysOpen="True"
+                           AllowsTransparency="True"
+                           PopupAnimation="None">
+                        <Border Background="#1E1E1E" BorderBrush="#3F3F46" BorderThickness="1" MaxHeight="248">
+                            <ListBox x:Name="AddressBarSuggestions"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="#CCCCCC"
+                                     FontSize="13"
+                                     FontFamily="Segoe UI"
+                                     Padding="0"
+                                     Focusable="False"
+                                     IsTextSearchEnabled="False"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ItemContainerStyle="{StaticResource AddressBarSuggestionItem}"
+                                     MouseMove="AddressBarSuggestions_MouseMove"
+                                     MouseLeftButtonUp="AddressBarSuggestions_MouseLeftButtonUp"/>
+                        </Border>
+                    </Popup>
+                </Grid>
+            </DockPanel>
+        </Border>
+
+        <!-- Journal panel (left) + Tab Content Area + Chat Panel side by side -->
+        <Grid x:Name="ContentColumnsGrid" Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition x:Name="JournalColumnDef" Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition x:Name="ChatColumnDef" Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Journal panel (left-docked) -->
+            <sl:JournalPanel x:Name="JournalPanelControl" Grid.Column="0"
+                             Visibility="{Binding IsJournalPanelVisible, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+
+            <!-- Journal panel splitter -->
+            <GridSplitter x:Name="JournalSplitter" Grid.Column="1"
+                          Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                          Background="#3F3F46" ShowsPreview="True"
+                          Visibility="{Binding IsJournalPanelVisible, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+
+            <!-- Browser content -->
+            <Grid x:Name="TabContentArea" Grid.Column="2"/>
+
+            <!-- Chat panel splitter -->
+            <GridSplitter x:Name="ChatSplitter" Grid.Column="3"
+                          Width="4" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                          Background="#3F3F46" ShowsPreview="True"
+                          Visibility="{Binding IsChatPanelVisible, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+
+            <!-- AI Chat Panel -->
+            <chat:ChatPanel x:Name="ChatPanelControl" Grid.Column="4"
+                            Visibility="{Binding IsChatPanelVisible, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+        </Grid>
+
+        <!-- GridSplitter for script console -->
+        <GridSplitter x:Name="ScriptSplitter" Grid.Row="3"
+                      Height="4" HorizontalAlignment="Stretch"
+                      Background="#3F3F46" ShowsPreview="True"
+                      Visibility="{Binding IsScriptPanelVisible, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}"/>
+
+        <!-- Script Console Panel -->
+        <Border x:Name="ScriptPanel" Grid.Row="4"
+                Background="#1E1E1E" BorderBrush="#3F3F46" BorderThickness="0,1,0,0"
+                Visibility="{Binding IsScriptPanelVisible, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVis}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="28"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Script panel header -->
+                <Border Grid.Row="0" Background="#2D2D30" BorderBrush="#3F3F46" BorderThickness="0,0,0,1">
+                    <DockPanel Margin="8,0">
+                        <TextBlock Text="Script Console" Foreground="#CCCCCC" VerticalAlignment="Center"
+                                   FontSize="12" FontWeight="SemiBold"/>
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                            <Button x:Name="EndpointsButton" Content="Endpoints" Style="{StaticResource NavButton}" Width="80"
+                                    Click="EndpointsButton_Click" Margin="2,0" FontSize="11"
+                                    ToolTip="Select network-log endpoints and run security probes"/>
+                            <Button x:Name="QuickTestsButton" Content="Quicktests &#x25BE;" Style="{StaticResource NavButton}" Width="100"
+                                    Click="QuickTests_Click" Margin="2,0" FontSize="11"/>
+                            <Button Content="Help" Style="{StaticResource NavButton}" Width="48"
+                                    Click="ScriptHelp_Click" Margin="2,0" FontSize="11"/>
+                            <Button Content="Load" Style="{StaticResource NavButton}" Width="48"
+                                    Click="LoadScript_Click" Margin="2,0" FontSize="11"/>
+                            <Button Content="Save" Style="{StaticResource NavButton}" Width="48"
+                                    Click="SaveScript_Click" Margin="2,0" FontSize="11"/>
+                            <Button x:Name="WatchModeButton" Content="&#x1F441; Watch" Style="{StaticResource NavButton}" Width="72"
+                                    Click="WatchMode_Click" Margin="2,0" FontSize="11"
+                                    ToolTip="Run script on each page navigation"/>
+                            <Button Content="Clear All" Style="{StaticResource NavButton}" Width="64"
+                                    Click="ClearAll_Click" Margin="2,0" FontSize="11"
+                                    ToolTip="Clear all test state: console, network, cookies, mocks, intercepts, assertions, storage"/>
+                            <StackPanel Orientation="Horizontal" Margin="2,0">
+                                <Button x:Name="RunButton" Content="&#x25B6; Run" Style="{StaticResource NavButton}" Width="64"
+                                        Click="RunScript_Click" FontSize="11"
+                                        Background="#16825B" Foreground="White"
+                                        ToolTip="Run script (Ctrl+Enter)"/>
+                                <Button x:Name="PauseScriptButton" Content="II" Style="{StaticResource NavButton}" Width="32"
+                                        Click="PauseScript_Click" FontSize="11" FontWeight="ExtraBold" Margin="2,0,0,0"
+                                        Background="#CCA700" Foreground="#1E1E1E" Visibility="Collapsed"
+                                        ToolTip="Pause script"/>
+                                <Button x:Name="StopScriptButton" Content="&#x25A0;" Style="{StaticResource NavButton}" Width="32"
+                                        Click="StopScript_Click" FontSize="11" Margin="2,0,0,0"
+                                        Background="#C72E2E" Foreground="White" Visibility="Collapsed"
+                                        ToolTip="Stop script"/>
+                            </StackPanel>
+                            <Button x:Name="ScriptCloseButton" Content="&#x2715;" Style="{StaticResource NavButton}" Width="28"
+                                    Click="ScriptCloseButton_Click" Margin="6,0,0,0" FontSize="12"
+                                    ToolTip="Close script console (Ctrl+0)"/>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+
+                <!-- Script input (left) and output (right) side by side -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="200"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*" MinWidth="200"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Script input -->
+                    <TextBox x:Name="ScriptInput" Grid.Column="0"
+                             Background="#1E1E1E"
+                             Foreground="#D4D4D4"
+                             CaretBrush="#D4D4D4"
+                             BorderThickness="0"
+                             FontFamily="Cascadia Code, Consolas, Courier New"
+                             FontSize="13"
+                             AcceptsReturn="True"
+                             AcceptsTab="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             HorizontalScrollBarVisibility="Auto"
+                             Padding="8,4"
+                             PreviewKeyDown="ScriptInput_PreviewKeyDown"
+                             Text="// Here's where you can do things really fast with C# scripting.&#x0a;// Look at the Quicktest examples or the code you record in the browser. &#x0a;// You can also just try code like await Click(ByRole(&quot;button&quot;, &quot;Log in&quot;));&#x0a;// Enrich your scripts with test data variation, loops, asserts etc.&#x0a;// Read the Help for guidance to easy commands like:&#x0a;// await PrintAccessibilityReport(&quot;AA&quot;);&#x0a;// This one can help you with your serendipity and is recommended in Watch mode:&#x0a;&#x0a;await SurpriseMe();"/>
+
+                    <!-- Vertical splitter -->
+                    <GridSplitter Grid.Column="1" Width="4"
+                                  HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                                  Background="#3F3F46" ShowsPreview="True"/>
+
+                    <!-- Script output -->
+                    <Border Grid.Column="2" BorderBrush="#3F3F46" BorderThickness="1,0,0,0">
+                        <RichTextBox x:Name="ScriptOutput"
+                                     Background="#0C0C0C"
+                                     Foreground="#6A9955"
+                                     BorderThickness="0"
+                                     FontFamily="Cascadia Code, Consolas, Courier New"
+                                     FontSize="12"
+                                     IsReadOnly="True"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Padding="8,4"
+                                     IsDocumentEnabled="True">
+                            <RichTextBox.Document>
+                                <FlowDocument PageWidth="5000"/>
+                            </RichTextBox.Document>
+                        </RichTextBox>
+                    </Border>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- Status Bar -->
+        <Border x:Name="StatusBarBorder" Grid.Row="5" Background="#007ACC">
+            <DockPanel Margin="8,0">
+                <TextBlock x:Name="StatusText" Text="Ready" Foreground="White"
+                           VerticalAlignment="Center" FontSize="11" FontFamily="Segoe UI"/>
+
+                <!-- Message history icon (center area) -->
+                <Border DockPanel.Dock="Right" HorizontalAlignment="Right"
+                        Margin="0,0,12,0" Cursor="Hand" Background="Transparent"
+                        CornerRadius="2" Padding="6,1"
+                        MouseLeftButtonDown="MessageIcon_Click"
+                        ToolTip="Browse received messages">
+                    <Grid>
+                        <TextBlock x:Name="MessageIconText" Text="✉" Foreground="#888888"
+                                   VerticalAlignment="Center" FontSize="13" FontFamily="Segoe UI Symbol"/>
+                        <!-- Unread badge -->
+                        <Border x:Name="MessageBadge" Visibility="Collapsed"
+                                Background="#F44747" CornerRadius="6"
+                                MinWidth="14" Height="14"
+                                HorizontalAlignment="Right" VerticalAlignment="Top"
+                                Margin="0,-4,-6,0" Padding="3,0">
+                            <TextBlock x:Name="MessageBadgeCount" Text="0" Foreground="White"
+                                       FontSize="9" FontWeight="Bold" FontFamily="Segoe UI"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Right-aligned items: API toggle, Scope -->
+
+                <!-- API server toggle (clickable) -->
+                <Border DockPanel.Dock="Right" HorizontalAlignment="Right"
+                        Margin="0,0,12,0" Cursor="Hand" Background="Transparent"
+                        CornerRadius="2" Padding="6,2"
+                        MouseLeftButtonDown="ApiStatusToggle_Click"
+                        ToolTip="Click to toggle the REST API on/off">
+                    <TextBlock x:Name="ApiStatusText" Text="API: off" Foreground="#888888"
+                               VerticalAlignment="Center" FontSize="11" FontFamily="Segoe UI"/>
+                </Border>
+
+                <!-- Session log status (clickable to open settings) -->
+                <Border DockPanel.Dock="Right" HorizontalAlignment="Right"
+                        Margin="0,0,4,0" Cursor="Hand" Background="Transparent"
+                        CornerRadius="2" Padding="6,2"
+                        MouseLeftButtonDown="LogStatus_Click"
+                        ToolTip="Click to open session log settings">
+                    <TextBlock x:Name="LogStatusText" Text="Log:Off" Foreground="#EF9552"
+                               VerticalAlignment="Center" FontSize="11" FontFamily="Segoe UI"/>
+                </Border>
+
+                <!-- Network intercept status (clickable to manage) -->
+                <Border DockPanel.Dock="Right" HorizontalAlignment="Right"
+                        Margin="0,0,4,0" Cursor="Hand" Background="Transparent"
+                        CornerRadius="2" Padding="6,2"
+                        MouseLeftButtonDown="InterceptStatus_Click"
+                        ToolTip="Click to manage network mocks and breakpoints">
+                    <TextBlock x:Name="InterceptStatusText" Text="Net: idle" Foreground="#888888"
+                               VerticalAlignment="Center" FontSize="11" FontFamily="Segoe UI"/>
+                </Border>
+
+                <!-- Shadow status (clickable to view findings) -->
+                <Border DockPanel.Dock="Right" HorizontalAlignment="Right"
+                        Margin="0,0,4,0" Cursor="Hand" Background="Transparent"
+                        CornerRadius="2" Padding="6,2"
+                        MouseLeftButtonDown="ShadowStatus_Click"
+                        ToolTip="Shadow — click to view findings">
+                    <TextBlock x:Name="ShadowStatusText" Text="Shadow: off" Foreground="#888888"
+                               VerticalAlignment="Center" FontSize="11" FontFamily="Segoe UI"/>
+                </Border>
+
+                <!-- Navigation scope (clickable to edit) -->
+                <Border DockPanel.Dock="Right" HorizontalAlignment="Right"
+                        Margin="0,0,4,0" Cursor="Hand" Background="Transparent"
+                        CornerRadius="2" Padding="6,2"
+                        MouseLeftButtonDown="ScopeStatus_Click"
+                        ToolTip="Click to edit navigation scope and API port">
+                    <TextBlock x:Name="ScopeStatusText" Text="Scope: https://*.example.com" Foreground="#CCDDFF"
+                               VerticalAlignment="Center" FontSize="11" FontFamily="Segoe UI"
+                               MaxWidth="350" TextTrimming="CharacterEllipsis"/>
+                </Border>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

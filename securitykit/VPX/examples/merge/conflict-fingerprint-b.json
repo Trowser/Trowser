@@ -1,0 +1,25 @@
+{
+  "vpxVersion": "1.1",
+  "documentId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+  "runs": [
+    { "id": "run-b", "stage": "source-analysis", "actor": { "type": "llm", "name": "model-b", "version": "1" } }
+  ],
+  "surfaces": [],
+  "findings": [
+    {
+      "id": "f-same",
+      "fingerprint": {
+        "algorithm": "vpx-fingerprint-1",
+        "value": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "kind": "xss",
+      "severity": "medium",
+      "title": "Search XSS — same id, different fingerprint",
+      "status": "hypothesis"
+    }
+  ],
+  "assessments": [],
+  "proofs": [],
+  "artifacts": [],
+  "verdicts": []
+}

@@ -23,7 +23,7 @@ TOOLS AT TESTER'S DISPOSAL (Trowser features):
 - Quicktest "BiggestFiles" - to see if unreasonably large files are loaded
 - Quicktest "ConsoleAndNetworkErrors" - to see error history
 - Quicktest "PerformanceCheck" - use web-vitals for lightweight performance check
-- Quicktest "SecurityScan" - lightweight security scan including retire.js for JavaScript vulnerabilities
+- Quicktest "1 Security Scan" (REST POST /api/security) — passive overview; Retire.js only: POST /api/security/js-libraries or quicktest "2 JavaScript Vulnerabilities"
 
 WORKFLOW:
 1. When a note says COACH or contains a question, respond with testing advice via api/message.

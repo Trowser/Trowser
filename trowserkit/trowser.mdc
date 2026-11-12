@@ -1,0 +1,60 @@
+---
+description: How to test web applications with Trowser over MCP, REST, or C# scripts
+alwaysApply: true
+---
+
+# Trowser
+
+Trowser is a Windows WebView2 browser with built-in test automation: accessibility, performance, robustness, and security scanning, in a real browser that a person can watch and use at the same time (not headless fetch-only).
+
+## Three ways in
+
+1. **MCP** — `POST http://localhost:6923/mcp` (JSON-RPC tools; preferred for IDE agents). The default pack is Core; add `?mode=security` for specialist security tools (`?mode=full` is an alias).
+2. **REST** — `http://localhost:6923`, with `Authorization: Bearer <api-key>` on every call except `GET /api/ping`.
+3. **C# scripts** — `Trowser.exe --run test.csx` (Roslyn).
+
+The API must be enabled in Trowser's status bar, or start it headless with `Trowser.exe --serve --api --api-port 6923 --api-key <key>`.
+
+## Documentation (in the `trowserkit` folder)
+
+- `trowser-api-index.md` — every REST endpoint and MCP tool, one line each (generated)
+- `trowser-api-core.md` — the everyday REST endpoints with their key parameters (start here)
+- `trowser-api-reference.md` — parameters, examples, safety modes
+- `scripting-reference.md` — C# scripting and Quicktests
+- `SecurityTestingWithTrowser.md` — security testing method: playbooks, triage, proof
+- `QuicktestsForSecurityTesting.md` — Security Quicktests menu names, REST parity, Trowser Twelve
+
+## Core workflow
+
+1. **`browser_snapshot`** / `GET /api/state` — page URL, title, interactive elements with **ref** numbers, errors
+2. Act with **ref** (preferred), semantic locators, or CSS — `browser_click`, `POST /api/click`, etc.
+3. Re-snapshot after meaningful actions; refs go stale when the DOM changes
+4. Check **`browser_console`** / **`browser_network`** for hidden failures
+5. Use **`safetyMode: "active"`** before probes that change server state
+6. **Security playbooks:** browse the key flows first, then run with **`crawl: false`** (the default); set **`scope.targetUrl`** for focused injection probes
+
+## Safety
+
+- **`--safe`** blocks scripting, fetch, fuzz, mocks, and most active security probes
+- Security scans take an explicit **`safetyMode`**: `passive` → `safe` (default) → `active` → `aggressive`
+- Prefer **`browser_clear_session`** over **`browser_clear_all`** when you want to keep login cookies
+- Only test systems you are authorized to test
+
+## REST from PowerShell
+
+Use `Invoke-RestMethod` (`irm`), not bare `curl` (PowerShell aliases it to `Invoke-WebRequest`):
+
+```powershell
+$h = @{ Authorization = "Bearer <api-key>" }
+irm http://localhost:6923/api/state -Headers $h
+irm http://localhost:6923/api/click -Method Post -Headers $h -ContentType "application/json" -Body '{"ref": 5}'
+```
+
+Responses are `{"success": true, "data": {...}}` or `{"success": false, "error": "..."}`.
+
+## Product notes
+
+- **`browser_type` clears the field first** — append with `browser_press_key` per character if needed. Content goes in `value` or `text` (aliases); the visible-text locator is `byText` (not `text`)
+- MCP tool JSON is compact. `browser_take_screenshot` is in `?mode=security` (not `?mode=core`). Default `purpose: "journal"` attaches the file to the journal without image bytes; `purpose: "inspect"` returns the image (prefer jpeg) when you must look
+- **`browser_fetch`** / `POST /api/fetch` for structured HTTP evidence (prefer over raw `execute-js` fetch)
+- Multi-instance testing: `--session` + `--api-port` + peer APIs for IDOR/BOLA across identities

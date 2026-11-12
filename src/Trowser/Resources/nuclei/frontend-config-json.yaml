@@ -1,0 +1,41 @@
+id: frontend-config-json
+
+info:
+  name: Front-end JSON Config Exposure
+  author: trowser
+  severity: low
+  description: Detects JSON config files sometimes shipped with SPAs (API base URLs, feature flags, client IDs).
+  tags: exposure,config,api,javascript,info-leak
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/config.json"
+      - "{{RootURL}}/assets/config.json"
+      - "{{RootURL}}/appConfig.json"
+      - "{{RootURL}}/appsettings.json"
+      - "{{RootURL}}/static/config.json"
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+        part: body
+        negative: true
+      - type: word
+        words:
+          - '"apiUrl"'
+          - '"apiURL"'
+          - '"baseUrl"'
+          - '"baseURL"'
+          - '"clientId"'
+          - '"auth"'
+          - '"environment"'
+          - '"production"'
+        condition: or
+        part: body

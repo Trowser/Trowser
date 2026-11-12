@@ -1,0 +1,46 @@
+id: javascript-env-exposure
+
+info:
+  name: JavaScript Environment Config Exposure
+  author: trowser
+  severity: low
+  description: Detects common front-end env/config JS bundles that may embed API keys or auth settings.
+  tags: exposure,config,javascript,info-leak
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/env.js"
+      - "{{RootURL}}/env-config.js"
+      - "{{RootURL}}/env.development.js"
+      - "{{RootURL}}/env.production.js"
+      - "{{RootURL}}/__ENV.js"
+      - "{{RootURL}}/assets/env.js"
+      - "{{RootURL}}/assets/env-config.js"
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "Bootstrap"
+          - "jQuery"
+          - "CSS TRANSITION SUPPORT"
+        part: body
+        negative: true
+      - type: word
+        words:
+          - "module.exports"
+          - "window.__ENV"
+          - "NODE_ENV"
+          - "API_KEY"
+          - "apiKey"
+          - "AUTH0"
+          - "clientId"
+          - "REACT_APP_"
+          - "NG_APP_"
+          - "VITE_"
+        condition: or
+        part: body

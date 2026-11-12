@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Script Console Help — Trowser</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    line-height: 1.6;
+    padding: 40px 48px 80px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 28px; font-weight: 700; color: #e0e0e0; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 40px; }
+  h2 {
+    font-size: 11px; font-weight: 600; color: #f57e23;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    margin: 36px 0 12px; padding-bottom: 6px;
+    border-bottom: 1px solid #333;
+  }
+  h3 { font-size: 14px; font-weight: 600; color: #dcdcaa; margin: 20px 0 8px; }
+  p { font-size: 13px; color: #999; margin-bottom: 10px; }
+  p strong { color: #d4d4d4; font-weight: 500; }
+
+  code {
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-size: 12px; color: #f57e23;
+    background: #2d2d30; padding: 1px 5px; border-radius: 3px;
+  }
+  pre {
+    background: #0c0c0c; border: 1px solid #333; border-radius: 6px;
+    padding: 14px 16px; margin: 10px 0 16px; overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; color: #d4d4d4; font-size: 12.5px; line-height: 1.5; }
+  .kw { color: #569cd6; }
+  .str { color: #f57e23; }
+  .fn { color: #dcdcaa; }
+  .cm { color: #6a9955; }
+  .num { color: #b5cea8; }
+  .type { color: #4ec9b0; }
+
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 13px; }
+  th { text-align: left; font-weight: 600; color: #ccc; padding: 6px 10px; border-bottom: 2px solid #444; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 5px 10px; border-bottom: 1px solid #2d2d30; color: #bbb; }
+  td code { font-size: 11.5px; }
+  tr:hover td { background: #252526; }
+
+  kbd {
+    display: inline-block; min-width: 24px; text-align: center;
+    font-family: 'Cascadia Code', Consolas, monospace; font-size: 11px;
+    color: #ddd; background: #333; border: 1px solid #555;
+    border-radius: 4px; padding: 1px 6px; margin: 0 1px;
+  }
+
+  .shortcut-table td:first-child { white-space: nowrap; width: 200px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; margin: 10px 0 16px; }
+  .grid-item { font-size: 13px; color: #bbb; }
+  .grid-item code { font-size: 11.5px; }
+
+  .tip {
+    background: #1a2a1a; border-left: 3px solid #4ec9b0;
+    padding: 10px 14px; margin: 12px 0; border-radius: 0 4px 4px 0;
+    font-size: 12.5px; color: #aaa;
+  }
+  .tip strong { color: #4ec9b0; }
+
+  .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
+</style>
+</head>
+<body>
+
+<h1>Script Console Help</h1>
+<p class="subtitle">C# scripting reference for Trowser — write and run test scripts interactively or from the command line. For full reference, see trowserkit/scripting-reference.md.</p>
+
+<h2>Keyboard Shortcuts</h2>
+<table class="shortcut-table">
+  <tr><td><kbd>Ctrl</kbd> + <kbd>Enter</kbd></td><td>Run/Stop current script</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>K</kbd></td><td>Toggle line comments (<code>//</code>) on selected lines</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>0</kbd></td><td>Show/hide the script console panel</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>L</kbd></td><td>Show/hide AI Assistant</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>J</kbd></td><td>Show/hide Journal Panel</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>D</kbd></td><td>Copy random test data to clipboard (see <code>GetRandomTestData</code>)</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>I</kbd></td><td>Get a testing inspiration message</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>B</kbd></td><td>Toggle screen curtain to simulate blind user</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd></td><td>Write a Tester's note</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></td><td>Take a screenshot (if Session Log is active)</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>L</kbd></td><td>Send interesting moment to AI Assistant</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>T</kbd></td><td>Open a new browser tab</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>W</kbd></td><td>Close current browser tab</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>Tab</kbd></td><td>Switch to next tab</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Tab</kbd></td><td>Switch to previous tab</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>1</kbd>...<kbd>9</kbd></td><td>Switch to tab by number</td></tr>
+  <tr><td><kbd>Alt</kbd> + <kbd>Home</kbd></td><td>Return to welcome page, clear captured traffic</td></tr>
+  <tr><td><kbd>F12</kbd></td><td>Developer tools</td></tr>
+</table>
+
+<h2>Running &amp; Stopping Scripts</h2>
+<p>Click <strong>▶ Run</strong> to start a script. While running, you can stop the script or pause it if you need to check or change something before resuming. The script output shows <code>[Cancelled]</code> and reports elapsed time.</p>
+<p>Cancellation is cooperative: the script stops at the next async checkpoint (<code>Sleep</code>, <code>Navigate</code>, <code>Click</code>, <code>WaitFor*</code>, etc.). Pure CPU loops without async calls cannot be interrupted.</p>
+
+<h2>Watch Mode</h2>
+<p>Click <strong>👁 Watch</strong> in the Script Console toolbar to activate watch mode (button turns <span style="color:#EF9552;font-weight:600;">orange</span>). While active, the current script runs automatically on <strong>every page navigation</strong> — perfect for continuous smoke testing as you browse. Quicktest SurpriseMe can have serendipitous effects.</p>
+<p>Click <strong>👁 Watch</strong> again to deactivate.</p>
+<p>Scripts can also call <code>await SurpriseMe()</code> directly to run a random eligible quicktest — handy in watch mode for varied checks on each navigation.</p>
+
+<h3>Page-Scoped APIs</h3>
+<p>In watch mode, full-history APIs like <code>GetConsoleErrors()</code> accumulate across pages — an error from page 1 would fail on every subsequent page. Use the <strong>page-scoped</strong> variants instead, which only check errors from the current navigation:</p>
+
+<pre><code><span class="cm">// Watch mode script — checks current page only</span>
+<span class="kw">await</span> <span class="fn">WaitForIdle</span>(<span class="num">300</span>, <span class="num">5000</span>);
+<span class="type">Assert</span>.<span class="fn">Equal</span>(<span class="num">0</span>, <span class="fn">GetPageConsoleErrors</span>().Count, <span class="str">"No JS errors on this page"</span>);
+<span class="type">Assert</span>.<span class="fn">Equal</span>(<span class="num">0</span>, Network.<span class="fn">FindPageErrors</span>().Count, <span class="str">"No HTTP errors on this page"</span>);</code></pre>
+
+<table>
+  <tr><th>Full Session</th><th>Current Page Only</th><th>Description</th></tr>
+  <tr><td><code>GetConsoleErrors()</code></td><td><code>GetPageConsoleErrors()</code></td><td>JS console errors</td></tr>
+  <tr><td><code>GetConsoleLog()</code></td><td><code>GetPageConsoleLog()</code></td><td>All console messages</td></tr>
+  <tr><td><code>Network.FindErrors()</code></td><td><code>Network.FindPageErrors()</code></td><td>HTTP 4xx/5xx errors</td></tr>
+  <tr><td><code>GetNetworkLog()</code></td><td><code>GetPageNetworkLog()</code></td><td>All network requests</td></tr>
+  <tr><td><code>Console.Entries</code></td><td><code>Console.PageEntries</code></td><td>Console entry list</td></tr>
+  <tr><td><code>Network.Entries</code></td><td><code>Network.PageEntries</code></td><td>Network entry list</td></tr>
+</table>
+
+<div class="tip"><strong>Tip:</strong> Use full-session APIs in a final "end of session" script to catch any error across all pages visited. Use page-scoped APIs in watch mode scripts for per-page checks.</div>
+
+<h2>Quicktests</h2>
+<p>The <strong>Quicktests ▾</strong> dropdown in the toolbar provides ready-made test scripts, grouped by folder. Select one to load it into the editor, then run it.</p>
+
+<table>
+  <tr><th>Name</th><th>Description</th></tr>
+  <tr><td><code>SiteHealth</code></td><td>Comprehensive health check: all audits on the current page</td></tr>
+  <tr><td><code>SurpriseMe</code></td><td>Run a random non-destructive quicktest (great with Watch mode)</td></tr>
+</table>
+
+<h3>Capability</h3>
+<table>
+  <tr><th>Name</th><th>Description</th></tr>
+  <tr><td><code>BackAndForward</code></td><td>Navigate Back 10 times, Forward 10 times, verify the page is unchanged</td></tr>
+  <tr><td><code>LinkCheck</code></td><td>Check all links on the page for broken URLs</td></tr>
+  <tr><td><code>RequiredForbiddenStrings</code></td><td>Assert required strings appear and forbidden strings do not</td></tr>
+</table>
+
+<h3>Compliance</h3>
+<table>
+  <tr><th>Name</th><th>Description</th></tr>
+  <tr><td><code>BrowserCompatibilityScan</code></td><td>Scan JavaScript for features that may break older browsers</td></tr>
+  <tr><td><code>HtmlValidation</code></td><td>Check markup for errors, accessibility issues, and deprecated elements</td></tr>
+  <tr><td><code>ThirdPartyAudit</code></td><td>Third-party resource inventory (domains, sizes, SRI coverage)</td></tr>
+</table>
+
+<h3>Performance</h3>
+<table>
+  <tr><th>Name</th><th>Description</th></tr>
+  <tr><td><code>BiggestFiles</code></td><td>List the 10 largest files from captured network traffic</td></tr>
+  <tr><td><code>PerformanceCheck</code></td><td>Web Vitals performance check on the current page</td></tr>
+  <tr><td><code>ResourceLeakProbe</code></td><td>Compare memory and DOM resources before and after user actions</td></tr>
+</table>
+
+<h3>Reliability</h3>
+<table>
+  <tr><th>Name</th><th>Description</th></tr>
+  <tr><td><code>ConsoleAndNetworkErrors</code></td><td>Report console errors/warnings and failed HTTP requests from the session</td></tr>
+  <tr><td><code>FaultInjection</code></td><td>Test how the page handles API failures (500, 404, invalid JSON, tampering)</td></tr>
+  <tr><td><code>MonkeyTest</code></td><td>Gremlins.js monkey test plus smart random interaction stress test</td></tr>
+  <tr><td><code>RapidFire</code></td><td>Many fast clicks on the right-clicked element (via Run Script — uses <code>RunScriptTarget</code> / <code>This</code>)</td></tr>
+  <tr><td><code>RequestFuzzer</code></td><td>Fuzz query params, JSON bodies, and headers on endpoints from the network log</td></tr>
+  <tr><td><code>TotalRefresh</code></td><td>Refresh the page 100 times and check for errors</td></tr>
+</table>
+
+<h3>Security</h3>
+<table>
+  <tr><th>Name</th><th>Description</th></tr>
+  <tr><td><code>1 AttackSurfaceFromNetwork</code></td><td>Attack surface map from captured network traffic</td></tr>
+  <tr><td><code>2 JavaScriptVulnerabilities</code></td><td>Retire.js scan for known vulnerable JavaScript libraries</td></tr>
+  <tr><td><code>2 JsAudit</code></td><td>Static scan of external JS for credentials, internal URLs, debug markers</td></tr>
+  <tr><td><code>2 JwtAnalysis</code></td><td>Decode JWTs from cookies/storage and flag hygiene issues</td></tr>
+  <tr><td><code>2 OidcFromNetwork</code></td><td>Analyze OIDC provider from captured IdP traffic</td></tr>
+  <tr><td><code>2 SecretsHarvest</code></td><td>Unified secret scan across JS, cookies, storage, network, and page text</td></tr>
+  <tr><td><code>2 SecurityScan</code></td><td>Full security scan: JS CVEs, headers, CORS, XSS, mixed content, endpoints</td></tr>
+  <tr><td><code>2 ThirdPartySecurity</code></td><td>Third-party resource security: domains, sizes, SRI coverage</td></tr>
+  <tr><td><code>3 AutoScan</code></td><td>Discover endpoints from traffic and run targeted injection scanners</td></tr>
+  <tr><td><code>3 FirewallTest</code></td><td>Verify CSP, SRI, and sandbox defenses actually block bypass attempts</td></tr>
+  <tr><td><code>3 GraphqlAnalysis</code></td><td>GraphQL introspection, batching, depth, and limit probes</td></tr>
+  <tr><td><code>4 CstiScan</code></td><td>Client-side template injection probe (AngularJS, Vue, Handlebars)</td></tr>
+  <tr><td><code>4 SamlFromNetwork</code></td><td>Decode SAMLRequest/Response from the network log</td></tr>
+  <tr><td><code>5 HttpSmuggling</code></td><td>HTTP request smuggling timing probes against the page origin</td></tr>
+  <tr><td><code>6 WafBypass</code></td><td>Detect WAF blocks and test encoding/header/path bypass transforms</td></tr>
+  <tr><td><code>BolaAcrossSessions</code></td><td>Compare API responses across peer sessions for BOLA/authorization flaws</td></tr>
+</table>
+
+<h3>Trowser Twelve</h3>
+<table>
+  <tr><th>Name</th><th>Description</th></tr>
+  <tr><td><code>A00 Full Site Security</code></td><td>Run all Trowser Twelve playbooks and correlate attack chains</td></tr>
+  <tr><td><code>A00SpecificScan</code></td><td>Active scan on one URL+method from the network log</td></tr>
+  <tr><td><code>A01 Access Control</code></td><td>IDOR, CSRF, mass assignment, BFLA, privilege escalation</td></tr>
+  <tr><td><code>A02 Misconfiguration</code></td><td>Headers, cookies, CORS, endpoints, clickjacking, subdomain takeover</td></tr>
+  <tr><td><code>A03 Supply Chain</code></td><td>Includes A08. JS CVEs, SRI inventory, manifest/OSV, CI/CD exposure, file upload</td></tr>
+  <tr><td><code>A04 Crypto and Secrets</code></td><td>TLS/HSTS, secrets harvest, token entropy, cookie audit</td></tr>
+  <tr><td><code>A05 Injection</code></td><td>SQLi, NoSQL, XSS, SSTI, prototype pollution, and related injection sinks</td></tr>
+  <tr><td><code>A06 Insecure Design</code></td><td>Workflow skip, race conditions, business-logic tampering</td></tr>
+  <tr><td><code>A07 Authentication</code></td><td>JWT/OAuth, session fixation, password reset, account enumeration</td></tr>
+  <tr><td><code>A09 Operational Security</code></td><td>Includes A10. Error disclosure, fail-open behavior, log-leak probes</td></tr>
+  <tr><td><code>A11 SSRF</code></td><td>Internal IP, cloud metadata, webhook, and URL-parameter SSRF probes</td></tr>
+  <tr><td><code>A12 Availability</code></td><td>Rate limits, body-size limits, ReDoS, GraphQL cost, load testing</td></tr>
+  <tr><td><code>A13 AI and LLM</code></td><td>LLM endpoint discovery, prompt injection, output sink trace</td></tr>
+  <tr><td><code>A14 Other</code></td><td>Cache poisoning, HTTP smuggling, host header, open redirect, WebSocket injection</td></tr>
+</table>
+
+<h3>SmokePass</h3>
+<table>
+  <tr><th>Name</th><th>Description</th></tr>
+  <tr><td><code>ChecksAfterSession</code></td><td>Basic smoke check: structure, headings, images, console and network errors</td></tr>
+  <tr><td><code>TrowserSmokePass</code></td><td>Scripting smoke pass (navigation, locators, interaction, audits) on an offline mock page</td></tr>
+</table>
+
+<h3>Usability</h3>
+<table>
+  <tr><th>Name</th><th>Description</th></tr>
+  <tr><td><code>GUIAudit</code></td><td>GUI visual consistency + image optimization</td></tr>
+  <tr><td><code>GetAllPageStrings</code></td><td>Dump every text node on the page (including hidden) for proof-reading</td></tr>
+  <tr><td><code>ResponsiveAccessibility</code></td><td>WCAG AA check across all viewport presets</td></tr>
+  <tr><td><code>ScreenReaderTexts</code></td><td>List alt text, ARIA labels, titles, and SVG descriptions</td></tr>
+  <tr><td><code>TabOrderCheck</code></td><td>Walk focus order with Tab/Shift+Tab; detects modal scope leaks</td></tr>
+  <tr><td><code>ToggleScreenCurtain</code></td><td>Toggle blind-testing screen curtain (same as Ctrl+B)</td></tr>
+</table>
+<div class="tip"><strong>Tip:</strong> If you know the developer, new quicktests can be added by placing <code>.csx</code> files in the right folder, and rebuilding Trowser.</div>
+
+<h2>Recording &amp; Playback</h2>
+<p>Trowser can <strong>record your interactions</strong> and generate a <code>.csx</code> script automatically — useful for creating regression tests and providing LLMs with concrete interaction sequences.</p>
+
+<h3>Recording</h3>
+<p>Click <strong>● Record</strong> in the toolbar (turns red while recording). Interact with the page normally — click buttons, type in forms, select dropdowns, navigate. Click <strong>● Record</strong> again to stop. The generated script appears in the Script Console.</p>
+<p>The recorder uses <strong>semantic locators</strong> (<code>ByRole</code>, <code>ByLabel</code>, <code>ByText</code>) whenever possible. Dynamic IDs are automatically avoided. Dropdown menus are detected and recorded as <code>Hover</code> + <code>Click</code> pairs.</p>
+
+<h3>Right-Click Context Menu</h3>
+<p>Right-clicking any element always offers <strong>Run Script</strong>: the clicked element becomes the script target (<code>This</code> and the <code>RunScriptTarget</code> shorthand <code>…</code>), and the Script Console runs the script currently in the editor. Trowser resolves that target when the context menu opens — nothing is injected on every navigation.</p>
+<p>While recording or session logging, additional items appear:</p>
+<table>
+  <tr><th>Menu Item</th><th>Effect</th></tr>
+  <tr><td><strong>Run Script</strong></td><td>Sets <code>This</code> to the element’s CSS selector and runs the console script (see <code>RapidFire</code> quicktest).</td></tr>
+  <tr><td><strong>Assert text</strong></td><td><code>await AssertPageContains("visible text");</code> in the recording</td></tr>
+  <tr><td><strong>Element of interest</strong></td><td><code>// Element of interest: button "Submit"</code> comment in the recording</td></tr>
+</table>
+<p><strong>Assert text</strong> adds a verification step — assert that the element's text is visible on the page.</p>
+<p><strong>Element of interest</strong> adds a comment marking this element as noteworthy for LLM-driven testing.</p>
+
+<h3>Playing Scripts</h3>
+<p>Click <strong>▶ Play</strong> to open a file picker, select a <code>.csx</code> file, and execute it immediately — no need to paste the script into the editor first.</p>
+
+<h2>Script Basics</h2>
+<p>Scripts are <strong>C#</strong> with full <code>async/await</code> support. All automation methods are available as top-level calls — no object prefix needed. Common namespaces are auto-imported.</p>
+
+<pre><code><span class="cm">// Navigate and inspect</span>
+<span class="kw">await</span> <span class="fn">Navigate</span>(<span class="str">"https://example.com"</span>);
+<span class="kw">var</span> title = <span class="kw">await</span> <span class="fn">GetTitle</span>();
+<span class="fn">Log</span>(<span class="str">$"Title: </span>{title}<span class="str">"</span>);
+
+<span class="cm">// Interact with elements</span>
+<span class="kw">await</span> <span class="fn">Type</span>(<span class="str">"#email"</span>, <span class="str">"test@example.com"</span>);
+<span class="kw">await</span> <span class="fn">Click</span>(<span class="str">"#submit"</span>);
+<span class="kw">await</span> <span class="fn">WaitForNavigation</span>();
+
+<span class="cm">// Assert results (non-throwing, summary auto-printed)</span>
+<span class="type">Assert</span>.<span class="fn">Contains</span>(<span class="str">"success"</span>, <span class="kw">await</span> <span class="fn">GetCurrentUrl</span>(), <span class="str">"Navigated to success page"</span>);
+<span class="kw">await</span> <span class="fn">AssertPageContains</span>(<span class="str">"Thank you"</span>);</code></pre>
+
+<div class="tip"><strong>Tip:</strong> Assertions don't throw — the script always continues. A summary with pass/fail counts is printed at the end automatically.</div>
+
+<h3>Run Script Target</h3>
+<p>When you right-click an element and choose <strong>Run Script</strong>, that element's CSS selector is available as <code>This</code>. Use the shorthand <code>RunScriptTarget</code> (<code>…</code>) in any action method:</p>
+<pre><code><span class="cm">// Right-click a button, then run this script</span>
+<span class="kw">await</span> <span class="fn">Click</span>(<span class="type">RunScriptTarget</span>);
+<span class="cm">// equivalent to: await Click(This);</span></code></pre>
+
+<h2>Navigation</h2>
+<table>
+  <tr><th>Method</th><th>Description</th></tr>
+  <tr><td><code>Navigate(url)</code></td><td>Navigate and wait for page load</td></tr>
+  <tr><td><code>GoBack()</code></td><td>Navigate back in history</td></tr>
+  <tr><td><code>GoForward()</code></td><td>Navigate forward in history</td></tr>
+  <tr><td><code>GetCurrentUrl()</code></td><td>Current page URL</td></tr>
+  <tr><td><code>GetTitle()</code></td><td>Current page title</td></tr>
+  <tr><td><code>GetPageText()</code></td><td>All visible text on the page</td></tr>
+  <tr><td><code>GetAllPageText()</code></td><td>All text nodes including hidden/off-screen; one line per segment (shadow DOM)</td></tr>
+  <tr><td><code>GetScreenReaderTexts()</code></td><td>Alt, aria-label, aria-labelledby/describedby, title, SVG title/desc; one line each with <code>[kind]</code> prefix</td></tr>
+  <tr><td><code>GetPageSource()</code></td><td>Full HTML source</td></tr>
+</table>
+
+<h3>Finding Text on the Page</h3>
+<p>Search visible page text with context and a nearest CSS selector — useful for status messages, table cells, and other non-interactive content. Complements <code>AssertPageContains</code>.</p>
+<table>
+  <tr><th>Method</th><th>Description</th></tr>
+  <tr><td><code>FindText(query, ...)</code></td><td>Search page text; returns <code>matchCount</code> and <code>matches[]</code> with context, selector, and rect. Supports regex, scroll-to, and highlight.</td></tr>
+  <tr><td><code>ClearFindHighlights()</code></td><td>Remove highlights added by <code>FindText(..., highlight: true)</code></td></tr>
+</table>
+<pre><code><span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">FindText</span>(<span class="str">"Order confirmed"</span>);
+<span class="fn">Log</span>(<span class="str">$"Found </span>{result[<span class="str">"matchCount"</span>]}<span class="str"> matches"</span>);</code></pre>
+
+<h2>Element Interaction</h2>
+<p>All methods <strong>auto-wait</strong> for elements to be ready (visible + enabled, default 5s) and <strong>pierce shadow DOM</strong> automatically. For Web Components, use shadow-piercing selectors: <code>host >>> inner</code> (e.g. <code>my-widget >>> button</code>).</p>
+<table>
+  <tr><th>Method</th><th>Description</th></tr>
+  <tr><td><code>Click(selector)</code></td><td>Click an element. Auto-waits for navigation on links.</td></tr>
+  <tr><td><code>Type(selector, text, clearFirst?)</code></td><td>Clear field, then type text (<code>clearFirst: false</code> to append)</td></tr>
+  <tr><td><code>Select(selector, value)</code></td><td>Select dropdown option by value</td></tr>
+  <tr><td><code>SetFileInput(selector, paths)</code></td><td>Assign file(s) to a <code>&lt;input type="file"&gt;</code> (absolute host paths; hidden inputs OK)</td></tr>
+  <tr><td><code>Hover(selector)</code></td><td>Hover over element (CDP mouse — triggers CSS <code>:hover</code>, tooltips, and menus)</td></tr>
+  <tr><td><code>PressKey(key, selector?, modifiers?)</code></td><td>Send keyboard key (Tab, Enter, Escape, etc.)</td></tr>
+  <tr><td><code>GetText(selector)</code></td><td>Get element inner text</td></tr>
+  <tr><td><code>GetAttribute(selector, attr)</code></td><td>Get HTML attribute value</td></tr>
+  <tr><td><code>GetProperty(selector, prop)</code></td><td>Get live DOM property (<code>value</code>, <code>checked</code>, <code>selectedIndex</code>, etc.) — works with Angular/React/Vue</td></tr>
+  <tr><td><code>IsChecked(selector)</code></td><td>Check if checkbox/toggle is checked (reads DOM property)</td></tr>
+  <tr><td><code>Exists(selector)</code></td><td>Check if element exists (returns bool, never throws, no auto-wait)</td></tr>
+  <tr><td><code>Count(selector)</code></td><td>Count matching elements (returns 0 if none)</td></tr>
+  <tr><td><code>GetSelectState(selector)</code></td><td>Read actual DOM state of a <code>&lt;select&gt;</code>: <code>value</code>, <code>selectedIndex</code>, <code>selectedText</code></td></tr>
+  <tr><td><code>Extract(selector, fields...)</code></td><td>Extract structured data from repeating elements (table rows, card lists, etc.)</td></tr>
+</table>
+
+<h3>Extract</h3>
+<p>Extracts data from repeating page elements into a list of dictionaries. Tables auto-detect columns from <code>&lt;th&gt;</code> headers. Use field tuples to map sub-selectors. Append <code>@attr</code> to extract an attribute instead of text.</p>
+<pre><code><span class="cm">// Auto-extract table (column headers become field names)</span>
+<span class="kw">var</span> rows = <span class="kw">await</span> <span class="fn">Extract</span>(<span class="str">"table.products"</span>);
+
+<span class="cm">// Field mapping from repeating containers</span>
+<span class="kw">var</span> products = <span class="kw">await</span> <span class="fn">Extract</span>(<span class="str">".product-card"</span>, (<span class="str">"name"</span>, <span class="str">"h3"</span>), (<span class="str">"price"</span>, <span class="str">".price"</span>), (<span class="str">"url"</span>, <span class="str">"a@href"</span>));
+
+<span class="cm">// Simple text list</span>
+<span class="kw">var</span> items = <span class="kw">await</span> <span class="fn">Extract</span>(<span class="str">"ul.results li"</span>);
+
+<span class="cm">// With limit</span>
+<span class="kw">var</span> top5 = <span class="kw">await</span> <span class="fn">Extract</span>(<span class="str">"table.data"</span>, <span class="kw">null</span>, limit: <span class="num">5</span>);</code></pre>
+
+<h2>Semantic Locators</h2>
+<p>Find elements by meaning instead of CSS selectors — resilient to DOM changes.</p>
+<pre><code><span class="kw">await</span> <span class="fn">Click</span>(<span class="fn">ByRole</span>(<span class="str">"button"</span>, <span class="str">"Submit"</span>));
+<span class="kw">await</span> <span class="fn">Type</span>(<span class="fn">ByLabel</span>(<span class="str">"Email"</span>), <span class="str">"user@example.com"</span>);
+<span class="kw">await</span> <span class="fn">Click</span>(<span class="fn">ByText</span>(<span class="str">"Sign in"</span>));
+<span class="kw">await</span> <span class="fn">Type</span>(<span class="fn">ByPlaceholder</span>(<span class="str">"Search..."</span>), <span class="str">"query"</span>);
+<span class="kw">await</span> <span class="fn">Click</span>(<span class="fn">ByTestId</span>(<span class="str">"submit-btn"</span>));</code></pre>
+<table>
+  <tr><th>Locator</th><th>Finds by</th></tr>
+  <tr><td><code>ByRole(role, name?)</code></td><td>ARIA role + accessible name</td></tr>
+  <tr><td><code>ByLabel(text)</code></td><td>Associated label text</td></tr>
+  <tr><td><code>ByText(text)</code></td><td>Visible text content</td></tr>
+  <tr><td><code>ByPlaceholder(text)</code></td><td>Input placeholder</td></tr>
+  <tr><td><code>ByTestId(id)</code></td><td><code>data-testid</code> attribute</td></tr>
+</table>
+
+<h2>Waiting</h2>
+<table>
+  <tr><th>Method</th><th>Description</th></tr>
+  <tr><td><code>WaitForElement(selector, timeoutMs?)</code></td><td>Wait for element to appear (throws on timeout)</td></tr>
+  <tr><td><code>WaitForNavigation(timeoutMs?)</code></td><td>Wait for a single page navigation (returns <code>false</code> on timeout)</td></tr>
+  <tr><td><code>WaitForFinalNavigation(quietMs?, timeoutMs?)</code></td><td>Wait for redirect chain to settle; returns nav count, <code>0</code> on timeout</td></tr>
+  <tr><td><code>WaitForRequest(urlPart, timeoutMs?)</code></td><td>Wait for matching network request (throws on timeout)</td></tr>
+  <tr><td><code>WaitForRequest(urlPart, method?, status?, timeoutMs?)</code></td><td>Wait with method/status filters (throws on timeout)</td></tr>
+  <tr><td><code>WaitForIdle(quietMs?, timeoutMs?)</code></td><td>Wait for network quiet + no CSS animations (returns <code>false</code> on timeout)</td></tr>
+  <tr><td><code>Sleep(ms)</code></td><td>Pause execution</td></tr>
+</table>
+
+<div class="tip"><strong>Tip:</strong> Action methods like <code>Click</code> and <code>Type</code> already auto-wait. You only need explicit waits for things like page loads, AJAX responses, or dynamic content appearing.</div>
+
+<h2>Error Handling</h2>
+<p>Methods behave differently when elements or timeouts are missing:</p>
+<table>
+  <tr><th>Method</th><th>Not found / timeout</th></tr>
+  <tr><td><code>Click</code>, <code>Type</code>, <code>Select</code>, <code>Hover</code>, <code>GetText</code>, …</td><td>Throws <code>InvalidOperationException</code></td></tr>
+  <tr><td><code>Exists</code></td><td>Returns <code>false</code> (no auto-wait — use <code>WaitForElement</code> first after navigation)</td></tr>
+  <tr><td><code>Count</code></td><td>Returns <code>0</code></td></tr>
+  <tr><td><code>WaitForElement</code>, <code>WaitForRequest</code></td><td>Throws <code>TimeoutException</code></td></tr>
+  <tr><td><code>WaitForNavigation</code>, <code>WaitForIdle</code></td><td>Returns <code>false</code> (does not throw)</td></tr>
+</table>
+
+<h2>Scrolling</h2>
+<pre><code><span class="kw">await</span> <span class="fn">Scroll</span>(direction: <span class="str">"down"</span>);                       <span class="cm">// Scroll one viewport</span>
+<span class="kw">await</span> <span class="fn">Scroll</span>(direction: <span class="str">"top"</span>);                        <span class="cm">// Jump to top</span>
+<span class="kw">await</span> <span class="fn">Scroll</span>(<span class="str">"#footer"</span>, scrollIntoView: <span class="kw">true</span>);          <span class="cm">// Scroll element into view</span></code></pre>
+
+<h2>Assertions</h2>
+<p>All assertions <strong>log pass/fail</strong> and continue — they never throw. Use <code>Assert.Section()</code> to group them.</p>
+
+<div class="columns">
+<div>
+<h3>Value Checks</h3>
+<table>
+  <tr><td><code>Assert.True(cond, msg?)</code></td></tr>
+  <tr><td><code>Assert.False(cond, msg?)</code></td></tr>
+  <tr><td><code>Assert.Equal(expected, actual, msg?)</code></td></tr>
+  <tr><td><code>Assert.NotEqual(expected, actual, msg?)</code></td></tr>
+  <tr><td><code>Assert.Null(value, msg?)</code></td></tr>
+  <tr><td><code>Assert.NotNull(value, msg?)</code></td></tr>
+  <tr><td><code>Assert.NotEmpty(value, msg?)</code></td></tr>
+  <tr><td><code>Assert.GreaterThan(expected, actual, msg?)</code></td></tr>
+  <tr><td><code>Assert.LessThan(expected, actual, msg?)</code></td></tr>
+</table>
+</div>
+<div>
+<h3>String &amp; Collection</h3>
+<table>
+  <tr><td><code>Assert.Contains(sub, actual, msg?)</code></td></tr>
+  <tr><td><code>Assert.NotContains(sub, actual, msg?)</code></td></tr>
+  <tr><td><code>Assert.Matches(pattern, actual, msg?)</code></td></tr>
+  <tr><td><code>Assert.CountEquals(n, collection, msg?)</code></td></tr>
+  <tr><td><code>Assert.Pass(msg)</code></td></tr>
+  <tr><td><code>Assert.Fail(msg)</code></td></tr>
+  <tr><td><code>Assert.Section(name)</code></td></tr>
+</table>
+</div>
+</div>
+
+<pre><code><span class="type">Assert</span>.<span class="fn">Section</span>(<span class="str">"Login Flow"</span>);
+<span class="type">Assert</span>.<span class="fn">True</span>(<span class="kw">await</span> <span class="fn">Exists</span>(<span class="str">"#login-form"</span>), <span class="str">"Login form is present"</span>);
+<span class="kw">await</span> <span class="fn">AssertPageContains</span>(<span class="str">"Sign in"</span>);
+<span class="kw">await</span> <span class="fn">AssertPageNotContains</span>(<span class="str">"Error"</span>);</code></pre>
+
+<h2>Accessibility (WCAG)</h2>
+<pre><code><span class="kw">await</span> <span class="fn">AssertAccessible</span>(<span class="str">"AA"</span>);                          <span class="cm">// Fail if any WCAG AA violations</span>
+<span class="kw">await</span> <span class="fn">PrintAccessibilityReport</span>(<span class="str">"AA"</span>);                   <span class="cm">// Print full report</span>
+
+<span class="kw">var</span> results = <span class="kw">await</span> <span class="fn">CheckAccessibility</span>(<span class="str">"AA"</span>);
+<span class="kw">foreach</span> (<span class="kw">var</span> v <span class="kw">in</span> results.Violations)
+    <span class="fn">Log</span>(<span class="str">$"[</span>{v.Impact}<span class="str">] </span>{v.RuleId}<span class="str">: </span>{v.Help}<span class="str">"</span>);</code></pre>
+
+<h2>Performance (Web Vitals)</h2>
+<pre><code><span class="kw">await</span> <span class="fn">AssertPerformance</span>();                                <span class="cm">// Fail if any Core Web Vital is not Good</span>
+<span class="kw">await</span> <span class="fn">PrintPerformanceReport</span>();                            <span class="cm">// Print full report</span>
+
+<span class="kw">await</span> <span class="fn">AssertPerformanceMetric</span>(<span class="str">"LCP"</span>, <span class="num">2500</span>);               <span class="cm">// Assert LCP &lt;= 2500ms</span>
+<span class="kw">await</span> <span class="fn">AssertPerformanceMetric</span>(<span class="str">"TTFB"</span>, <span class="num">800</span>);              <span class="cm">// Assert TTFB &lt;= 800ms</span>
+
+<span class="kw">var</span> perf = <span class="kw">await</span> <span class="fn">CheckPerformance</span>();
+<span class="kw">foreach</span> (<span class="kw">var</span> m <span class="kw">in</span> perf.Metrics)
+    <span class="fn">Log</span>(<span class="str">$"[</span>{m.Rating}<span class="str">] </span>{m.Name}<span class="str">: </span>{m.Value}{m.Unit}<span class="str">"</span>);</code></pre>
+
+<h2>Security (Retire.js)</h2>
+<pre><code><span class="kw">await</span> <span class="fn">AssertSecure</span>();                                      <span class="cm">// Fail if any known CVEs</span>
+<span class="kw">await</span> <span class="fn">PrintSecurityReport</span>();                                <span class="cm">// Print full report</span>
+
+<span class="kw">await</span> <span class="fn">AssertSecure</span>(minSeverity: <span class="type">Severity</span>.High);              <span class="cm">// Only high/critical</span>
+
+<span class="kw">var</span> scan = <span class="kw">await</span> <span class="fn">CheckSecurity</span>();
+<span class="kw">foreach</span> (<span class="kw">var</span> lib <span class="kw">in</span> scan.Libraries)
+    <span class="fn">Log</span>(<span class="str">$"</span>{lib.Name} {lib.Version}<span class="str"> -- </span>{(lib.IsVulnerable ? <span class="str">"VULNERABLE"</span> : <span class="str">"OK"</span>)}<span class="str">"</span>);</code></pre>
+
+<h2>Security Headers</h2>
+<pre><code><span class="kw">await</span> <span class="fn">AssertSecurityHeaders</span>();                                <span class="cm">// Fail if any issues</span>
+<span class="kw">await</span> <span class="fn">PrintSecurityHeadersReport</span>();                            <span class="cm">// Print full report</span>
+
+<span class="kw">await</span> <span class="fn">AssertSecurityHeaders</span>(minSeverity: <span class="type">Severity</span>.High);       <span class="cm">// Only high/critical</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckSecurityHeaders</span>();
+<span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> result.Findings)
+    <span class="fn">Log</span>(<span class="str">$"[</span>{f.Severity}<span class="str">] </span>{f.Header}<span class="str">: </span>{f.Description}<span class="str">"</span>);</code></pre>
+
+<h2>CORS Configuration</h2>
+<p>Audits CORS by probing the page URL with various <code>Origin</code> headers — detects reflected origins, wildcard policies, null origin acceptance, and subdomain/scheme attacks.</p>
+<pre><code><span class="kw">await</span> <span class="fn">AssertCors</span>();                                          <span class="cm">// Fail if any CORS issues</span>
+<span class="kw">await</span> <span class="fn">PrintCorsReport</span>();                                      <span class="cm">// Print full report</span>
+
+<span class="kw">await</span> <span class="fn">AssertCors</span>(minSeverity: <span class="type">Severity</span>.High);                   <span class="cm">// Only high/critical</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckCors</span>();
+<span class="kw">var</span> credLeaks = result.Issues.Where(f => f.AllowCredentials).ToList();
+<span class="type">Assert</span>.<span class="fn">Equal</span>(<span class="num">0</span>, credLeaks.Count, <span class="str">"No credential exposure via CORS"</span>);</code></pre>
+
+<h2>Endpoint Discovery</h2>
+<p>Scans for hidden endpoints, admin panels, config files, and API docs by probing common paths. Wordlists: <code>"common"</code> (~50), <code>"full"</code> (~150), <code>"api"</code> (API-focused). Use <code>delayMs</code> to avoid rate limiting. <code>spaMode</code> defaults to <code>true</code>: HTML responses that match an invalid-path probe are omitted. Pass <code>spaMode: false</code> to keep them. API-shaped bodies are always kept.</p>
+<pre><code><span class="kw">await</span> <span class="fn">AssertDiscover</span>();                                         <span class="cm">// Assert no sensitive endpoints</span>
+<span class="kw">await</span> <span class="fn">PrintDiscoverReport</span>(wordlist: <span class="str">"full"</span>);                     <span class="cm">// Detailed scan</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">DiscoverEndpoints</span>(wordlist: <span class="str">"api"</span>, basePath: <span class="str">"/api/"</span>);
+<span class="kw">foreach</span> (<span class="kw">var</span> d <span class="kw">in</span> result.Discovered)
+    <span class="fn">Log</span>(<span class="str">$"  </span>{d.StatusCode}<span class="str"> </span>{d.Path}<span class="str"> [</span>{d.ContentType}<span class="str">]"</span>);
+
+<span class="cm">// Slow scan to avoid 429 rate limiting</span>
+<span class="kw">await</span> <span class="fn">PrintDiscoverReport</span>(wordlist: <span class="str">"common"</span>, delayMs: <span class="num">200</span>);</code></pre>
+
+<h2>HTML Validation</h2>
+<pre><code><span class="kw">await</span> <span class="fn">AssertHtmlValid</span>();                                     <span class="cm">// Fail if any errors</span>
+<span class="kw">await</span> <span class="fn">PrintHtmlReport</span>();                                      <span class="cm">// Print full report</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckHtml</span>();
+<span class="kw">foreach</span> (<span class="kw">var</span> msg <span class="kw">in</span> result.GetErrors())
+    <span class="fn">Log</span>(<span class="str">$"line </span>{msg.Line}<span class="str">: </span>{msg.Message}<span class="str"> (</span>{msg.RuleId}<span class="str">)"</span>);
+
+<span class="kw">var</span> a11y = result.GetByCategory(<span class="str">"Accessibility"</span>);               <span class="cm">// Filter by category</span></code></pre>
+
+<h2>Link Checking</h2>
+<p>Checks all links on the page for broken URLs, redirects, and connection errors. Sends HEAD requests from the server side (no CORS issues). Redirects are observations, not errors.</p>
+<pre><code><span class="kw">await</span> <span class="fn">AssertLinksValid</span>();                                    <span class="cm">// Fail if any broken links</span>
+<span class="kw">await</span> <span class="fn">PrintLinkCheckReport</span>();                                 <span class="cm">// Print full report</span>
+
+<span class="kw">await</span> <span class="fn">AssertLinksValid</span>(scope: <span class="str">"all"</span>);                          <span class="cm">// Check all resources too</span>
+<span class="kw">await</span> <span class="fn">AssertLinksValid</span>(external: <span class="kw">false</span>);                       <span class="cm">// Internal links only</span>
+<span class="kw">await</span> <span class="fn">AssertLinksValid</span>(delayMs: <span class="num">200</span>);                          <span class="cm">// Slower, avoids 429 rate limits</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckLinks</span>();
+<span class="fn">Log</span>(<span class="str">$"Checked </span>{result.CheckedCount}<span class="str">, Broken: </span>{result.BrokenCount}<span class="str">"</span>);
+<span class="kw">foreach</span> (<span class="kw">var</span> link <span class="kw">in</span> result.Broken)
+    <span class="fn">Log</span>(<span class="str">$"  [</span>{link.StatusCode}<span class="str">] </span>{link.Url}<span class="str">"</span>);
+
+<span class="cm">// Redirects are separate — not treated as errors</span>
+<span class="kw">var</span> redirects = result.Links.Where(l => l.Status == <span class="type">LinkStatus</span>.Redirect);
+<span class="kw">foreach</span> (<span class="kw">var</span> r <span class="kw">in</span> redirects)
+    <span class="fn">Log</span>(<span class="str">$"  Redirect: </span>{r.Url}<span class="str"> → </span>{r.RedirectUrl}<span class="str">"</span>);</code></pre>
+<p><strong>Scope:</strong> <code>"anchors"</code> (default, <code>&lt;a&gt;</code> tags only), <code>"resources"</code> (images, scripts, stylesheets), <code>"all"</code> (everything).</p>
+
+<h2>DOM XSS Audit</h2>
+<p>Audits the DOM for XSS-prone patterns: inline event handlers, <code>javascript:</code> URLs, dangerous sinks, cross-domain scripts without SRI, data URIs, external form actions, and base tag hijacking. Inspired by OWASP ZAP passive scan rules.</p>
+<pre><code><span class="kw">await</span> <span class="fn">AssertXssClean</span>();                                        <span class="cm">// Fail if any XSS findings</span>
+<span class="kw">await</span> <span class="fn">PrintXssReport</span>();                                        <span class="cm">// Print full report</span>
+
+<span class="kw">await</span> <span class="fn">AssertXssClean</span>(minSeverity: <span class="type">XssSeverity</span>.Medium);           <span class="cm">// Medium+ only</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckXss</span>();
+<span class="fn">Log</span>(<span class="str">$"Found </span>{result.FindingCount}<span class="str"> XSS-related findings"</span>);
+<span class="kw">var</span> high = result.GetByMinSeverity(<span class="type">XssSeverity</span>.High);
+<span class="type">Assert</span>.<span class="fn">Equal</span>(<span class="num">0</span>, high.Count, <span class="str">"No high-severity XSS patterns"</span>);</code></pre>
+
+<h2>Structured Text Extraction</h2>
+<p>Extracts all visible text in a structured format — headings, paragraphs, links, buttons, labels, images. Designed for proofreading and text analysis.</p>
+<pre><code><span class="kw">var</span> text = <span class="kw">await</span> <span class="fn">GetStructuredText</span>();
+<span class="fn">Log</span>(<span class="str">$"</span>{text.WordCount}<span class="str"> words, </span>{text.Headings.Count}<span class="str"> headings, </span>{text.Links.Count}<span class="str"> links"</span>);
+
+<span class="cm">// Heading hierarchy</span>
+<span class="kw">foreach</span> (<span class="kw">var</span> h <span class="kw">in</span> text.Headings)
+    <span class="fn">Log</span>(<span class="str">$"</span>{"".PadLeft(h.Level * 2)}<span class="str">H</span>{h.Level}<span class="str">: </span>{h.Text}<span class="str">"</span>);
+
+<span class="cm">// Full text for proofreading</span>
+<span class="fn">Log</span>(text.AllText);
+<span class="kw">await</span> <span class="fn">PrintStructuredText</span>();</code></pre>
+
+<h2>GUI Consistency &amp; Image Optimization</h2>
+<p>Audits visual consistency (fonts, colors, sizing, spacing) and checks images for optimization issues (oversized, missing dimensions, missing lazy loading).</p>
+<pre><code><span class="kw">await</span> <span class="fn">AssertConsistent</span>();                                      <span class="cm">// Fail if warnings found</span>
+<span class="kw">await</span> <span class="fn">PrintConsistencyReport</span>();                                 <span class="cm">// Print full report</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckConsistency</span>();
+<span class="fn">Log</span>(<span class="str">$"Fonts: </span>{result.Stats.FontFamilies.Count}<span class="str">, Colors: </span>{result.Stats.TextColors.Count}<span class="str">"</span>);
+<span class="fn">Log</span>(<span class="str">$"Image issues: </span>{result.Stats.ImageIssues.Count}<span class="str">"</span>);
+
+<span class="cm">// Check image optimization specifically</span>
+<span class="kw">foreach</span> (<span class="kw">var</span> img <span class="kw">in</span> result.Stats.ImageIssues)
+    <span class="fn">Log</span>(<span class="str">$"  [</span>{img.IssueType}<span class="str">] </span>{img.Description}<span class="str">"</span>);
+
+<span class="cm">// Custom thresholds</span>
+<span class="type">Assert</span>.<span class="fn">True</span>(result.Stats.FontFamilies.Count &lt;= <span class="num">3</span>, <span class="str">"At most 3 font families"</span>);</code></pre>
+
+<h2>Third-Party Resource Inventory</h2>
+<p>Inventories all third-party resources (scripts, stylesheets, iframes, fonts). Reports domains, transfer sizes, and Subresource Integrity (SRI) coverage.</p>
+<pre><code><span class="kw">await</span> <span class="fn">AssertThirdPartySecure</span>();                                 <span class="cm">// Fail if SRI issues found</span>
+<span class="kw">await</span> <span class="fn">PrintThirdPartyReport</span>();                                  <span class="cm">// Print full report</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckThirdParty</span>();
+<span class="fn">Log</span>(<span class="str">$"Third-party: </span>{result.TotalCount}<span class="str"> resources from </span>{result.DomainCount}<span class="str"> domains"</span>);
+<span class="fn">Log</span>(<span class="str">$"SRI coverage: </span>{result.SriCount}<span class="str"> / </span>{result.TotalCount}<span class="str">"</span>);
+
+<span class="kw">foreach</span> (<span class="kw">var</span> r <span class="kw">in</span> result.Resources.Where(r => !r.HasSri &amp;&amp; r.Type == <span class="str">"script"</span>))
+    <span class="fn">Log</span>(<span class="str">$"  Script without SRI: </span>{r.Url}<span class="str">"</span>);</code></pre>
+
+<h2>Mixed Content Detection</h2>
+<p>Detects HTTP resources loaded on HTTPS pages. Active mixed content (scripts, iframes) is blocked by modern browsers. Part of the SecurityScan quicktest.</p>
+<pre><code><span class="kw">await</span> <span class="fn">AssertNoMixedContent</span>();                                    <span class="cm">// Fail if any mixed content</span>
+<span class="kw">await</span> <span class="fn">AssertNoMixedContent</span>(minSeverity: <span class="type">MixedContentSeverity</span>.High); <span class="cm">// Only fail on active</span>
+<span class="kw">await</span> <span class="fn">PrintMixedContentReport</span>();                                 <span class="cm">// Print full report</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckMixedContent</span>();
+<span class="kw">if</span> (result.IsHttps)
+    <span class="fn">Log</span>(<span class="str">$"Mixed content: </span>{result.FindingCount}<span class="str"> issues (</span>{result.HighCount}<span class="str"> high)"</span>);</code></pre>
+
+<h2>Backward Compatibility</h2>
+<pre><code><span class="kw">await</span> <span class="fn">AssertCompatible</span>();                                     <span class="cm">// Default: iOS 15, Android 10</span>
+<span class="kw">await</span> <span class="fn">AssertCompatible</span>(minIos: 16, minAndroid: 10);             <span class="cm">// Custom targets</span>
+<span class="kw">await</span> <span class="fn">PrintCompatibilityReport</span>(minIos: 15, minAndroid: 10);     <span class="cm">// Print full report</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckCompatibility</span>(minIos: 15);              <span class="cm">// iOS only</span>
+<span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> result.Features)
+    <span class="fn">Log</span>(<span class="str">$"</span>{f.Name}<span class="str">: Chrome </span>{f.ChromeMin}<span class="str">+, Safari </span>{f.SafariMin}<span class="str">+"</span>);
+
+<span class="kw">var</span> risky = result.Targets.Where(t => t.UnsupportedFeatures.Count > 0);
+<span class="kw">foreach</span> (<span class="kw">var</span> t <span class="kw">in</span> risky)
+    <span class="fn">Log</span>(<span class="str">$"</span>{t.Name}<span class="str">: </span>{t.UnsupportedFeatures.Count}<span class="str"> unsupported feature(s)"</span>);</code></pre>
+
+<h2>Robustness (Monkey Testing)</h2>
+<pre><code><span class="kw">await</span> <span class="fn">AssertRobust</span>();                                           <span class="cm">// Fail if errors found</span>
+<span class="kw">await</span> <span class="fn">PrintMonkeyTestReport</span>();                                  <span class="cm">// Print full report</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">RunMonkeyTest</span>(actions: 200, seed: 42);
+<span class="fn">Log</span>(<span class="str">$"Survived: </span>{result.Survived}<span class="str">, Errors: </span>{result.ErrorCount}<span class="str">"</span>);
+
+<span class="kw">await</span> <span class="fn">RunMonkeyTest</span>(<span class="kw">new</span> <span class="type">MonkeyTestOptions</span> {{                    <span class="cm">// Targeted test</span>
+    Species = <span class="type">MonkeySpecies</span>.Clicker | <span class="type">MonkeySpecies</span>.Typer,
+    Actions = 300
+}});</code></pre>
+
+<h2>Monkey Trowser (Smart Robustness)</h2>
+<pre><code><span class="kw">await</span> <span class="fn">AssertSmartMonkey</span>();                                        <span class="cm">// Fail if issues found (auto-scope from page when unset)</span>
+<span class="kw">await</span> <span class="fn">PrintSmartMonkeyReport</span>();                                   <span class="cm">// Print detailed report</span>
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">RunSmartMonkey</span>(maxActions: 50, followLinks: <span class="kw">true</span>, maxPages: 20);
+<span class="fn">Log</span>(<span class="str">$"Passed: </span>{result.Passed}<span class="str">, Pages: </span>{result.PagesVisited}<span class="str">, Issues: </span>{result.IssueCount}<span class="str">"</span>);</code></pre>
+
+<h2>Console &amp; Network</h2>
+<div class="columns">
+<div>
+<h3>Console</h3>
+<table>
+  <tr><td><code>GetConsoleErrors()</code></td></tr>
+  <tr><td><code>GetPageConsoleErrors()</code></td></tr>
+  <tr><td><code>GetConsoleLog()</code></td></tr>
+  <tr><td><code>GetPageConsoleLog()</code></td></tr>
+  <tr><td><code>Console.Find(text)</code></td></tr>
+  <tr><td><code>Console.HasErrors</code></td></tr>
+  <tr><td><code>PrintConsoleLog()</code></td></tr>
+  <tr><td><code>ClearConsoleLog()</code></td></tr>
+</table>
+</div>
+<div>
+<h3>Network</h3>
+<table>
+  <tr><td><code>FindRequests(urlPart)</code></td></tr>
+  <tr><td><code>Network.FindErrors()</code></td></tr>
+  <tr><td><code>Network.FindPageErrors()</code></td></tr>
+  <tr><td><code>Network.FindByUrl(urlPart)</code></td></tr>
+  <tr><td><code>Network.FindByMethod(m)</code></td></tr>
+  <tr><td><code>Network.FindByStatus(code)</code></td></tr>
+  <tr><td><code>Network.FindByType(type)</code></td></tr>
+  <tr><td><code>PrintNetworkLog()</code></td></tr>
+  <tr><td><code>ClearNetworkLog()</code></td></tr>
+</table>
+</div>
+</div>
+
+<pre><code><span class="cm">// Check for errors after testing</span>
+<span class="type">Assert</span>.<span class="fn">Equal</span>(<span class="num">0</span>, <span class="fn">GetConsoleErrors</span>().Count, <span class="str">"No JS errors"</span>);
+<span class="type">Assert</span>.<span class="fn">Equal</span>(<span class="num">0</span>, Network.<span class="fn">FindErrors</span>().Count, <span class="str">"No HTTP errors"</span>);
+
+<span class="cm">// Inspect a specific API call (bodies are captured for Fetch/JSON/XML requests)</span>
+<span class="kw">var</span> req = <span class="kw">await</span> <span class="fn">WaitForRequest</span>(<span class="str">"/api/users"</span>);
+<span class="type">Assert</span>.<span class="fn">Equal</span>(<span class="num">200</span>, req.StatusCode);
+<span class="kw">if</span> (req.ResponseBody != <span class="kw">null</span>)
+    <span class="type">Assert</span>.<span class="fn">Contains</span>(<span class="str">"\"id\":"</span>, req.ResponseBody, <span class="str">"Response includes ID"</span>);</code></pre>
+
+<div class="tip"><strong>Tip:</strong> <code>NetworkEntry</code> has <code>RequestBody</code> and <code>ResponseBody</code> properties for API-like requests (capped at 100KB). Use them to verify payloads.</div>
+
+<h2>Browser Fetch (API Testing)</h2>
+<p>Send HTTP requests from the browser context using <code>fetch()</code> — includes the page's cookies, auth tokens, and session automatically. Relative URLs resolve against the current page origin. Returns a JSON string with <code>ok</code>, <code>status</code>, <code>headers</code>, <code>body</code>, etc.</p>
+<table>
+  <tr><th>Method</th><th>Description</th></tr>
+  <tr><td><code>Fetch(url, method?, headers?, body?, timeoutMs?, redirect?)</code></td><td>Single request; set <code>redirect: "manual"</code> to capture 3xx without following</td></tr>
+  <tr><td><code>FetchBatchAsync(requests, concurrent?)</code></td><td>Multiple requests; set <code>concurrent: true</code> for parallel/race testing</td></tr>
+</table>
+<pre><code><span class="kw">var</span> raw = <span class="kw">await</span> <span class="fn">Fetch</span>(<span class="str">"/api/users"</span>, <span class="str">"POST"</span>,
+    headers: <span class="kw">new</span> <span class="type">Dictionary</span>&lt;<span class="type">string</span>, <span class="type">string</span>&gt; { [<span class="str">"Content-Type"</span>] = <span class="str">"application/json"</span> },
+    body: <span class="str">"{\"name\": \"Alice\"}"</span>);
+<span class="kw">var</span> doc = System.Text.Json.JsonDocument.Parse(raw);
+<span class="type">Assert</span>.<span class="fn">Equal</span>(<span class="num">201</span>, doc.RootElement.GetProperty(<span class="str">"status"</span>).GetInt32(), <span class="str">"User created"</span>);</code></pre>
+
+<h2>Cookies</h2>
+<pre><code><span class="kw">var</span> cookies = <span class="kw">await</span> <span class="fn">GetCookies</span>();
+<span class="kw">var</span> session = <span class="kw">await</span> <span class="fn">GetCookie</span>(<span class="str">"sessionId"</span>);
+<span class="kw">if</span> (session != <span class="kw">null</span>)
+    <span class="type">Assert</span>.<span class="fn">True</span>((<span class="kw">bool</span>)session[<span class="str">"httpOnly"</span>], <span class="str">"Session is HttpOnly"</span>);
+
+<span class="kw">await</span> <span class="fn">SetCookie</span>(<span class="str">"test"</span>, <span class="str">"true"</span>, secure: <span class="kw">true</span>);
+<span class="kw">await</span> <span class="fn">DeleteCookie</span>(<span class="str">"sessionId"</span>);
+<span class="kw">await</span> <span class="fn">ClearCookies</span>();</code></pre>
+
+<h2>Web Storage (localStorage / sessionStorage)</h2>
+<pre><code><span class="cm">// Read all localStorage</span>
+<span class="kw">var</span> storage = <span class="kw">await</span> <span class="fn">GetAllStorage</span>(<span class="str">"local"</span>);
+<span class="fn">Log</span>($<span class="str">"localStorage: {storage.Count} entries"</span>);
+
+<span class="cm">// Get/set/delete individual keys</span>
+<span class="kw">var</span> theme = <span class="kw">await</span> <span class="fn">GetStorageItem</span>(<span class="str">"local"</span>, <span class="str">"theme"</span>);
+<span class="kw">await</span> <span class="fn">SetStorageItem</span>(<span class="str">"local"</span>, <span class="str">"theme"</span>, <span class="str">"dark"</span>);
+<span class="kw">await</span> <span class="fn">DeleteStorageItem</span>(<span class="str">"local"</span>, <span class="str">"authToken"</span>);
+<span class="kw">await</span> <span class="fn">ClearStorage</span>(<span class="str">"local"</span>);
+
+<span class="cm">// sessionStorage works the same way</span>
+<span class="kw">await</span> <span class="fn">SetStorageItem</span>(<span class="str">"session"</span>, <span class="str">"tempData"</span>, <span class="str">"test"</span>);</code></pre>
+
+<h2>Network Throttling</h2>
+<pre><code><span class="cm">// Simulate slow network</span>
+<span class="kw">await</span> <span class="fn">SetNetworkThrottle</span>(<span class="str">"3G"</span>);
+<span class="kw">await</span> <span class="fn">Navigate</span>(<span class="str">"https://example.com"</span>);
+<span class="kw">await</span> <span class="fn">WaitForIdle</span>();
+
+<span class="cm">// Presets: 2G, Slow3G, 3G, 4G, Offline</span>
+<span class="kw">await</span> <span class="fn">SetNetworkThrottle</span>(<span class="str">"Offline"</span>);
+<span class="kw">await</span> <span class="fn">Click</span>(<span class="str">"#refresh"</span>);
+<span class="kw">await</span> <span class="fn">AssertPageContains</span>(<span class="str">"No connection"</span>);
+
+<span class="cm">// Custom values (KB/s down, KB/s up, latency ms)</span>
+<span class="kw">await</span> <span class="fn">SetNetworkThrottle</span>(<span class="num">100</span>, <span class="num">50</span>, <span class="num">1000</span>);
+
+<span class="cm">// Restore full speed</span>
+<span class="kw">await</span> <span class="fn">ClearNetworkThrottle</span>();</code></pre>
+
+<h2>Network Mocking (Fault Injection)</h2>
+<pre><code><span class="cm">// Simulate a server error</span>
+<span class="fn">MockResponse</span>(<span class="str">"/api/users"</span>, statusCode: <span class="num">500</span>,
+    body: <span class="str">"{\"error\": \"Internal Server Error\"}"</span>);
+<span class="kw">await</span> <span class="fn">Click</span>(<span class="str">"#load-users"</span>);
+<span class="kw">await</span> <span class="fn">WaitForIdle</span>();
+<span class="kw">await</span> <span class="fn">AssertPageContains</span>(<span class="str">"Something went wrong"</span>);
+<span class="fn">ClearMocks</span>();
+
+<span class="cm">// Simulate slow response</span>
+<span class="fn">MockResponse</span>(<span class="str">"/api/data"</span>, statusCode: <span class="num">200</span>,
+    body: <span class="str">"{\"ok\": true}"</span>, delayMs: <span class="num">5000</span>);</code></pre>
+
+<h2>Network Breakpoints</h2>
+<p>Intercept requests matching a URL regex and hold them until you decide: <strong>continue</strong>, <strong>fulfill</strong> with a custom response, or <strong>abort</strong>. Auto-continues after 120 seconds.</p>
+<table>
+  <tr><th>Method</th><th>Description</th></tr>
+  <tr><td><code>AddInterceptRule(urlPattern, method?)</code></td><td>Add breakpoint (regex match on URL)</td></tr>
+  <tr><td><code>RemoveInterceptRule(urlPattern)</code></td><td>Remove a breakpoint rule</td></tr>
+  <tr><td><code>ClearInterceptRules()</code></td><td>Remove all breakpoints, release pending requests</td></tr>
+  <tr><td><code>GetInterceptRules()</code></td><td>List active breakpoint rules</td></tr>
+  <tr><td><code>GetPendingRequests()</code></td><td>List currently held requests</td></tr>
+  <tr><td><code>ResolvePendingRequest(id, decision)</code></td><td>Continue, fulfill, or abort a pending request</td></tr>
+</table>
+<pre><code><span class="cm">// Set a breakpoint, trigger it, then fulfill with custom response</span>
+<span class="fn">AddInterceptRule</span>(<span class="str">"/api/users"</span>);
+<span class="kw">await</span> <span class="fn">Click</span>(<span class="str">"#load-users"</span>);
+<span class="kw">await</span> <span class="fn">Sleep</span>(<span class="num">1000</span>);
+
+<span class="kw">var</span> pending = <span class="fn">GetPendingRequests</span>();
+<span class="fn">ResolvePendingRequest</span>(pending[<span class="num">0</span>].Id, <span class="kw">new</span> <span class="type">InterceptDecision</span> {
+    Action = <span class="type">InterceptAction</span>.Fulfill,
+    StatusCode = <span class="num">500</span>,
+    Body = <span class="str">"{\"error\": \"fail\"}"</span>
+});
+<span class="fn">ClearInterceptRules</span>();</code></pre>
+<div class="tip"><strong>Tip:</strong> Breakpoints are most powerful via the REST API or MCP tools, where an LLM agent or the GUI can inspect each request interactively. In scripts, <code>MockResponse</code> is usually simpler.</div>
+
+<h2>Tab Management</h2>
+<pre><code><span class="kw">var</span> tab2 = <span class="kw">await</span> <span class="fn">NewTab</span>(<span class="str">"https://example.com"</span>);
+<span class="fn">SwitchTab</span>(<span class="num">0</span>);                                <span class="cm">// Back to first tab</span>
+<span class="kw">var</span> tabs = <span class="fn">GetTabs</span>();                          <span class="cm">// List all tabs</span>
+<span class="fn">Log</span>(<span class="str">$"Tab count: </span>{<span class="fn">GetTabCount</span>()}<span class="str">"</span>);
+<span class="kw">await</span> <span class="fn">CloseTab</span>(tab2);                         <span class="cm">// Close by index</span></code></pre>
+
+<div class="tip"><strong>Tip:</strong> Each tab has its own isolated console, network log, mock rules, and element refs. Switching tabs changes which state all methods operate on.</div>
+
+<h2>Page Inspection</h2>
+<p>Exploratory methods that return <code>List&lt;Dictionary&lt;string, string&gt;&gt;</code> for quick page analysis.</p>
+<table>
+  <tr><th>Method</th><th>Returns</th></tr>
+  <tr><td><code>GetLinks()</code></td><td>All links: <code>href</code>, <code>text</code>, <code>target</code></td></tr>
+  <tr><td><code>GetHeadings()</code></td><td>All h1–h6: <code>level</code>, <code>text</code>, <code>visible</code></td></tr>
+  <tr><td><code>GetImages()</code></td><td>All images: <code>src</code>, <code>alt</code>, <code>hasAlt</code>, <code>width</code>, <code>height</code></td></tr>
+  <tr><td><code>GetFormFields()</code></td><td>All inputs: <code>tag</code>, <code>type</code>, <code>name</code>, <code>id</code>, <code>value</code>, <code>label</code>, <code>required</code></td></tr>
+  <tr><td><code>GetMetaTags()</code></td><td>All meta tags: <code>name</code>, <code>content</code>, <code>charset</code></td></tr>
+</table>
+<pre><code><span class="kw">var</span> headings = <span class="kw">await</span> <span class="fn">GetHeadings</span>();
+<span class="kw">foreach</span> (<span class="kw">var</span> h <span class="kw">in</span> headings.Where(h => h[<span class="str">"visible"</span>] == <span class="str">"True"</span>))
+    <span class="fn">Log</span>(<span class="str">$"</span>{h[<span class="str">"level"</span>]}<span class="str">: </span>{h[<span class="str">"text"</span>]}<span class="str">"</span>);
+
+<span class="kw">var</span> images = <span class="kw">await</span> <span class="fn">GetImages</span>();
+<span class="kw">var</span> missingAlt = images.Where(i => !<span class="type">bool</span>.TryParse(i.GetValueOrDefault(<span class="str">"hasAlt"</span>), <span class="kw">out</span> <span class="kw">var</span> hasAlt) || !hasAlt).ToList();
+<span class="type">Assert</span>.<span class="fn">Equal</span>(<span class="num">0</span>, missingAlt.Count, <span class="str">"All images have alt text"</span>);</code></pre>
+
+<h3>LLM Integration</h3>
+<table>
+  <tr><th>Method</th><th>Description</th></tr>
+  <tr><td><code>GetSnapshot(fullText?, textSelector?)</code></td><td>Full page state (same as REST <code>GET /api/state</code>)</td></tr>
+  <tr><td><code>GetInteractiveElements()</code></td><td>All interactive elements with ref numbers and visibility</td></tr>
+  <tr><td><code>GetSelectorByRef(ref)</code></td><td>Resolve a ref number to a CSS selector for use with <code>Click</code>, <code>Type</code>, etc.</td></tr>
+  <tr><td><code>GetRefsInContainer(selector, elements)</code></td><td>Ref numbers of elements inside a CSS container</td></tr>
+</table>
+<pre><code><span class="cm">// Act on an element by ref (same refs as GET /api/state)</span>
+<span class="kw">var</span> elements = <span class="kw">await</span> <span class="fn">GetInteractiveElements</span>();
+<span class="kw">var</span> submit = elements.First(e => e[<span class="str">"label"</span>]?.ToString() == <span class="str">"Submit"</span>);
+<span class="kw">var</span> refNum = ((System.Text.Json.JsonElement)submit[<span class="str">"ref"</span>]).GetInt32();
+<span class="kw">var</span> selector = <span class="fn">GetSelectorByRef</span>(refNum);
+<span class="kw">if</span> (selector != <span class="kw">null</span>) <span class="kw">await</span> <span class="fn">Click</span>(selector);</code></pre>
+<div class="tip"><strong>Tip:</strong> Ref numbers go stale when the DOM changes — re-scan after navigation or significant UI updates.</div>
+
+<h2>WebMCP Tool Discovery</h2>
+<p>Trowser detects tools registered by web pages via <code>navigator.modelContext</code> (W3C Web Model Context API). Registered tools are available for discovery and invocation.</p>
+<table>
+  <tr><th>Method</th><th>Description</th></tr>
+  <tr><td><code>GetWebMcpTools()</code></td><td>List all WebMCP tools on the current page (name, description, inputSchema)</td></tr>
+  <tr><td><code>CallWebMcpTool(name, args?)</code></td><td>Call a WebMCP tool and return the result</td></tr>
+</table>
+<pre><code><span class="kw">var</span> tools = <span class="kw">await</span> <span class="fn">GetWebMcpTools</span>();
+<span class="kw">foreach</span> (<span class="kw">var</span> tool <span class="kw">in</span> tools)
+    <span class="fn">Log</span>(<span class="str">$"  </span>{tool[<span class="str">"name"</span>]}<span class="str">: </span>{tool[<span class="str">"description"</span>]}<span class="str">"</span>);
+
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CallWebMcpTool</span>(<span class="str">"add_to_cart"</span>, <span class="kw">new</span> <span class="type">Dictionary</span>&lt;<span class="type">string</span>, <span class="type">object</span>&gt; {
+    [<span class="str">"productId"</span>] = <span class="str">"abc123"</span>, [<span class="str">"quantity"</span>] = <span class="str">"2"</span>
+});</code></pre>
+
+<h2>Viewport (Responsive Design)</h2>
+<p>Test responsive layouts by changing the viewport size. Uses device emulation — only the page rendering changes, the Trowser window stays the same. Media queries, CSS breakpoints, and layout all respond.</p>
+<table>
+  <tr><th>Method</th><th>Description</th></tr>
+  <tr><td><code>SetViewport(width, height)</code></td><td>Set exact viewport in pixels (200–7680 × 200–4320)</td></tr>
+  <tr><td><code>SetViewport(preset)</code></td><td>Set viewport to a named preset (see below)</td></tr>
+  <tr><td><code>ResetViewport()</code></td><td>Reset to full screen (same as <code>SetViewport("Desktop")</code>)</td></tr>
+  <tr><td><code>GetViewportSize()</code></td><td>Returns <code>(int Width, int Height)</code> of the current viewport</td></tr>
+</table>
+
+<h3>Presets</h3>
+<table>
+  <tr><th>Preset</th><th>Size</th><th>Use Case</th></tr>
+  <tr><td><code>"SmallPhone"</code></td><td>320 × 568</td><td>iPhone SE / small Android</td></tr>
+  <tr><td><code>"BigPhone"</code></td><td>412 × 915</td><td>iPhone 15 / modern Android</td></tr>
+  <tr><td><code>"LandscapePhone"</code></td><td>844 × 390</td><td>iPhone 14 / modern Android (landscape)</td></tr>
+  <tr><td><code>"SmallPad"</code></td><td>768 × 1024</td><td>iPad / small tablet</td></tr>
+  <tr><td><code>"BigPad"</code></td><td>1024 × 1366</td><td>iPad Pro / large tablet</td></tr>
+  <tr><td><code>"Desktop"</code></td><td><em>(reset)</em></td><td>Full screen — clears the override</td></tr>
+  <tr><td><code>"BigDesktop"</code></td><td>1920 × 1080</td><td>Full HD monitor</td></tr>
+</table>
+
+<pre><code><span class="cm">// Test all responsive breakpoints</span>
+<span class="kw">var</span> presets = <span class="kw">new</span>[] { <span class="str">"SmallPhone"</span>, <span class="str">"BigPhone"</span>, <span class="str">"LandscapePhone"</span>, <span class="str">"SmallPad"</span>, <span class="str">"BigPad"</span>, <span class="str">"Desktop"</span>, <span class="str">"BigDesktop"</span> };
+<span class="kw">foreach</span> (<span class="kw">var</span> preset <span class="kw">in</span> presets)
+{
+    <span class="type">Assert</span>.<span class="fn">Section</span>(preset);
+    <span class="kw">await</span> <span class="fn">SetViewport</span>(preset);
+    <span class="kw">await</span> <span class="fn">Sleep</span>(<span class="num">500</span>);
+    <span class="kw">await</span> <span class="fn">AssertPageContains</span>(<span class="str">"Welcome"</span>);
+    <span class="kw">await</span> <span class="fn">AssertAccessible</span>(<span class="str">"AA"</span>);
+}
+
+<span class="cm">// Exact dimensions</span>
+<span class="kw">await</span> <span class="fn">SetViewport</span>(<span class="num">1440</span>, <span class="num">900</span>);
+<span class="kw">var</span> (w, h) = <span class="kw">await</span> <span class="fn">GetViewportSize</span>();
+<span class="fn">Log</span>(<span class="str">$"Viewport: </span>{w}<span class="str">×</span>{h}<span class="str">"</span>);
+
+<span class="cm">// Reset when done</span>
+<span class="kw">await</span> <span class="fn">ResetViewport</span>();</code></pre>
+
+<div class="tip"><strong>Tip:</strong> Combine viewport presets with accessibility checks to test WCAG compliance across all screen sizes in a single script run.</div>
+
+<h2>Session Reset</h2>
+<p><code>ClearAll()</code> resets console, network, mocks, intercepts, assertions, cookies, storage, throttle, and viewport in one call. <code>ClearSession()</code> is the lighter variant — same reset but <strong>preserves cookies and storage</strong> (keeps you logged in). Also available via the toolbar <strong>Clear All</strong> button.</p>
+<pre><code><span class="kw">await</span> <span class="fn">ClearSession</span>();   <span class="cm">// Reset test artifacts, keep login</span>
+<span class="kw">await</span> <span class="fn">ClearAll</span>();       <span class="cm">// Full reset including cookies/storage</span></code></pre>
+
+<h2>Utility</h2>
+<table>
+  <tr><th>Method</th><th>Description</th></tr>
+  <tr><td><code>Screenshot(filePath)</code></td><td>Save screenshot as PNG</td></tr>
+  <tr><td><code>Log(message)</code> / <code>Log(message, color)</code></td><td>Print to script output; optional hex color (e.g. <code>"#F44747"</code>)</td></tr>
+  <tr><td><code>GetRandomTestData(kind?)</code></td><td>Random test string or security payload (<code>"strings"</code>, <code>"payloads"</code>, or active tab from Test Data dialog — <kbd>Ctrl</kbd>+<kbd>D</kbd>)</td></tr>
+  <tr><td><code>ExecuteJs(script)</code></td><td>Run JavaScript, returns string result</td></tr>
+  <tr><td><code>CollectGarbage()</code></td><td>Force GC to free memory (auto-runs after script)</td></tr>
+</table>
+<pre><code><span class="kw">var</span> payload = <span class="kw">await</span> <span class="fn">GetRandomTestData</span>(<span class="str">"payloads"</span>);
+<span class="kw">if</span> (payload != <span class="kw">null</span>) <span class="kw">await</span> <span class="fn">Type</span>(<span class="str">"#comment"</span>, payload);
+<span class="fn">Log</span>(<span class="str">"Failed!"</span>, <span class="str">"#F44747"</span>);</code></pre>
+
+<h2>CLI Usage</h2>
+<p>Save scripts as <code>.csx</code> files and run from the command line:</p>
+<pre><code>Trowser.exe --run test.csx --url https://example.com
+Trowser.exe --run test.csx --visible --timeout 300 --output report.txt</code></pre>
+<p>Exit codes: <strong>0</strong> = all passed, <strong>1</strong> = assertion failed, <strong>2</strong> = script error</p>
+<p><strong>Safe mode:</strong> <code>--safe</code> blocks scripting, fetch, mocks, fuzzing, and most active security probes. Scripts that use <code>Fetch</code>, <code>MockResponse</code>, or injection scanners need safe mode off.</p>
+
+<h2>Global Objects</h2>
+<table>
+  <tr><th>Object</th><th>Type</th><th>Description</th></tr>
+  <tr><td><code>Assert</code></td><td><code>TestAssert</code></td><td>Assertion library (non-throwing, summary auto-printed)</td></tr>
+  <tr><td><code>Console</code></td><td><code>ConsoleLog</code></td><td>Browser console messages for the active tab</td></tr>
+  <tr><td><code>Network</code></td><td><code>NetworkLog</code></td><td>Network traffic log for the active tab</td></tr>
+</table>
+
+<h2>About the Script Engine</h2>
+<p>Trowser scripts are powered by <strong>Roslyn</strong> (Microsoft.CodeAnalysis.CSharp.Scripting), the same compiler platform behind Visual Studio and <code>dotnet-script</code>. Scripts use the <code>.csx</code> format and support full C# 12 syntax — pattern matching, records, LINQ, string interpolation, tuples, and more.</p>
+<p>For deeper C# language and scripting reference:</p>
+<table>
+  <tr><td><a href="https://learn.microsoft.com/en-us/dotnet/csharp/" style="color:#569cd6;">C# Language Documentation</a></td><td>Official C# reference from Microsoft</td></tr>
+  <tr><td><a href="https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-12" style="color:#569cd6;">What's New in C# 12</a></td><td>Latest language features available in scripts</td></tr>
+  <tr><td><a href="https://github.com/dotnet/roslyn" style="color:#569cd6;">Roslyn on GitHub</a></td><td>The open-source compiler platform powering Trowser scripts</td></tr>
+</table>
+
+</body>
+</html>

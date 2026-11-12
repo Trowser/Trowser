@@ -1,0 +1,379 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://trowser.dev/schemas/vpx/1.0.json",
+  "title": "Vulnerability Proof eXchange (VPX) 1.0",
+  "description": "JSON format for exchanging vulnerability hypotheses, runtime proofs, and triage verdicts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["vpxVersion", "documentId", "surfaces", "findings", "proofs", "verdicts"],
+  "properties": {
+    "$schema": { "type": "string", "format": "uri" },
+    "vpxVersion": { "type": "string", "const": "1.0" },
+    "documentId": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "profile": {
+      "type": "string",
+      "enum": ["compact", "full", "summary"],
+      "description": "Which profile constraints this document follows."
+    },
+    "target": { "$ref": "#/definitions/target" },
+    "policy": { "$ref": "#/definitions/policy" },
+    "surfaces": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/surface" }
+    },
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/finding" }
+    },
+    "proofs": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/proof" }
+    },
+    "verdicts": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/verdict" }
+    }
+  },
+  "definitions": {
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseUrl": { "type": "string", "format": "uri" },
+        "repository": { "type": "string", "minLength": 1 },
+        "commit": { "type": "string", "minLength": 1 },
+        "environment": { "type": "string", "minLength": 1 }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cvssCap": { "type": "number", "minimum": 0, "maximum": 10 },
+        "proofRequiredAbove": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low", "info"]
+        },
+        "deferBelowPriority": { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "route", "method"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "route": { "type": "string", "minLength": 1 },
+        "method": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9-]*$"
+        },
+        "params": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/param" }
+        },
+        "auth": { "$ref": "#/definitions/auth" },
+        "discoveredFrom": {
+          "type": "string",
+          "enum": ["static", "runtime", "openapi", "inferred"]
+        },
+        "routeConfidence": {
+          "type": "string",
+          "enum": ["verified", "inferred", "unknown"]
+        }
+      }
+    },
+    "param": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "in"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "in": {
+          "type": "string",
+          "enum": ["query", "body", "path", "header", "cookie"]
+        },
+        "type": {
+          "type": "string",
+          "enum": ["string", "number", "boolean", "object", "array"]
+        }
+      }
+    },
+    "auth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "roles": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "mechanism": { "type": "string", "minLength": 1 }
+      }
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool"],
+      "properties": {
+        "tool": { "type": "string", "minLength": 1 },
+        "rule": { "type": "string", "minLength": 1 },
+        "file": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 1 },
+        "snippet": { "type": "string", "maxLength": 2000 }
+      }
+    },
+    "investigationHints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "codeSearchQueries": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "suggestedFiles": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "notes": { "type": "string", "maxLength": 2000 }
+      }
+    },
+    "proofIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "roles": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "mechanism": { "type": "string", "minLength": 1 }
+      }
+    },
+    "proofHints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "category": { "type": "string", "minLength": 1 },
+        "payloads": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "type": "string" }
+        },
+        "oracle": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Recommended values: error, timing, reflection, dom-change, status-code, network-match, data-change, error-or-timing, none"
+        },
+        "identity": { "type": "string", "minLength": 1 }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "severity", "title", "status"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "minLength": 1 },
+        "severity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low", "info"]
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "description": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Human-readable description of the vulnerability. Separates 'what this is' from investigationHints 'how to investigate'."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["hypothesis", "under_investigation", "deferred"]
+        },
+        "surfaceId": { "type": "string", "minLength": 1 },
+        "surfaceIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Additional surface IDs when a finding spans multiple surfaces. Use alongside or instead of surfaceId."
+        },
+        "param": { "type": "string", "minLength": 1 },
+        "origin": { "$ref": "#/definitions/origin" },
+        "trace": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "proofHints": { "$ref": "#/definitions/proofHints" },
+        "owasp": {
+          "type": "string",
+          "minLength": 1,
+          "description": "OWASP category identifier (e.g. 'A01', 'A05')."
+        },
+        "cwe": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "CWE identifiers (e.g. ['CWE-89']). Separate from origin.rule which holds scanner rule IDs."
+        },
+        "cvss": { "type": "number", "minimum": 0, "maximum": 10 },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Producer confidence in this hypothesis. Distinct from verdict confidence which measures proof certainty."
+        },
+        "proofPriority": { "type": "number", "minimum": 0, "maximum": 100 },
+        "investigationHints": { "$ref": "#/definitions/investigationHints" },
+        "relatedFindingIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "IDs of findings that interact with this one (e.g. attack chains, amplification)."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Free-form labels for filtering and grouping (e.g. ['infrastructure', 'kubernetes'])."
+        },
+        "reference": {
+          "type": "string",
+          "minLength": 1,
+          "description": "URL or identifier for external reference (advisory, documentation)."
+        },
+        "remediation": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Short remediation guidance as prose. For structured remediation, use verdict.remediation."
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["verify-workflow", "chain-prove", "manual"]
+        },
+        "templateId": { "type": ["string", "null"], "minLength": 1 },
+        "path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "injection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "surfaceId": { "type": "string", "minLength": 1 },
+        "param": { "type": "string", "minLength": 1 },
+        "payload": { "type": "string" }
+      }
+    },
+    "oracle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "passed"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Recommended values: error, timing, reflection, dom-change, status-code, network-match, data-change, error-or-timing, none"
+        },
+        "passed": { "type": "boolean" },
+        "evidence": { "type": ["string", "object"] }
+      }
+    },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "findingId", "executedAt", "tool"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "findingId": { "type": "string", "minLength": 1 },
+        "executedAt": { "type": "string", "format": "date-time" },
+        "tool": { "$ref": "#/definitions/tool" },
+        "workflow": { "$ref": "#/definitions/workflow" },
+        "injection": { "$ref": "#/definitions/injection" },
+        "identity": { "$ref": "#/definitions/proofIdentity" },
+        "oracle": { "$ref": "#/definitions/oracle" },
+        "evidenceSummary": { "type": "string", "maxLength": 2000 },
+        "evidenceBundle": { "type": "string", "minLength": 1 },
+        "elapsedMs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "remediationLocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "line": { "type": "integer", "minimum": 1 },
+        "function": { "type": "string", "minLength": 1 }
+      }
+    },
+    "remediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "strategy": { "type": "string", "minLength": 1 },
+        "locations": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/remediationLocation" }
+        },
+        "fixPattern": { "type": "string", "minLength": 1 },
+        "codeHint": { "type": "string", "minLength": 1 }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["findingId", "exploitability"],
+      "properties": {
+        "findingId": { "type": "string", "minLength": 1 },
+        "proofId": { "type": "string", "minLength": 1 },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "exploitability": {
+          "type": "string",
+          "enum": [
+            "confirmed",
+            "not_exploitable",
+            "inconclusive",
+            "blocked",
+            "deferred",
+            "hypothesis"
+          ]
+        },
+        "disposition": {
+          "type": "string",
+          "enum": [
+            "fix-now",
+            "fix-scheduled",
+            "accept-risk",
+            "false-positive",
+            "monitor"
+          ]
+        },
+        "justification": { "type": "string", "minLength": 1 },
+        "effectiveSeverity": {
+          "type": "string",
+          "enum": ["critical", "high", "medium", "low", "info"]
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "remediation": { "$ref": "#/definitions/remediation" },
+        "rerunToken": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

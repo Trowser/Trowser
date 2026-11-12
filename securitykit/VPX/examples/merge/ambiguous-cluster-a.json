@@ -1,0 +1,29 @@
+{
+  "vpxVersion": "1.1",
+  "documentId": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+  "runs": [
+    { "id": "run-a", "stage": "source-analysis", "actor": { "type": "llm", "name": "model-a", "version": "1" } }
+  ],
+  "surfaces": [
+    { "id": "surf-users", "route": "/api/users", "method": "GET" }
+  ],
+  "findings": [
+    {
+      "id": "f-model-a",
+      "fingerprint": {
+        "algorithm": "vpx-fingerprint-1",
+        "value": "sha256:b356f927f422a817d8b8a0677de4ef1b78233444f9bc9c3935cfb4b0d8e0ba77"
+      },
+      "kind": "sqli",
+      "severity": "high",
+      "title": "SQLi in user search (model A id)",
+      "status": "hypothesis",
+      "surfaceId": "surf-users",
+      "param": "q"
+    }
+  ],
+  "assessments": [],
+  "proofs": [],
+  "artifacts": [],
+  "verdicts": []
+}

@@ -1,0 +1,122 @@
+# Testing Inspiration Trowser
+#
+# Add your own testing ideas below! A few guidelines:
+# - One message per line
+# - Lines starting with # are comments (for categories and notes)
+# - Empty lines are ignored
+# - "XY_EQUATION" becomes "<quality characteristic> + <product element> = ?"
+# - "PO_STATEMENT" becomes "PO: <random word>" (a short provocative operator)
+
+# Straightforward test ideas
+What else is important?
+Search for 'exception' in the application log
+Do the same thing once more
+Try it backwards
+What can you change?
+Verify that Help matches functionality
+Let it run for quite some time, and look at resource utilization
+Ask someone else for their first impression
+Use credibly dirty data
+Try to do something actually valuable for you
+Galumphing – Doing something in a deliberately over-elaborate way
+
+# Test Strategy & Approach
+What's the opposite?
+What would Cem Kaner do?
+What's the worst that could happen?
+Do a rapid SFDIPOT!
+No feature is an island, what was affected?
+Try to provoke a high-stake risk
+Name three stakeholders and what they value
+It is better to do more different kinds of testing to a pretty good level, than to do one or two kinds of testing perfectly
+Look at other places
+
+# Performance & Load
+What happens under heavy load?
+Try rapid repeated actions
+How does it perform on a slow network?
+What's the memory usage now?
+
+# Accessibility & Usability
+How would a screen reader handle this?
+Is the contrast ratio sufficient?
+Try with screen magnification
+Can you navigate with just the keyboard?
+Is that really consistent?
+
+# Mobile & Responsive
+How does this look on mobile?
+What happens in landscape mode?
+Test with touch gestures
+Check on different screen sizes
+Trowser quicktest BackwardCompatibilityScan
+
+# Data & State
+What state are we in?
+Create Read Update Read Delete Read
+Use airplane mode
+Trowser quicktest ConsoleAndNetworkErrors
+
+# Security & Privacy
+Is sensitive data or internal information exposed?
+Try SQL injection here
+Check the network traffic
+Is it the right permissions?
+Time to use OWASP ZAP?
+Trowser quicktest SecurityScan
+
+# Integration & Dependencies
+What systems depend on this?
+Check external service calls
+Try on a different browser
+Trowser quicktest ThirdPartyAudit
+
+# User Scenarios
+Think like a hacker
+What would a new user do?
+What would an expert user do?
+You are 88 years old
+Act like a frustrated user
+Pretend you're in a hurry
+What would a competitor do?
+Just go Back
+Hey, take a different path next time!
+Draw your model of this
+Just make it fail
+
+# Tools
+Press F12, please
+Build a tool that would help you now
+Obviously you have time to spare, so go through all web requests and look at what is really there
+Ahh, this would be much easier if…
+
+# Big Picture
+What is really important?
+Step back - what's the purpose?
+Is this adding value?
+Consider the business impact
+The devil is in the details
+Think about the end user
+Question the requirements
+
+# Tester's feelings
+Raise your arms high and you will feel a bit better
+You should talk to someone
+How do you feel?
+Do you know that also testers can be wrong?
+
+# Miscellaneous
+What is the worst possible headline?
+Isn't there a standard for this?
+Test as if this was written by AI
+Question everything, especially this statement
+Testing is never better than the communication of the results
+What if...
+
+# Dynamic Content Generators (don't remove these)
+XY_EQUATION
+XY_EQUATION
+XY_EQUATION
+XY_EQUATION
+PO_STATEMENT
+PO_STATEMENT

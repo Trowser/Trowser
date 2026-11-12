@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trowser Introduction</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0c0c0c;
+    color: #d4d4d4;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px 80px;
+  }
+  .container {
+    max-width: 780px;
+    width: 100%;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 6px;
+  }
+  .header img {
+    width: 52px;
+    height: 52px;
+  }
+  .logo {
+    font-size: 42px;
+    font-weight: 700;
+    color: #e0e0e0;
+    letter-spacing: -1px;
+  }
+  .tagline {
+    font-size: 14px;
+    color: #999;
+    margin-bottom: 48px;
+  }
+  .section {
+    margin-bottom: 32px;
+  }
+  .section h2 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #f57e23;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 14px;
+  }
+  .section p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #999;
+    margin-bottom: 10px;
+  }
+  .section p strong {
+    color: #d4d4d4;
+    font-weight: 500;
+  }
+  code {
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-size: 12px;
+    color: #f57e23;
+  }
+  .important {
+    border-left: 3px solid #f57e23;
+    padding: 16px 20px;
+    margin-bottom: 32px;
+    background: rgba(245, 126, 35, 0.06);
+  }
+  .important h2 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #f57e23;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+  }
+  .important p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #999;
+    margin-bottom: 0;
+  }
+  .intro {
+    margin-bottom: 32px;
+  }
+  .intro p {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #999;
+    margin-bottom: 10px;
+  }
+  pre {
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-size: 12px;
+    color: #999;
+    background: #1a1a1a;
+    padding: 16px 20px;
+    margin-top: 12px;
+    margin-bottom: 10px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    border-left: 3px solid #3F3F46;
+  }
+  pre em {
+    color: #569cd6;
+    font-style: normal;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="data:image/png;base64,{{ICON_BASE64}}" alt="Trowser">
+      <div class="logo">Trowser</div>
+    </div>
+    <p class="tagline">Exploratory Tester's Companion</p>
+
+    <div class="intro">
+      <p>Nothing beats an exploratory tester with good knowledge about the software under test. Trowser's ambition is to enhance the exploratory tester, with quick access to nifty tools, the ability to use an LLM as an extra perspective, and scripting possibilities for faster testing and automated regression testing.</p>
+      <p>Trowser is a testing browser with built-in tools inside the browser (that's why it will feel fast). It does not replace more advanced tools like Playwright, axe DevTools, Zed Attack Proxy et.al., but it gives you quick access to many things you want to do with other tools.</p>
+      <p>Trowser also offers capabilities few other tools have. Access to scripting at the current web location, quicktests for technical testing, REST API that enables LLMs to explore and test, LLM integration with testing knowledge, and hopefully more to come.</p>
+    </div>
+
+    <div class="important">
+      <h2>Important!</h2>
+      <p>Remember that you as a tester are in charge. You decide what is important and worthy to investigate. Trowser just helps you do things faster, and give you inspiration. But you are responsible for what should be reported as test results, and how.</p>
+    </div>
+
+    <div class="section">
+      <h2>Getting Started</h2>
+      <p>Launch Trowser.exe and if you are using Windows with a 64-bit Edge it should start.</p>
+      <p>Go to the web service you are currently testing. Open the script console and look at the available quicktests.</p>
+      <p>Try a few of them, maybe you already have an automated accessibility check, but want to test fast on different resolutions. If this is important to you, you might want to edit the script to add resolutions of interest to you, or write some assertions for things that you think might fail in some circumstances.</p>
+      <p>Some of these might be better used after your session, e.g. <strong>10BiggestFiles</strong> and <strong>NetworkAndConsoleErrors</strong>.</p>
+      <p>Try the <strong>Watch mode</strong> in Script Console, where tests will be performed on each navigation. There are predefined tests, but they should be tailored to your web service, and you should add important assertions, e.g. user name is the expected, company musts are available etc.</p>
+      <p>If you have an LLM agent, turn on the REST API (status bar in bottom), and let it know. You have to provide the API key from each session (this is for your security!)</p> 
+      <p>Try just giving access to <code>trowserkit\api-reference.md</code> and see what they come up with. It will take time, but since we are getting a different perspective it is worth it. Look in the trowserkit folder for prompting examples and <code>testheuristics.md</code> with testing wisdom collected by Elisabeth Hendrickson and Rikard Edgren.</p>
+    </div>
+
+    <div class="section">
+      <h2>Faster and richer testing</h2>
+      <p>Press Ctrl+D to get random test data in your clipboard. More variation gives better test coverage over time, and you can edit the strings in Test Data dialog.</p>
+      <p>Click Network Interception in status bar, and note that you can add a mock or a breakpoint at endpoints of interest. Makes it more probable that you test some error handling when you don't need a separate proxy.</p>
+      <p>Press Ctrl+I to get a testing inspiration message that might help you come up with your next great test idea.</p>
+    </div>
+
+    <div class="section">
+      <h2>Script Console</h2>
+      <p>Here's where you can do things really fast. The C# scripting should not be a problem if you are used to other languages, it is just some syntax differences and you can do what you are used to. Look at the examples (Quicktests), read the Help, and tailor scripts to your context.</p>
+      <p>Maybe you want to repeat an action 1000 times. Well just record it and add a for loop. Perhaps your service can't have any 500 errors, well try the <strong>FaultInjection</strong> quicktest.</p>
+      <p>In recording mode, executed scripts will be added to the recorded script, updating variable conflicts to avoid compiling problems.</p>
+    </div>
+
+    <div class="section">
+      <h2>Technical Testing</h2>
+      <p>We have integrated some open-source third party tools that help you test your web service quickly. Some of these are not new, but much more accessible now.</p>
+      <p><strong>gremlins.js</strong> was new to me, it doesn't find bugs, but is impressive as a demo. Monkey Trowser (the Trowser smart robustness tester) has better chances of finding things.</p>
+      <p>The "database" for <strong>retire.js</strong> can be updated by putting a later version next to the executable. html-validate is very picky and sites can function perfectly with errors.</p>
+	  <p>Backward compatibility scan is custom built for Trowser (by Claude Opus 4.6). It is far from a perfect oracle, but can give you a clue where to do more testing. Most Android phones have a newer version of the browser than what the scan looks for (it checks the vanilla browser). I have seen one case where the test was green, but old iPhone didn't work.</p>
+	  <p>Integrating with other tools is encouraged, so you can point the traffic to a proxy. A simple edit request/response is also included, so you don't have to add a proxy for small things.</p>
+    </div>
+
+    <div class="section">
+      <h2>LLM Integration</h2>
+      <p>The API enables LLMs to look at the web site, understand what can be interacted with, and do testing. The API has quick access to page information and technical tests, it is close to Chrome DevTools Protocol, and is very powerful.</p>
+      <p>Be aware that this can take some time. The machines are almost the opposite of an exploratory tester; it is really fast when looking at technical details, but quite slow in understanding what happens and what to do next.</p>
+      <p>But it gives very interesting results. A good model will typically find a good portion of the bugs from a human tester, and it can also find things the tester didn't have time to look for (or missed). A weak LLM model will just give you some information about current page, that you could get faster in many other ways.</p>
+      <p>My recommendation is to use it as a second tester during lunch or after work.</p>
+	  <p>I have gotten best result with a separate agent that has access to the documentation and can produce too-good looking reports (the testing might not be as good as the report implies). If you don't know the software yourself, it will be hard to evaluate the results.</p>
+	  <p>It is also possible to chat with an LLM that you connect to in the LLM Settings dialog. The integration uses structured tool calling, and passes along API instructions and test heuristics.</p>
+      <p>Be aware that a conversation always sends all the previous messages, so token-wise it is good to start from scratch, unless the history is important for the task at hand. In LLM Settings, <strong>Economical</strong> is the default everyday mode (live click/type/navigate, quality audits, a basic security scan). <strong>Chat</strong> is a sounding board that does not act in the browser. <strong>Full</strong> adds specialist security tools.</p>
+    </div>
+
+    <div class="section">
+      <h2>Models and prompting</h2>
+      <p>Only initial experiments performed, but Claude Opus 4.6 seems best at the moment. Temperature 0.7 found more deeper bugs than 0.3. It often tries to be fast, so when saying there probably are more bugs, you will get better testing.</p>
+      <p>The <code>heuristics.md</code> really does make the testing deeper, and apart from finding better bugs, it seems to promote better pinpointing.</p>
+      <p>Including requirements works perfectly fine, and I guess a manual, known bugs and error-prone areas can help even more. There are several examples of prompts in the trowserkit, and here you can tailor it to your own needs, maybe you want it to stop and ask questions now and then, maybe there are special things to look for, or not to look for etc.</p>
+    </div>
+
+    <div class="section">
+      <h2>Recording</h2>
+      <p>Record and playback for regression testing has always been fragile, and still is. So you will notice that although the Trowser scripts have easy-to-use commands, there will probably be some xpath and not something to rely on in the future. But that's OK in our situation, because first use-case is something that helps us right now, and for regression testing the LLM has proven remarkably capable of repairing the scripts (I guess the API is helpful).</p>
+      <p>In right-click menu there is a simplistic <strong>Assert for text</strong> on page, and an <strong>Element of interest</strong> to give the LLM a head start.</p>
+      <p>If fast regression tests is your focus, you should either manually improve the recording, or start with the output from an LLM. Or even better, have a solid automation strategy that probably not involves Trowser.</p>
+      <p>The testability of your web site will massively effect the result, e.g. <code>data-testid</code> will make everything better, and if WebMCP is supported it will be even better.</p>
+    </div>
+
+    <div class="section">
+      <h2>Design Principles</h2>
+      <p>Trowser was developed with these design principals:</p>
+      <p><strong>Human in control</strong> - The tester decides when to start, what to do, what to report, and how.</p>
+      <p><strong>LLM-first</strong> - The APIs are from scratch designed towards LLM usage.</p>
+      <p><strong>Speed</strong> - Offer quicktests for fast testing when that is possible. No need to ask an LLM about WCAG compliance, when axe DevTools is available, and a quicktest is done within a second in Trowser.</p>
+      <p><strong>Extendability</strong> - Avoid building too much into the tool, rather have generic API:s providing freedom for humans and LLMs to use the latest and greates of skills and tools.</p>
+      <p><strong>one-size-does-not-fit-all</strong> - No ambition to make a generic tool for all OS and situations. This Trowser is Windows all the way, with C# scripting and only usable for web services.</p>
+      <p><strong>Humour</strong> - Testers need some fun to survive, so the software name is important, the splash screen is intended to barely be seen, and the beautiful easter egg is pointless.</p>
+    </div>
+
+    <div class="section">
+      <h2>About the Creation of Trowser</h2>
+      <p>Trowser is a one-man project, helped by many, but with an exploratory tester as product owner, developer, tester and documenter.</p>
+      <p>I am fond of tools, and when Claude Sonnet 3.5 came I started making lots of small tools for my specific testing situation. The LLM programming was really good for simpler things, but not for more complex stuff.</p>
+      <p>Claude Opus 4.6 was at a new level, besides being more reliable code-wise, handling larger code bases, it had a second-thought and found general solutions even when it first had come to a specific solution.</p>
+      <p>So on a bus ride with bad internet connection, I decided to create my own web browser just based on the feeling that it would enable more powerful testing.</p>
+      <p>This is the first prompt I sent to Cursor with Claude Opus 4.6 (in case you want to quickstart your own browser):</p>
+      <pre><em>I want to build my own web browser.
+Its purpose is to enhance testing of web services, hence the name Trowser.
+It needs to support the normal things a web browser supports, but no need for fancy user features.
+The unique thing this browser should have is built-in ability for test automation, like a browser + Selenium build in one.
+Later on we will add testing features, like automater checks of WCAG compliance, but we can do that later.
+We only need Windows support, so I guess we are going for an .exe.</em></pre>
+      <p>It compiled fine, and just by using it I saw features I wanted to build to enable better testing. A key was the introduction of a REST API, because that enabled the LLM to try things for itself. I would tell the LLM to test something, and at the same time look for enhancements in the Trowser API. If the feedback seemed worthwhile, I would just paste this as next prompt.</p>
+      <p><strong>axe-core</strong> is a bliss for accessibility testing, and changing screen size was done in 5 minutes.</p>
+      <p>Of course there has been bugs, but as an exploratory tester I should find the most important ones.</p>
+      <p>It was (and is) a hobby project, I would get an idea on the way home, and let the LLM do the work while I cooked for the family. Most stuff was impressively easy, the first difficult thing was the record/playback, but that also gave much better APIs for finding things on different web services. Crucial insight was that it doesn't need to be perfectly reliable, it just needs to be something that works at the moment (both for me and as keys for the LLM). Still a lot of work though, and that weekend was the first really time-consuming part.</p>
+      <p>I felt that my features aligned very well testing-wise. I could record manually, look at the result, run the script. Tell the LLM that it should use the REST API to figure out why it didn't become good, and fix it. <code>"Available at localhost:6923 for your troubleshooting."</code> was a nice prompt. It also gave opportunities unforeseen. Mobile backward compatibility is something I test with Browserstack, but now I got the idea to let Trowser parse the loaded JavaScript to check for new features that might not work. First usable version ready in 10 minutes, and the opportunities available with a one-line script to check this is nice (but not a perfect oracle!)</p>
+      <p>Overall it was remarkably easy to build, and testing is easy since I am the user myself. LLMs make mistakes and I enjoyed when it showed the splash screen, but couldn't start Trowser. I did not know about gremlins.js before, so it was fun to create the Trowser version along with it. Still things to do of course, improvements to the API usage on different kinds of web services is ongoing.</p>
+      <p>Same day as the Trowser Alpha Group started, I saw that Microsoft had released similar LLM enabler with Visual Studio Code Agentic browser tools, including all Playwright capabilities. Intitial tests showed a tie according to the LLMs honest opinion, and even after improvements to Trowser it didn't get better than "use both". Microsoft will of course run faster than me, and I hope they also create features for the human tester, like Trowser has.</p>
+      <p>So I have built this tool based on my own needs, and I am hoping that it will match many other testers. It is quite different from other AI testing tools that often focus on self-healing, visual comparison, test cases or automated checks we already can do with existing tools. I want the exploratory tester to still be the champion, but with better tool support.</p>
+      <br></br>
+	  <p><i>Rikard Edgren, 12th of March 2026</i></p>
+	  </div>
+  </div>
+</body>
+</html>

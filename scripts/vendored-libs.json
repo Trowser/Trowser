@@ -1,0 +1,81 @@
+﻿{
+    "$schemaComment":  "Pinned third-party JS libraries vendored into src/Trowser/Resources. retire.js jsrepository.json is refreshed on Trowser build (scripts/update-jsrepository.ps1). Run scripts/update-vendored-libs.ps1 to check/update the rest.",
+    "libraries":  [
+                      {
+                          "id":  "axe-core",
+                          "npmPackage":  "axe-core",
+                          "pinnedVersion":  "4.14.0",
+                          "resourcePath":  "src/Trowser/Resources/axe.min.js",
+                          "licenseFile":  "licenses/axe-core-MPL-2.0.txt",
+                          "fetchOrBuild":  {
+                                               "type":  "cdn",
+                                               "url":  "https://cdn.jsdelivr.net/npm/axe-core@{version}/axe.min.js"
+                                           },
+                          "detectVersionFrom":  "header"
+                      },
+                      {
+                          "id":  "html-validate",
+                          "npmPackage":  "html-validate",
+                          "pinnedVersion":  "11.17.0",
+                          "resourcePath":  "src/Trowser/Resources/html-validate.bundle.js",
+                          "licenseFile":  "licenses/html-validate-MIT.txt",
+                          "fetchOrBuild":  {
+                                               "type":  "esbuild",
+                                               "entry":  "html-validate",
+                                               "globalName":  "htmlvalidate",
+                                               "outfile":  "html-validate.bundle.js"
+                                           },
+                          "detectVersionFrom":  "manifest"
+                      },
+                      {
+                          "id":  "gremlins.js",
+                          "npmPackage":  "gremlins.js",
+                          "pinnedVersion":  "2.2.0",
+                          "resourcePath":  "src/Trowser/Resources/gremlins.min.js",
+                          "licenseFile":  "licenses/gremlins.js-MIT.txt",
+                          "fetchOrBuild":  {
+                                               "type":  "cdn",
+                                               "url":  "https://cdn.jsdelivr.net/npm/gremlins.js@{version}/dist/gremlins.min.js"
+                                           },
+                          "detectVersionFrom":  "manifest"
+                      },
+                      {
+                          "id":  "web-vitals",
+                          "npmPackage":  "web-vitals",
+                          "pinnedVersion":  "6.2.3",
+                          "resourcePath":  "src/Trowser/Resources/web-vitals.iife.js",
+                          "licenseFile":  "licenses/web-vitals-Apache-2.0.txt",
+                          "fetchOrBuild":  {
+                                               "type":  "cdn",
+                                               "url":  "https://cdn.jsdelivr.net/npm/web-vitals@{version}/dist/web-vitals.attribution.iife.js"
+                                           },
+                          "detectVersionFrom":  "manifest"
+                      },
+                      {
+                          "id":  "csp-evaluator",
+                          "npmPackage":  "csp_evaluator",
+                          "pinnedVersion":  "1.1.8",
+                          "resourcePath":  "src/Trowser/Resources/csp-evaluator.bundle.js",
+                          "licenseFile":  "licenses/csp-evaluator-Apache-2.0.txt",
+                          "fetchOrBuild":  {
+                                               "type":  "esbuild",
+                                               "entry":  "csp_evaluator",
+                                               "globalName":  "cspEvaluator",
+                                               "outfile":  "csp-evaluator.bundle.js"
+                                           },
+                          "detectVersionFrom":  "manifest"
+                      },
+                      {
+                          "id":  "tldts",
+                          "npmPackage":  "tldts",
+                          "pinnedVersion":  "7.4.19",
+                          "resourcePath":  "src/Trowser/Resources/tldts.umd.min.js",
+                          "licenseFile":  "licenses/tldts-MIT.txt",
+                          "fetchOrBuild":  {
+                                               "type":  "cdn",
+                                               "url":  "https://cdn.jsdelivr.net/npm/tldts@{version}/dist/index.umd.min.js"
+                                           },
+                          "detectVersionFrom":  "manifest"
+                      }
+                  ]
+}

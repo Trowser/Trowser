@@ -1,0 +1,22 @@
+{
+  "rest": [
+    { "method": "POST", "path": "/api/abort", "reason": "Cancels in-flight work" },
+    { "method": "POST", "path": "/api/force-navigate", "reason": "CDP terminate + navigate recovery" },
+    { "method": "POST", "path": "/api/load-test", "reason": "Long-running load test" },
+    { "method": "POST", "path": "/api/monkey-test", "reason": "Random UI exploration" },
+    { "method": "POST", "path": "/api/monkey-trowser", "reason": "Form fuzzing" },
+    { "method": "POST", "path": "/api/fuzz", "reason": "Fuzzing" },
+    { "method": "POST", "path": "/api/orchestrate/{playbook}", "reason": "Security playbook orchestration" },
+    { "method": "POST", "path": "/api/orchestrate/dry-run/{playbook}", "reason": "Playbook dry-run still heavy" },
+    { "method": "POST", "path": "/api/peer/launch", "reason": "Spawns peer process" },
+    { "method": "POST", "path": "/api/clear-all", "reason": "Destructive session reset" }
+  ],
+  "mcpTools": [
+    { "name": "browser_abort", "reason": "Cancels in-flight work" },
+    { "name": "browser_force_navigate", "reason": "Recovery navigation" },
+    { "name": "browser_monkey_test", "reason": "Random exploration" },
+    { "name": "browser_monkey_trowser", "reason": "Form fuzzing" },
+    { "name": "browser_fuzz", "reason": "Fuzzing" },
+    { "name": "browser_clear_all", "reason": "Destructive reset" }
+  ]
+}

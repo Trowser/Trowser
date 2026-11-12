@@ -1,0 +1,26 @@
+id: apache-server-status
+
+info:
+  name: Apache Server Status
+  author: projectdiscovery
+  severity: low
+  description: Detects exposed Apache mod_status pages at the site origin.
+  tags: exposure,apache,panel,misconfig,legacy
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/server-status"
+      - "{{RootURL}}/server-status?auto"
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "Apache Status"
+          - "Server Version"
+        condition: or
+        part: body

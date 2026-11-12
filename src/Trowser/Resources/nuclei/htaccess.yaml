@@ -1,0 +1,26 @@
+id: htaccess-exposure
+
+info:
+  name: .htaccess Exposure
+  author: trowser
+  severity: low
+  description: Detects an exposed Apache .htaccess file at the site origin.
+  tags: exposure,config,misconfig,apache,legacy
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/.htaccess"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "RewriteEngine"
+          - "RewriteRule"
+          - "AuthType"
+          - "deny from"
+        condition: or
+        part: body

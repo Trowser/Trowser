@@ -1,0 +1,216 @@
+{
+  "vpxVersion": "1.1",
+  "documentId": "11111111-2222-3333-4444-555555555555",
+  "createdAt": "2026-08-26T08:00:00Z",
+  "updatedAt": "2026-08-26T11:20:00Z",
+  "profile": "full",
+  "target": {
+    "repository": "https://github.com/acme/webapp",
+    "commit": "abc123def456",
+    "baseUrl": "https://staging.example.com",
+    "environment": "staging",
+    "deploymentId": "deploy-17"
+  },
+  "runs": [
+    {
+      "id": "run-a",
+      "stage": "source-analysis",
+      "actor": { "type": "llm", "name": "model-a", "version": "1" }
+    },
+    {
+      "id": "run-b",
+      "stage": "source-analysis",
+      "actor": { "type": "llm", "name": "model-b", "version": "1" }
+    },
+    {
+      "id": "run-c",
+      "stage": "source-analysis",
+      "actor": { "type": "llm", "name": "model-c", "version": "1" }
+    },
+    {
+      "id": "run-cluster",
+      "stage": "aggregation",
+      "actor": { "type": "service", "name": "vpx-cluster", "version": "1.1" }
+    },
+    {
+      "id": "run-d",
+      "stage": "proof",
+      "actor": { "type": "llm", "name": "model-d", "version": "1" }
+    },
+    {
+      "id": "run-e",
+      "stage": "proof",
+      "actor": { "type": "tool", "name": "trowser", "version": "1.1" }
+    },
+    {
+      "id": "run-f",
+      "stage": "proof",
+      "actor": { "type": "tool", "name": "manual-replay", "version": "1" }
+    },
+    {
+      "id": "run-human",
+      "stage": "adjudication",
+      "actor": { "type": "human", "name": "security-reviewer" }
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "surface-search",
+      "route": "/api/users",
+      "method": "GET",
+      "params": [{ "name": "q", "in": "query", "type": "string" }]
+    }
+  ],
+  "findings": [
+    {
+      "id": "finding-sqli-search",
+      "fingerprint": {
+        "algorithm": "vpx-fingerprint-1",
+        "value": "sha256:1694ff5ad1f4f8d20c7517384a86929475778414f220a4e69cf7f3d6673170e8"
+      },
+      "kind": "sqli",
+      "severity": "high",
+      "title": "Potential SQL injection in user search",
+      "status": "hypothesis",
+      "surfaceId": "surface-search",
+      "param": "q",
+      "origin": {
+        "tool": "llm-sast",
+        "file": "src/Api/UserSearchController.cs",
+        "line": 87
+      },
+      "reportedByRunIds": ["run-a", "run-b", "run-c"],
+      "assessmentIds": [
+        "assessment-a",
+        "assessment-b",
+        "assessment-c"
+      ]
+    }
+  ],
+  "assessments": [
+    {
+      "id": "assessment-a",
+      "findingId": "finding-sqli-search",
+      "runId": "run-a",
+      "phase": "source-analysis",
+      "conclusion": "supports",
+      "confidence": 0.82,
+      "rationale": "Untrusted query input appears to reach interpolated SQL."
+    },
+    {
+      "id": "assessment-b",
+      "findingId": "finding-sqli-search",
+      "runId": "run-b",
+      "phase": "source-analysis",
+      "conclusion": "disputes",
+      "confidence": 0.61,
+      "rationale": "BuildSearchQuery looks like it wraps q in SqlParameter; interpolation may be a leftover comment."
+    },
+    {
+      "id": "assessment-c",
+      "findingId": "finding-sqli-search",
+      "runId": "run-c",
+      "phase": "source-analysis",
+      "conclusion": "inconclusive",
+      "confidence": 0.4,
+      "rationale": "Cannot tell whether the interpolating helper is reachable in this build."
+    },
+    {
+      "id": "assessment-e-review",
+      "findingId": "finding-sqli-search",
+      "proofId": "proof-e",
+      "runId": "run-e",
+      "phase": "proof-review",
+      "conclusion": "supports",
+      "rationale": "Error-based payload returned a SQL Server syntax error for another user's record filter."
+    }
+  ],
+  "proofs": [
+    {
+      "id": "proof-d",
+      "findingId": "finding-sqli-search",
+      "runId": "run-d",
+      "executedAt": "2026-08-26T10:10:00Z",
+      "outcome": "not-reproduced",
+      "tool": { "name": "model-d-planner", "version": "1" },
+      "oracle": {
+        "type": "error-or-timing",
+        "observed": false,
+        "expectedSignal": "SQL error or timing delay",
+        "actualSignal": "200 with empty result set"
+      },
+      "limitations": [
+        "Only error-based and boolean-based payloads were attempted",
+        "No authenticated identity other than role user"
+      ]
+    },
+    {
+      "id": "proof-e",
+      "findingId": "finding-sqli-search",
+      "runId": "run-e",
+      "executedAt": "2026-08-26T10:14:00Z",
+      "outcome": "exploited",
+      "tool": { "name": "trowser", "version": "1.1" },
+      "oracle": {
+        "type": "data-change",
+        "observed": true,
+        "expectedSignal": "A record owned by another user is returned",
+        "actualSignal": "Response contained record account-7821"
+      },
+      "artifactIds": ["artifact-proof-e"],
+      "targetSnapshot": { "deploymentId": "deploy-17" }
+    },
+    {
+      "id": "proof-f",
+      "findingId": "finding-sqli-search",
+      "runId": "run-f",
+      "executedAt": "2026-08-26T10:18:00Z",
+      "outcome": "blocked",
+      "tool": { "name": "manual-replay", "version": "1" },
+      "oracle": {
+        "type": "status-code",
+        "observed": false,
+        "actualSignal": "WAF returned 403 before the application handled the request"
+      },
+      "limitations": [
+        "WAF in front of staging blocked the same payload class that succeeded in run-e from a trusted lab network"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "id": "artifact-proof-e",
+      "kind": "http-transcript",
+      "uri": "file://evidence/proof-e/http.json",
+      "mediaType": "application/json",
+      "digest": {
+        "algorithm": "sha-256",
+        "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "sensitivity": "confidential",
+      "producedByRunId": "run-e"
+    }
+  ],
+  "verdicts": [
+    {
+      "id": "verdict-001",
+      "findingId": "finding-sqli-search",
+      "runId": "run-human",
+      "basedOnAssessmentIds": [
+        "assessment-a",
+        "assessment-b",
+        "assessment-c",
+        "assessment-e-review"
+      ],
+      "basedOnProofIds": ["proof-d", "proof-e", "proof-f"],
+      "exploitability": "confirmed",
+      "disposition": "fix-now",
+      "confidence": 0.96,
+      "justification": "Model disagreement is preserved. One proof run demonstrated unauthorized data access; a later blocked attempt does not erase that evidence. Failure to reproduce in run-d is not treated as not_exploitable.",
+      "approval": {
+        "status": "approved",
+        "approvedByRunId": "run-human"
+      }
+    }
+  ]
+}

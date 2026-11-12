@@ -1,0 +1,31 @@
+id: graphql-ide-exposure
+
+info:
+  name: GraphQL IDE Exposure
+  author: trowser
+  severity: low
+  description: Detects an exposed in-browser GraphQL IDE (GraphiQL / Playground / Altair) at the site origin.
+  tags: exposure,graphql,api,panel
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/graphiql"
+      - "{{RootURL}}/playground"
+      - "{{RootURL}}/altair"
+      - "{{RootURL}}/graphql"
+      - "{{RootURL}}/api/graphiql"
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "GraphiQL"
+          - "GraphQL Playground"
+          - "altair"
+          - "graphql-playground"
+        condition: or
+        part: body

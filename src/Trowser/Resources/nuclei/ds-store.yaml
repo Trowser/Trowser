@@ -1,0 +1,22 @@
+id: ds-store-exposure
+
+info:
+  name: DS_Store Exposure
+  author: trowser
+  severity: low
+  description: Detects an exposed .DS_Store file at the site origin (macOS directory metadata leak).
+  tags: exposure,files,misconfig,legacy
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/.DS_Store"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "Bud1"
+        part: body

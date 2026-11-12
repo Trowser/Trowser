@@ -1,0 +1,26 @@
+id: git-config-exposure
+
+info:
+  name: Git Config Exposure
+  author: projectdiscovery
+  severity: low
+  description: Detects exposed .git metadata at the site origin that may leak repository information.
+  tags: exposure,git,config,misconfig
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/.git/config"
+      - "{{RootURL}}/.git/HEAD"
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "[core]"
+          - "ref: refs/"
+        condition: or
+        part: body

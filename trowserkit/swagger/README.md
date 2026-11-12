@@ -110,6 +110,17 @@ Both tools will import all 108 endpoints with examples, descriptions, and the au
 
 ---
 
+## Regenerating `openapi.yaml`
+
+After REST routes change, refresh the index and OpenAPI spec from the repo root:
+
+```powershell
+.\scripts\generate-api-index.ps1
+.\scripts\update-openapi-from-index.ps1
+```
+
+The update script runs Python sync/validate, then **`OpenApiSpecTests`** in `Trowser.Tests` as the .NET gate. Stub count must stay within `tests/baselines/openapi-stubs.txt`.
+
 ## Files in this folder
 
 | File | Purpose |

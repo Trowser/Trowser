@@ -5,7 +5,7 @@ The purpose of this session is to understand a web service, gather information, 
 You will do this with Trowser, the testing browser.
 I have navigated my Trowser instance at localhost:6923 to https://www.thetesteye.com/exercises/RTD/good/index.html where I want you to investigate what the site is about, note down important features, and provide technical REST API details that will give other LLMs a head start. Add a section with your ideas for focused test sessions.
 
-Use the Trowser REST API (trowser-api-reference.md) to get information about the page and interact.
+Use the Trowser REST API (trowser-api-core.md) to get information about the page and interact.
 
 API key is trowser_XXX
 

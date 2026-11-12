@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trowser</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0c0c0c;
+    color: #d4d4d4;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+  .container {
+    width: 100%;
+    max-width: 860px;
+    padding: 44px 36px 36px;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .header img { width: 44px; height: 44px; }
+  .logo {
+    font-size: 36px;
+    font-weight: 700;
+    color: #e0e0e0;
+    letter-spacing: -1px;
+  }
+  .tagline {
+    font-size: 13px;
+    color: #888;
+    margin: 2px 0 28px 58px;
+  }
+  .mantra {
+    font-size: 26px;
+    font-weight: 600;
+    color: #e8e8e8;
+    letter-spacing: -0.3px;
+    margin-bottom: 8px;
+  }
+  .mantra em { font-style: normal; color: #f57e23; }
+  .essence {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #999;
+    max-width: 640px;
+    margin-bottom: 22px;
+  }
+
+  .target {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 30px;
+  }
+  .target input {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 10px 12px;
+    color: #e0e0e0;
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-size: 13px;
+    outline: none;
+  }
+  .target input:focus { border-color: #f57e23; }
+  .target input.missing { border-color: #f44747; animation: nudge .3s; }
+  @keyframes nudge { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .step {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 0 12px;
+    margin-bottom: 26px;
+  }
+  .num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid #f57e23;
+    color: #f57e23;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+  .step h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 4px;
+  }
+  .step p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #999;
+    margin-bottom: 10px;
+  }
+  .step p strong { color: #d4d4d4; font-weight: 500; }
+  .step-body.with-art {
+    display: grid;
+    grid-template-columns: 1fr 150px;
+    gap: 0 18px;
+  }
+  .art { text-align: center; }
+  .art svg { width: 150px; height: auto; display: block; }
+  .art a { font-size: 11px; }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    grid-column: 1 / -1;
+  }
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    color: #d4d4d4;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 7px 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .12s, background .12s;
+  }
+  button:hover { border-color: #f57e23; background: #221c18; }
+  button:focus-visible { outline: 1px solid #f57e23; outline-offset: 2px; }
+  button small { color: #777; margin-left: 4px; }
+  button.primary { background: #f57e23; border-color: #d96d1a; color: #fff; font-weight: 600; }
+  button.primary:hover { background: #ff9142; border-color: #d96d1a; }
+  .tip { font-size: 12px; color: #777; margin-top: 10px; grid-column: 1 / -1; }
+
+  a { color: #f57e23; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  kbd {
+    font-family: 'Cascadia Code', Consolas, monospace;
+    font-size: 11px;
+    color: #d4d4d4;
+    background: #1f1f1f;
+    border: 1px solid #333;
+    border-radius: 3px;
+    padding: 0 4px;
+  }
+
+  .further {
+    border-top: 1px solid #222;
+    padding-top: 16px;
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    font-size: 12px;
+    color: #777;
+  }
+  .further button {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #f57e23;
+    font-size: 12px;
+  }
+  .further button:hover { text-decoration: underline; background: none; }
+  .keys { margin-top: 12px; font-size: 12px; color: #666; line-height: 2; }
+  .keys span { margin-right: 14px; white-space: nowrap; }
+  .quote { margin-top: 14px; font-size: 11px; color: #555; }
+
+  @media (max-width: 640px) {
+    .step-body.with-art { grid-template-columns: 1fr; }
+    .art { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="data:image/png;base64,{{ICON_BASE64}}" alt="Trowser">
+      <div class="logo">Trowser</div>
+    </div>
+    <p class="tagline">Exploratory Tester's Companion</p>
+
+    <h1 class="mantra">Understand what is important, <em>then test it.</em></h1>
+    <p class="essence">Trowser is a normal web browser, with F12 for DevTools, and also a lot of built-in quicktests and C# scripting console. You, and AI, strongest together, have full control and can collaborate to find new information.</p>
+
+    <form class="target" id="target">
+      <input id="url" type="text" value="{{LAST_URL}}" placeholder="Address of the software you test, e.g. localhost:3000" spellcheck="false" autocomplete="off" aria-label="Address of the software you test">
+      <button class="primary" type="submit">Open</button>
+    </form>
+
+    <section class="step">
+      <div class="num">1</div>
+      <div class="step-body">
+        <h2>Understand what matters</h2>
+        <p>You need to learn your products qualities and risks. By exploring the software in various ways you will learn more, understand relations and find important quality-related information. You can turn on recording in the Journal, so you can concentrate fully on the software.</p>
+        <div class="actions">
+          <button data-action="explore" data-needs-url>Record with Journal <small>Ctrl+J</small></button>
+          <button data-action="ask-ai">Ask AI what matters here <small>Ctrl+L</small></button>
+          <button data-action="inspiration">Get a test idea <small>Ctrl+I</small></button>
+          <button data-action="test-data">Random test data to clipboard <small>Ctrl+D</small></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="num">2</div>
+      <div class="step-body with-art">
+        <div>
+          <h2>Test it, rich and diverse</h2>
+          <p>We are in the sampling business. Requirements cover only a part of the full product, and important problems can be anywhere. Use <strong>Diverse half-measures</strong>, testing pretty good in different ways finds more than testing perfect in one or two ways. Explore on your own, get help from AI, run a few quicktests, then follow up on whatever looks odd.</p>
+        </div>
+        <div class="art">
+          <svg viewBox="0 0 150 110" role="img" aria-label="The software potato: requirements cover a small square; important bugs are spread wider">
+            <path d="M20 58 C10 25 55 6 88 12 C125 18 146 45 136 74 C127 101 80 106 50 98 C28 92 26 76 20 58 Z" fill="#1e3a5f" opacity=".75"/>
+            <path d="M40 60 C36 38 64 26 88 30 C112 34 124 52 116 72 C108 90 78 92 60 86 C46 81 42 72 40 60 Z" fill="#f57e23" opacity=".85"/>
+            <circle cx="62" cy="48" r="1.6" fill="#d96d1a"/><circle cx="96" cy="70" r="1.6" fill="#d96d1a"/><circle cx="84" cy="44" r="1.3" fill="#d96d1a"/>
+            <rect x="28" y="22" width="40" height="34" fill="none" stroke="#d4d4d4" stroke-dasharray="3 2"/>
+            <g stroke="#f57e23" stroke-width=".8" opacity=".85">
+              <line x1="48" y1="39" x2="126" y2="60"/><line x1="48" y1="39" x2="104" y2="96"/>
+              <line x1="48" y1="39" x2="30" y2="84"/><line x1="48" y1="39" x2="118" y2="24"/>
+            </g>
+          </svg>
+          <a href="https://thetesteye.com/blog/2009/12/in-search-of-the-potato/">In search of the potato</a>
+        </div>
+        <div class="actions">
+          <button data-action="quicktest" data-quicktest="SurpriseMe" data-needs-url>Surprise me <small>random quicktest</small></button>
+          <button data-action="quicktest" data-quicktest="SiteHealth" data-needs-url>Site health <small>all audits</small></button>
+          <button data-action="quicktest" data-quicktest="Usability.ResponsiveAccessibility" data-needs-url>Accessibility <small>7 viewports</small></button>
+          <button data-action="quicktest" data-quicktest="Reliability.RequestFuzzer" data-needs-url>Request fuzzer <small>provoke errors</small></button>
+          <button data-action="quicktest" data-quicktest="Compliance.BrowserCompatibilityScan" data-needs-url>Backward compatibility scan</button>
+          <button data-action="quicktest" data-quicktest="Usability.GetAllPageStrings" data-needs-url>Proofread all texts</button>
+          <button data-action="quicktest" data-quicktest="Security.1 SecurityScan" data-needs-url>Security scan</button>
+          <button data-action="quicktests-menu">All quicktests&hellip;</button>
+        </div>
+        <p class="tip">Try <kbd>Ctrl+B</kbd> to test blind with a screen curtain. Right-click an element for context-aware tests such as <em>Click frenzy</em>.</p>
+      </div>
+    </section>
+
+    <section class="step">
+      <div class="num">3</div>
+      <div class="step-body">
+        <h2>Communicate what you found</h2>
+        <p>Testing is never better than the communication of the results. Write down qualities, problems, and risks while they are fresh, and share the story of your testing, not only the bug list. Train and use your judgment.</p>
+        <div class="actions">
+          <button data-action="note">Add a tester note <small>Ctrl+Shift+T</small></button>
+          <button data-action="strange-moment">That was strange&hellip; <small>Ctrl+Shift+L</small></button>
+          <button data-action="journal-report">Journal report</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="further">
+      <span>Go further:</span>
+      <button data-action="record" data-needs-url>Record a script</button>
+      <button data-action="script-console">C# script console</button>
+      <button data-action="api">Start REST API + MCP for AI agents</button>
+      <button data-action="manual">Introduction</button>
+    </div>
+    <div class="keys">
+      <span><kbd>F12</kbd> DevTools</span>
+      <span><kbd>Ctrl+J</kbd> Journal</span>
+      <span><kbd>Ctrl+L</kbd> AI Assistant</span>
+      <span><kbd>Ctrl+0</kbd> Scripts</span>
+      <span><kbd>Ctrl+Shift+R</kbd> Request editor</span>
+      <span><kbd>Alt+Home</kbd> This page</span>
+    </div>
+    <p class="quote">&ldquo;Diverse half-measures&rdquo; is very important and comes from <em>Lessons Learned in Software Testing</em> by Kaner, Bach &amp; Pettichord.</p>
+  </div>
+
+<script>
+(function () {
+  var token = '{{WELCOME_TOKEN}}';
+  var urlInput = document.getElementById('url');
+
+  function send(msg) {
+    msg.type = '__trowser_welcome';
+    msg.token = token;
+    if (window.chrome && window.chrome.webview) window.chrome.webview.postMessage(msg);
+  }
+
+  function requireUrl() {
+    var url = urlInput.value.trim();
+    if (url) return url;
+    urlInput.classList.remove('missing');
+    void urlInput.offsetWidth;
+    urlInput.classList.add('missing');
+    urlInput.focus();
+    return null;
+  }
+
+  urlInput.addEventListener('input', function () { urlInput.classList.remove('missing'); });
+
+  document.getElementById('target').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var url = requireUrl();
+    if (url) send({ action: 'open', url: url });
+  });
+
+  document.querySelectorAll('button[data-action]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var url = urlInput.value.trim();
+      if (b.hasAttribute('data-needs-url')) {
+        url = requireUrl();
+        if (!url) return;
+      }
+      send({ action: b.getAttribute('data-action'), url: url, quicktest: b.getAttribute('data-quicktest') || '' });
+    });
+  });
+
+  if (!urlInput.value) urlInput.focus();
+})();
+</script>
+</body>
+</html>

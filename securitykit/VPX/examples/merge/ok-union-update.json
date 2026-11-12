@@ -1,0 +1,42 @@
+{
+  "vpxVersion": "1.1",
+  "documentId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "runs": [
+    {
+      "id": "run-proof",
+      "stage": "proof",
+      "actor": { "type": "tool", "name": "trowser", "version": "1.1" }
+    }
+  ],
+  "surfaces": [
+    { "id": "surf-users-search", "route": "/api/users", "method": "GET" }
+  ],
+  "findings": [
+    {
+      "id": "f-sqli-001",
+      "fingerprint": {
+        "algorithm": "vpx-fingerprint-1",
+        "value": "sha256:b356f927f422a817d8b8a0677de4ef1b78233444f9bc9c3935cfb4b0d8e0ba77"
+      },
+      "kind": "sqli",
+      "severity": "high",
+      "title": "SQL injection via search",
+      "status": "under_investigation",
+      "surfaceId": "surf-users-search",
+      "param": "q"
+    }
+  ],
+  "assessments": [],
+  "proofs": [
+    {
+      "id": "proof-001",
+      "findingId": "f-sqli-001",
+      "runId": "run-proof",
+      "executedAt": "2026-08-26T10:14:00Z",
+      "outcome": "exploited",
+      "oracle": { "type": "error", "observed": true, "actualSignal": "SqlException" }
+    }
+  ],
+  "artifacts": [],
+  "verdicts": []
+}

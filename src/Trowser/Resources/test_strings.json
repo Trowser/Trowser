@@ -1,0 +1,147 @@
+[
+    {
+        "text": "<script>alert('XSS')</script>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "Click to copy",
+        "count": 1,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "2147483647",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "9999-12-31 23:59:59",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "<b>T\u00fcsk\u00e9n</b>",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": false
+    },
+    {
+        "text": "tab\tstop",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "http://www.dn.se",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": " leading and trailing space ",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "\u0279\u01ddu \u0265\u0254o ddn",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": false
+    },
+    {
+        "text": "null",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "Skellefte\u00e5",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": false
+    },
+    {
+        "text": "test+notify@test.se",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "https://thetesteye.com/blog/wp-json/test-strings-together/v1/random",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "the quick brown fox jumps over the lazy dog",
+        "count": 0,
+        "timestamp": 1744376337295,
+        "is_ascii": true
+    },
+    {
+        "text": "This is a tribute to the longest string in the world",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "Add your favorite test strings so other testers have better chance of finding interesting information!",
+        "count": 1,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "Yxm\u00f6rdaren Julia Blomqvist p\u00e5 f\u00e4ktning i Schweiz",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": false
+    },
+    {
+        "text": "WHY AM I SHOUTING?",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "\ud83c\udf55pizza emoji",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": false
+    },
+    {
+        "text": "testing testing",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "&lt;script&gt;alert('123');&lt;",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "Rad 1\r\nRad 2",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    },
+    {
+        "text": "D'fhuascail Íosa, Úrmhac na hÓighe Beannaithe, pór Éava agus Ádhaimh",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": false
+    },
+    {
+        "text": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAZoAAAGaAQAAAAAefbjOAAADE0lEQVR4nO1cW2rjQBDslgT+HMMewEeRr7ZHyg2ko+QAAenTINNL93SPnGQ/ImziKFP1YfQqrMFFv8cstBljs51DBJIDJAdIDpAcIDlAcoC0JxI7OuKzXZj91I7ilNnv7mJNGwHSe1IviolIBpNAEpEhXZiIWo09W7svu1rTNoD0gTQXA0CtMB+vTP",
+        "count": 0,
+        "timestamp": 1744624800000,
+        "is_ascii": true
+    }
+]
+

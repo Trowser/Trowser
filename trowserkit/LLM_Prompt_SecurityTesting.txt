@@ -7,7 +7,7 @@ At the same time, be gentle, we don't want to do harm on the site.
 The idea is to be able to use two instances and to compare authorization and other things, maybe even inject an attack to a victim.
 We will use the security test site https://preview.owasp-juice.shop
 and pick some hard challenges at https://preview.owasp-juice.shop/#/score-board?showDisabledChallenges=false
-You are not allowed to use any hints that are available on the site.
+You are not allowed to use any hints that are available on the site, but reading the code to get clues is of course a good thing.
 
 Trowser 1 available at localhost:6923 with API key admin-key, session "admin"
 (User should launch Trowser.exe --api --session admin --api-port 6923 --api-key admin-key)

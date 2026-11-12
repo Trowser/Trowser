@@ -1,0 +1,45 @@
+{
+  "vpxVersion": "1.1",
+  "documentId": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+  "createdAt": "2026-05-23T15:00:00Z",
+  "updatedAt": "2026-05-23T15:00:00Z",
+  "profile": "compact",
+  "target": {
+    "baseUrl": "https://demo.testfire.net",
+    "environment": "browser-session"
+  },
+  "runs": [
+    {
+      "id": "run-trowser-session",
+      "stage": "proof",
+      "actor": { "type": "tool", "name": "trowser", "version": "1.1" }
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "surf-get-bank-showaccount",
+      "route": "/bank/showAccount",
+      "method": "GET",
+      "params": [{ "name": "listAccounts", "in": "query", "type": "string" }]
+    }
+  ],
+  "findings": [
+    {
+      "id": "vpx-autoscan-sqli-0",
+      "kind": "sqli",
+      "severity": "high",
+      "title": "Possible SQL injection in listAccounts parameter",
+      "status": "hypothesis",
+      "surfaceId": "surf-get-bank-showaccount",
+      "param": "listAccounts",
+      "origin": { "tool": "trowser-autoscan", "rule": "sqli" },
+      "proofHints": { "category": "sqli", "oracle": "error-or-timing" },
+      "reportedByRunIds": ["run-trowser-session"],
+      "proofPriority": 80
+    }
+  ],
+  "assessments": [],
+  "proofs": [],
+  "artifacts": [],
+  "verdicts": []
+}

@@ -1,0 +1,22 @@
+id: web-config-exposure
+
+info:
+  name: web.config Exposure
+  author: trowser
+  severity: medium
+  description: Detects an exposed IIS web.config file at the site origin.
+  tags: exposure,config,misconfig,iis,legacy
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/web.config"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "<configuration"
+        part: body

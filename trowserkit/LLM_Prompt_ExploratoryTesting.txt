@@ -9,7 +9,5 @@ Use testheuristics.md (in current folder) for further test inspiration.
 
 API key is trowser_XXX
 
-Finalize by creating automated regression tests with the CLI interface, which is documented in scripting-reference.md
 Create a test report for this functionality in an .md file in this folder.
 Explain the heuristics and oracles that helped you, if applicable.
-Put our chat and your output (including thinking) in a separate file.

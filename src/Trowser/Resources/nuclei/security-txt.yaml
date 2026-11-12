@@ -1,0 +1,22 @@
+id: security-txt
+
+info:
+  name: Security.txt Detected
+  author: projectdiscovery
+  severity: info
+  description: Detects a published security.txt contact file at the site origin.
+  tags: exposure,recon,security
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/.well-known/security.txt"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "Contact:"
+        part: body

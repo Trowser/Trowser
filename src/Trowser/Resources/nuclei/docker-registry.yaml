@@ -1,0 +1,23 @@
+id: docker-registry-api
+
+info:
+  name: Docker Registry API v2
+  author: projectdiscovery
+  severity: info
+  description: Detects an exposed Docker Registry HTTP API v2 root at the site origin.
+  tags: exposure,docker,api,legacy
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/v2/"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 401
+      - type: word
+        words:
+          - "Docker-Distribution-Api-Version"
+        part: header

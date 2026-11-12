@@ -1,6 +1,6 @@
-# Stage 1: initial public repository
-# Tracked: CHANGELOG.md, LICENSE, licenses/, trowserkit/
-# Remove or replace this block when adding source code and other project files.
+# Stage 2: source a tester can build.
+# Still a whitelist: everything is ignored unless listed below.
+# Do not commit .cert/, dist/, or build output.
 
 # Ignore everything
 *
@@ -8,22 +8,73 @@
 # Keep ignore rules
 !.gitignore
 
-# Stage 1 contents
+# Solution
+!Trowser.sln
+
+# Application and unit tests (NuGet restore; no packages/ folder)
+!src/
+!src/**
+
+# Docs already published, plus the map a tester needs
 !CHANGELOG.md
 !LICENSE
+!BUILD.md
+!DOCUMENTATION.md
+!SMARTScreen.md
+!README.md
+!VISION.md
+!CONTRIBUTING.md
+!AGENTS.md
+!ARCHITECTURE.md
+!CODE_OF_CONDUCT.md
+!SECURITY.md
+!.gitattributes
 !licenses/
 !licenses/**
 !trowserkit/
 !trowserkit/**
+!securitykit/
+!securitykit/**
 
-# --- Future project ignores (uncomment when expanding the repo) ---
-# .cert/
-# webview2-runtime/
-# bin/
-# obj/
-# dist/
-# *.user
-# *.suo
-# .vs/
-# testresults/
-# *.WebView2/
+# Offline regression suite and script smoke tests
+!tests/
+!tests/**
+
+# Build, packaging, and doc-generation scripts
+!build-zip.ps1
+!scripts/
+!scripts/**
+!package.json
+!package-lock.json
+!.github/
+!.github/**
+
+# Re-ignore generated output inside the whitelisted trees
+src/**/bin/
+src/**/obj/
+src/**/*_wpftmp.csproj
+TestResults/
+scripts/__pycache__/
+tests/regression/last-run.log
+tests/regression/results.txt
+tests/regression/results-latest.txt
+
+# IDE and WebView2 user data, if they appear under src/
+*.user
+*.suo
+.vs/
+*.WebView2/
+
+# Left ignored on purpose (not required to build):
+# .cert/                  signing key (trowser.pfx) — never upload
+# dist/ artifacts/ _buildcheck/   publish and local build output
+# webview2-runtime/       download with scripts/download-webview2-runtime.ps1
+# node_modules/           npm install from package.json when rebuilding bundles
+# testresults/ smoke-results.txt
+# trowser.github.io/      project site
+# security-benchmark/     third-party comparison material
+# resources/              PDFs and site images, not compile inputs
+# docs/ trowser_testing/  notes, not the product
+# .cursor/                local editor rules and plans
+# ARCHITECTURE_ANALYSIS.md (superseded by ARCHITECTURE.md) SecurityOrchestrationPlan.md TrowserTwelve.md
+# trowser-summary-for-mac.md

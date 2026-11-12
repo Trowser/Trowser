@@ -1,0 +1,56 @@
+{
+  "vpxVersion": "1.1",
+  "documentId": "f6a7b8c9-d0e1-2345-f678-901234567890",
+  "profile": "compact",
+  "target": { "repository": "github.com/acme/webapp", "commit": "abc123" },
+  "runs": [
+    {
+      "id": "run-llm-sast",
+      "stage": "source-analysis",
+      "actor": { "type": "llm", "name": "llm-sast", "version": "1" }
+    }
+  ],
+  "surfaces": [],
+  "findings": [
+    {
+      "id": "f-secret-001",
+      "fingerprint": {
+        "algorithm": "vpx-fingerprint-1",
+        "value": "sha256:f8d23a245834f2a8638e9ae8b3b66c4608a10124e92d3a07d360ca2cf6dce33d"
+      },
+      "kind": "info-leak",
+      "severity": "high",
+      "title": "Hardcoded API key in configuration loader",
+      "description": "Production API key is hardcoded as a constant in the secrets loader, accessible to anyone with source code access.",
+      "status": "deferred",
+      "origin": {
+        "tool": "llm-sast",
+        "file": "src/Config/SecretsLoader.cs",
+        "line": 14,
+        "snippet": "private const string ApiKey = \"sk-live-...\";"
+      },
+      "trace": [
+        "SecretsLoader.ApiKey constant",
+        "→ referenced by PaymentGatewayClient"
+      ],
+      "reportedByRunIds": ["run-llm-sast"],
+      "assessmentIds": ["assessment-secret-001"],
+      "cwe": ["CWE-798"],
+      "proofPriority": 15,
+      "tags": ["secrets", "configuration"]
+    }
+  ],
+  "assessments": [
+    {
+      "id": "assessment-secret-001",
+      "findingId": "f-secret-001",
+      "runId": "run-llm-sast",
+      "phase": "source-analysis",
+      "conclusion": "supports",
+      "rationale": "Hardcoded live API key constant; no HTTP surface."
+    }
+  ],
+  "proofs": [],
+  "artifacts": [],
+  "verdicts": []
+}

@@ -1,0 +1,26 @@
+id: actuator-health-exposure
+
+info:
+  name: Spring Boot Actuator Health Exposure
+  author: trowser
+  severity: info
+  description: Detects an exposed Spring Boot health endpoint at the site origin.
+  tags: exposure,spring,actuator,misconfig
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/actuator/health"
+      - "{{RootURL}}/health"
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - '"status":"UP"'
+          - '"status": "UP"'
+        condition: or
+        part: body

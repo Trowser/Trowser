@@ -120,7 +120,7 @@ Richer bug capture abilities
 Coverage lens that informs on functionality and quality characteristics
 
 1.3.5 2026-08-13
-Better support for frames, downloads, drag & drop
+Better support for frames, downloads, drag & drop
 API support for environment/permission emulation, and HAR Export
 3rd party updates for axe and web-vitals, added Nuclei, tltds, csp-evaluator
 Better integration so AI assistant kan write C# scripts
@@ -131,6 +131,46 @@ Better support for Github Copilot as AI Assistant
 Token efficiency improvements in MCP
 !? button to get AI help when something interesting happens
 Overhaul of the Journal Panel including edit and delete
+
+1.3.8 2026-08-27
+Rewrites of web cache poisoning and request smuggling
+AI Assistant Economical as default, tweaked prompt and tools
+
+1.3.9 2026-09-03 (Thomas)
+URL completion when typing in address bar (editable url-history.json)
+Custom compact in AI assistant
+Mirror mode for parallell actions in peer sessions
+
+1.3.11 2026-09-10
+"The handoff"; humans and AI can show what is interesting
+Decision UI (A, B, C...) when AI wants help
+Journal additions: Open, Save, Copy, "Show me"
+Quicktest TotalLogoutTest, semi-automated check that logout is complete
+
+1.3.12 2026-09-24
+Recordings can be sent also to Journal, Console and AI (and file since earlier)
+Generic shadow with adding of WCAG, Network and Console
+Send (Raw) added to HTTP Request Editor for full control
+VPX Export/Import for security findings
+Auth Control Identifier to check which cookies/tokens actually are used
+cURL to clipboard
+
+1.3.14 2026-10-08
+New Welcome page
+Swaggering - testing based on API definitions
+Quicktest CostlyOperations for potential bottlenecks
+Stronger abilities for Broken Access Control with Live Authz Shadow
+
+1.3.15 2026-10-22
+Newsletter link in About dialog
+Race Lab for exploring race conditions
+Enhancements for client-side security testing
+
+1.4.1 2026-11-12
+Preparations for going open source, code polish, tests and documentation.
+Customizable Shadow Laws
+API improvements, including better support for EventStream
+Added smaller trowser-api-core.md for basic LLM usage of REST API
 
 
 All releases also include minor bug fixes and enhancements.

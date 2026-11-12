@@ -1,0 +1,10 @@
+VPX Specification
+
+Copyright (c) 2026 Trowser contributors
+
+The VPX specification documents, JSON Schema, examples, and guides in this directory
+are part of the Trowser project and are licensed under the MIT License.
+See the repository root LICENSE file.
+
+You may use, copy, modify, and distribute the VPX specification to implement
+compatible tools.

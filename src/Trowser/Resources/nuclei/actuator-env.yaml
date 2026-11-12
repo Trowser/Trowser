@@ -1,0 +1,24 @@
+id: spring-actuator-env
+
+info:
+  name: Spring Actuator Env Exposure
+  author: projectdiscovery
+  severity: low
+  description: Detects exposed Spring Boot actuator /env endpoint at the site origin.
+  tags: exposure,spring,misconfig,info-leak
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/actuator/env"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "propertySources"
+          - "systemProperties"
+        condition: or
+        part: body

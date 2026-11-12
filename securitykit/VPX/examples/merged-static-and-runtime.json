@@ -1,0 +1,142 @@
+{
+  "vpxVersion": "1.1",
+  "documentId": "e5f6a7b8-c9d0-1234-ef56-789012345678",
+  "createdAt": "2026-05-23T09:00:00Z",
+  "updatedAt": "2026-05-23T14:30:00Z",
+  "profile": "full",
+  "target": {
+    "baseUrl": "https://staging.example.com",
+    "repository": "github.com/acme/webapp",
+    "commit": "abc123def456",
+    "environment": "staging"
+  },
+  "policy": { "cvssCap": 7.0, "proofRequiredAbove": "medium" },
+  "runs": [
+    {
+      "id": "run-llm-sast",
+      "stage": "source-analysis",
+      "actor": { "type": "llm", "name": "llm-sast", "version": "1" }
+    },
+    {
+      "id": "run-trowser-proof",
+      "stage": "proof",
+      "actor": { "type": "tool", "name": "trowser", "version": "1.1" }
+    },
+    {
+      "id": "run-merge",
+      "stage": "aggregation",
+      "actor": { "type": "service", "name": "vpx-merge", "version": "1.1" }
+    }
+  ],
+  "surfaces": [
+    {
+      "id": "surf-users-search",
+      "route": "/api/users",
+      "method": "GET",
+      "params": [{ "name": "q", "in": "query", "type": "string" }],
+      "auth": { "required": true, "roles": ["user"], "mechanism": "session-cookie" },
+      "discoveredFrom": "static",
+      "routeConfidence": "inferred"
+    }
+  ],
+  "findings": [
+    {
+      "id": "f-sqli-001",
+      "fingerprint": {
+        "algorithm": "vpx-fingerprint-1",
+        "value": "sha256:b356f927f422a817d8b8a0677de4ef1b78233444f9bc9c3935cfb4b0d8e0ba77"
+      },
+      "kind": "sqli",
+      "severity": "high",
+      "title": "SQL injection via search query parameter",
+      "status": "hypothesis",
+      "surfaceId": "surf-users-search",
+      "param": "q",
+      "origin": {
+        "tool": "llm-sast",
+        "rule": "CWE-89",
+        "file": "src/Api/UserSearchController.cs",
+        "line": 87,
+        "snippet": "var sql = $\"SELECT * FROM users WHERE name LIKE '%{q}%'\";"
+      },
+      "trace": [
+        "Request.Query[\"q\"] → SearchController.Search",
+        "→ BuildSearchQuery(q)",
+        "→ SqlCommand.ExecuteReader"
+      ],
+      "proofHints": {
+        "category": "sqli",
+        "payloads": ["' OR '1'='1"],
+        "oracle": "error-or-timing",
+        "identity": "authenticated-user"
+      },
+      "reportedByRunIds": ["run-llm-sast"],
+      "assessmentIds": ["assessment-sqli-source"],
+      "cvss": 8.1,
+      "confidence": 0.72,
+      "proofPriority": 91
+    }
+  ],
+  "assessments": [
+    {
+      "id": "assessment-sqli-source",
+      "findingId": "f-sqli-001",
+      "runId": "run-llm-sast",
+      "phase": "source-analysis",
+      "conclusion": "supports",
+      "confidence": 0.72,
+      "rationale": "Untrusted query input reaches interpolated SQL."
+    }
+  ],
+  "proofs": [
+    {
+      "id": "proof-001",
+      "findingId": "f-sqli-001",
+      "runId": "run-trowser-proof",
+      "executedAt": "2026-05-23T14:28:00Z",
+      "outcome": "exploited",
+      "tool": { "name": "trowser", "version": "1.1" },
+      "workflow": {
+        "type": "verify-workflow",
+        "path": "file://evidence/proof-001/workflow.json"
+      },
+      "injection": {
+        "surfaceId": "surf-users-search",
+        "param": "q",
+        "payload": "' OR '1'='1"
+      },
+      "identity": { "name": "test-user", "roles": ["user"], "mechanism": "session-cookie" },
+      "oracle": {
+        "type": "error",
+        "observed": true,
+        "actualSignal": "500 response body contains SqlException near 'OR'"
+      },
+      "evidenceSummary": "GET /api/users?q=' OR '1'='1 as test-user → 500 SqlException",
+      "evidenceBundle": "file://evidence/proof-001/",
+      "elapsedMs": 4200
+    }
+  ],
+  "artifacts": [],
+  "verdicts": [
+    {
+      "id": "verdict-001",
+      "findingId": "f-sqli-001",
+      "runId": "run-trowser-proof",
+      "basedOnAssessmentIds": ["assessment-sqli-source"],
+      "basedOnProofIds": ["proof-001"],
+      "updatedAt": "2026-05-23T14:30:00Z",
+      "exploitability": "confirmed",
+      "disposition": "fix-now",
+      "effectiveSeverity": "critical",
+      "confidence": 0.95,
+      "justification": "Authenticated user triggers SQL error via search parameter; matches static trace to UserSearchController.cs:87.",
+      "remediation": {
+        "strategy": "parameterized-query",
+        "locations": [{ "file": "src/Api/UserSearchController.cs", "line": 87, "function": "BuildSearchQuery" }],
+        "fixPattern": "Replace string interpolation with parameterized SqlCommand",
+        "codeHint": "cmd.CommandText = \"SELECT * FROM users WHERE name LIKE @q\"; cmd.Parameters.AddWithValue(\"@q\", \"%\" + q + \"%\");"
+      },
+      "rerunToken": "file://evidence/proof-001/manifest.json"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 8.0.x
+      - name: Build
+        run: dotnet build Trowser.sln -c Release -warnaserror
+      - name: Unit and contract tests
+        run: dotnet test src/Trowser.Tests/Trowser.Tests.csproj -c Release --no-build --logger trx --results-directory TestResults --collect:"XPlat Code Coverage"
+      - name: Browser smoke (API + WebView2)
+        run: dotnet test src/Trowser.ApiTests/Trowser.ApiTests.csproj -c Release --no-build --filter "Category=Smoke" --logger trx --results-directory TestResults
+      - name: Regression smoke (offline)
+        shell: pwsh
+        run: ./tests/regression/run-regression.ps1 -Filter "0[1-7]-*" -Exe "src/Trowser/bin/Release/net8.0-windows/win-x64/Trowser.exe"
+      - name: API index is current
+        shell: pwsh
+        run: ./scripts/generate-api-index.ps1 -Check
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results
+          path: |
+            TestResults
+            tests/regression/results.txt

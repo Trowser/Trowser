@@ -10,11 +10,11 @@ You can also look at what I have done with:
 /api/journal?type=action&source=gui - what have the user done
 /api/journal?type=bug - bug reports I've filed (structured: steps/actual/expected/priority/oracle)
 
-When I find somehting for you to fix, I will let you know.
+When I find something for you to fix, I will let you know.
 
 You have your own instance at localhost:6924 with API Key trowser_XXX
-Here you can reproduce the bugs I report, and let me now if I should rebuild so you can verify your fixes.
-Use the Trowser REST API (trowserkit/trowser-api-reference.md) to get information about the page and interact.
+Here you can reproduce the bugs I report, create a new version and let me know when I can verify your fixes (but test yourself first!)
+Use the Trowser REST API (trowserkit/trowser-api-core.md) to get information about the page and interact.
 
 If you are in the slightest doubt if and how to fix something, send me a message, and I will answer with a note.
 In communication, I want you to refer to yourself as "the machine", not "I".

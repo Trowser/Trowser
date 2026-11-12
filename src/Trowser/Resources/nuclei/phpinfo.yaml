@@ -1,0 +1,24 @@
+id: phpinfo-exposure
+
+info:
+  name: PHPInfo Exposure
+  author: projectdiscovery
+  severity: low
+  description: Detects exposed phpinfo.php pages leaking server configuration.
+  tags: exposure,php,debug,panel,legacy
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}/phpinfo.php"
+      - "{{RootURL}}/info.php"
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "PHP Version"
+        part: body

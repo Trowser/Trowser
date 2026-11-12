@@ -1,0 +1,51 @@
+id: swagger-api-paths
+
+info:
+  name: OpenAPI / Swagger Exposure (path sweep)
+  author: trowser
+  severity: info
+  description: Probes common Swagger/OpenAPI paths at the site origin for API mapping leads.
+  tags: exposure,api,swagger,openapi,panel
+
+http:
+  - method: GET
+    path:
+      - "{{RootURL}}{{paths}}"
+    payloads:
+      paths:
+        - "/openapi.json"
+        - "/swagger.json"
+        - "/v3/api-docs"
+        - "/v2/api-docs"
+        - "/swagger-ui.html"
+        - "/swagger/index.html"
+        - "/swagger-ui/index.html"
+        - "/api/openapi.json"
+        - "/api/swagger.json"
+        - "/api/v3/api-docs"
+        - "/api-docs"
+        - "/api/docs"
+        - "/docs/swagger.json"
+        - "/swagger/v1/swagger.json"
+        - "/api/swagger-ui/index.html"
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "<html"
+          - "<!DOCTYPE"
+        part: body
+        negative: true
+      - type: word
+        words:
+          - '"openapi"'
+          - '"swagger"'
+          - '"paths"'
+          - "Swagger UI"
+          - "swagger-ui"
+        condition: or
+        part: body

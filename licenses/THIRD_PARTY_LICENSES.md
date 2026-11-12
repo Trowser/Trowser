@@ -1,19 +1,38 @@
 # Third-Party Licenses
 
-Trowser bundles the following open-source libraries. Full license texts are in the adjacent files.
+Trowser bundles the following open-source components. Full license texts are in the adjacent files. Unless noted otherwise, bundled files are redistributed unmodified; versions are pinned in `scripts/vendored-libs.json` and `src/Trowser/Trowser.csproj`.
 
-| Library | License | File |
-|---------|---------|------|
-| gremlins.js | MIT | gremlins.js-MIT.txt |
-| axe-core | Mozilla Public License 2.0 | axe-core-MPL-2.0.txt |
-| html-validate | MIT | html-validate-MIT.txt |
-| retire.js (jsrepository.json) | Apache License 2.0 | retire.js-Apache-2.0.txt |
-| web-vitals | Apache License 2.0 | web-vitals-Apache-2.0.txt |
-| csp-evaluator | Apache License 2.0 | csp-evaluator-Apache-2.0.txt |
-| tldts | MIT | tldts-MIT.txt |
-| nuclei-templates (curated subset) | MIT | nuclei-templates-MIT.txt |
+## JavaScript libraries and data (embedded in `src/Trowser/Resources/`)
 
-Optional external corpora (not bundled; used when `payloadProfile=big` and `corpora/` or `%TROWSER_CORPORA%` is present):
+| Component | Version | License | File |
+|-----------|---------|---------|------|
+| gremlins.js | 2.2.0 | MIT | gremlins.js-MIT.txt |
+| axe-core | 4.14.0 | Mozilla Public License 2.0 (unmodified; source: https://github.com/dequelabs/axe-core) | axe-core-MPL-2.0.txt |
+| html-validate | 11.17.0 | MIT | html-validate-MIT.txt |
+| html-validate bundled dependencies (ajv, fast-deep-equal, json-schema-traverse, fast-uri, semver, kleur, @sidvind/better-ajv-errors, jsonpointer, leven, text-table, deepmerge) | as resolved by html-validate 11.17.0 | MIT, ISC, BSD-3-Clause, Apache 2.0 | html-validate-bundled-dependencies.txt |
+| web-vitals | 6.2.3 | Apache License 2.0 | web-vitals-Apache-2.0.txt |
+| csp-evaluator | 1.1.8 | Apache License 2.0 | csp-evaluator-Apache-2.0.txt |
+| tldts | 7.4.19 | MIT | tldts-MIT.txt |
+| Public Suffix List (data embedded in tldts) | as shipped with tldts 7.4.19 | Mozilla Public License 2.0 (unmodified; source: https://github.com/publicsuffix/list) | PublicSuffixList-MPL-2.0.txt |
+| retire.js (jsrepository.json) | — | Apache License 2.0 | retire.js-Apache-2.0.txt |
+| nuclei-templates (curated subset) | — | MIT | nuclei-templates-MIT.txt |
+
+## .NET packages and runtime (release builds)
+
+| Component | Version | License | File |
+|-----------|---------|---------|------|
+| Markdig | 0.41.3 | BSD-2-Clause | dotnet-packages.txt |
+| YamlDotNet | 16.3.0 | MIT | dotnet-packages.txt |
+| Microsoft.CodeAnalysis.CSharp.Scripting (Roslyn) | 5.0.0 | MIT | dotnet-packages.txt |
+| System.Security.Cryptography.ProtectedData | 9.0.4 | MIT | dotnet-packages.txt |
+| .NET runtime (self-contained publish) | 8.0 | MIT | dotnet-packages.txt |
+| Microsoft.Web.WebView2 SDK | 1.0.3800.47 | Microsoft license | dotnet-packages.txt |
+
+The `Trowser-<version>-webview2.zip` package also contains the **Microsoft Edge WebView2 Fixed Version runtime** in `WebView2Runtime/`. It is Microsoft software distributed under Microsoft's WebView2 runtime license terms (https://developer.microsoft.com/microsoft-edge/webview2/), not under Trowser's license.
+
+## Optional external corpora
+
+Not bundled; used when `payloadProfile=big` and `corpora/` or `%TROWSER_CORPORA%` is present.
 
 | Corpus | License | File |
 |--------|---------|------|

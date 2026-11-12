@@ -1,0 +1,96 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Trowser</AssemblyName>
+    <RootNamespace>Trowser</RootNamespace>
+    <Version>1.4.2</Version>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ApplicationIcon>Resources\trowser.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Trowser.Tests" />
+    <InternalsVisibleTo Include="Trowser.ApiTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Markdig" Version="0.41.3" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3800.47" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\axe.min.js" LogicalName="Trowser.Resources.axe.min.js" />
+    <EmbeddedResource Include="Resources\web-vitals.iife.js" LogicalName="Trowser.Resources.web-vitals.iife.js" />
+    <EmbeddedResource Include="Resources\jsrepository.json" LogicalName="Trowser.Resources.jsrepository.json" />
+    <EmbeddedResource Include="Resources\html-validate.bundle.js" LogicalName="Trowser.Resources.html-validate.bundle.js" />
+    <EmbeddedResource Include="Resources\csp-evaluator.bundle.js" LogicalName="Trowser.Resources.csp-evaluator.bundle.js" />
+    <EmbeddedResource Include="Resources\tldts.umd.min.js" LogicalName="Trowser.Resources.tldts.umd.min.js" />
+    <EmbeddedResource Include="Resources\gremlins.min.js" LogicalName="Trowser.Resources.gremlins.min.js" />
+    <EmbeddedResource Include="Resources\llm-system-prompt.txt" LogicalName="Trowser.Resources.llm-system-prompt.txt" />
+    <EmbeddedResource Include="Resources\llm-system-prompt-chat.txt" LogicalName="Trowser.Resources.llm-system-prompt-chat.txt" />
+    <EmbeddedResource Include="Resources\llm-system-prompt-economical.txt" LogicalName="Trowser.Resources.llm-system-prompt-economical.txt" />
+    <EmbeddedResource Include="Security\LlmRedTeam\llm-redteam-corpus.yaml" LogicalName="Trowser.Security.LlmRedTeam.llm-redteam-corpus.yaml" />
+    <EmbeddedResource Include="Resources\test-heuristics.txt" LogicalName="Trowser.Resources.test-heuristics.txt" />
+    <EmbeddedResource Include="Resources\scripting-help.txt" LogicalName="Trowser.Resources.scripting-help.txt" />
+    <EmbeddedResource Include="Resources\welcome.html" LogicalName="Trowser.Resources.welcome.html" />
+    <EmbeddedResource Include="Resources\introduction.html" LogicalName="Trowser.Resources.introduction.html" />
+    <EmbeddedResource Include="Resources\script-help.html" LogicalName="Trowser.Resources.script-help.html" />
+    <EmbeddedResource Include="Resources\trowser.png" LogicalName="Trowser.Resources.trowser.png" />
+    <EmbeddedResource Include="Resources\Quicktests\**\*.csx" />
+    <EmbeddedResource Include="Resources\nuclei\**\*.yaml" />
+    <EmbeddedResource Include="Resources\UserQuicktests\README.md" LogicalName="Trowser.Resources.UserQuicktests.README.md" />
+    <EmbeddedResource Include="Resources\UserQuicktests\ExampleQuicktest.csx" LogicalName="Trowser.Resources.UserQuicktests.ExampleQuicktest.csx" />
+    <EmbeddedResource Include="Resources\UserQuicktests\Laws\ExampleLaw.csx" LogicalName="Trowser.Resources.UserQuicktests.Laws.ExampleLaw.csx" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\trowser.ico" />
+  </ItemGroup>
+
+  <!-- Test data: copied next to exe for runtime access (not bundled into single-file exe) -->
+  <ItemGroup>
+    <Content Include="Resources\test_strings.json" Link="test_strings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <Content Include="Resources\test_payloads.json" Link="test_payloads.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <Content Include="Resources\inspiration_messages.txt" Link="inspiration_messages.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+  <!-- Licenses: copied to publish output for distribution -->
+  <ItemGroup>
+    <Content Include="..\..\LICENSE" Link="LICENSE" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\gremlins.js-MIT.txt" Link="licenses\gremlins.js-MIT.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\axe-core-MPL-2.0.txt" Link="licenses\axe-core-MPL-2.0.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\html-validate-MIT.txt" Link="licenses\html-validate-MIT.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\retire.js-Apache-2.0.txt" Link="licenses\retire.js-Apache-2.0.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\web-vitals-Apache-2.0.txt" Link="licenses\web-vitals-Apache-2.0.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\csp-evaluator-Apache-2.0.txt" Link="licenses\csp-evaluator-Apache-2.0.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\tldts-MIT.txt" Link="licenses\tldts-MIT.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\nuclei-templates-MIT.txt" Link="licenses\nuclei-templates-MIT.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\SecLists-MIT.txt" Link="licenses\SecLists-MIT.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\PayloadsAllTheThings-MIT.txt" Link="licenses\PayloadsAllTheThings-MIT.txt" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="..\..\licenses\THIRD_PARTY_LICENSES.md" Link="licenses\THIRD_PARTY_LICENSES.md" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TrowserRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..'))</TrowserRepoRoot>
+  </PropertyGroup>
+
+  <!-- Best-effort Retire.js DB refresh; never fails the build (offline-safe). -->
+  <Target Name="RefreshRetireJsRepository" BeforeTargets="BeforeBuild">
+    <Exec
+      Command="pwsh -NoProfile -ExecutionPolicy Bypass -File &quot;$(TrowserRepoRoot)\scripts\update-jsrepository.ps1&quot;"
+      IgnoreExitCode="true"
+      StandardOutputImportance="high" />
+  </Target>
+
+</Project>

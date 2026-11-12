@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
@@ -479,6 +480,62 @@ public class LlmSettingsDialog : Window
         _mcpClientCombo.SelectionChanged += (_, _) => { mcpCopyBtn.Content = "Copy"; };
         mcpConfigRow.Children.Add(mcpCopyBtn);
         rootStack.Children.Add(mcpConfigRow);
+
+        // One-click Claude Code start: registers Trowser and opens a session with a starter prompt.
+        var claudeRow = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 4) };
+        var starterCombo = new ComboBox
+        {
+            Height = 28,
+            Width = 180,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Background = BgDark,
+            Foreground = FgText,
+            BorderBrush = BorderClr,
+            FontSize = 12
+        };
+        foreach (var starter in McpClientConfig.ClaudeStarters)
+            starterCombo.Items.Add(DarkComboBoxHelper.CreateItem(starter.Name));
+        starterCombo.SelectedIndex = 0;
+        DarkComboBoxHelper.ApplyDarkStyle(starterCombo);
+        claudeRow.Children.Add(starterCombo);
+
+        var claudeStartBtn = new Button
+        {
+            Content = "Start Claude Code",
+            Height = 30,
+            Padding = new Thickness(10, 0, 10, 0),
+            Margin = new Thickness(8, 0, 0, 0),
+            Background = Bc("#3F3F46"),
+            Foreground = Brushes.White,
+            BorderBrush = BorderClr,
+            BorderThickness = new Thickness(1),
+            FontSize = 11,
+            Cursor = Cursors.Hand,
+            ToolTip = "Open a terminal, register Trowser with Claude Code, and start a session with this prompt. Needs the claude CLI on PATH."
+        };
+        claudeStartBtn.Click += (_, _) =>
+        {
+            var starter = McpClientConfig.ClaudeStarters[starterCombo.SelectedIndex];
+            var command = McpClientConfig.BuildClaudeCodeLaunch(_apiPort, starter, _apiKey);
+            try
+            {
+                Process.Start(new ProcessStartInfo("powershell.exe")
+                {
+                    ArgumentList = { "-NoExit", "-Command", command },
+                    UseShellExecute = true
+                });
+                claudeStartBtn.Content = "Started";
+            }
+            catch
+            {
+                claudeStartBtn.Content = "Failed";
+            }
+        };
+        starterCombo.SelectionChanged += (_, _) => { claudeStartBtn.Content = "Start Claude Code"; };
+        claudeRow.Children.Add(claudeStartBtn);
+        rootStack.Children.Add(claudeRow);
+        AddHint(rootStack, "Uses your Claude subscription through Claude Code, not an API key. Needs the claude CLI installed and signed in. Registers Trowser as 'trowser' at user scope.");
+
         AddHint(rootStack, "Paste into the agent config. Enable Keep API key in Settings if you want a stable key. Prefer user-level mcp.json over committing secrets. Copied URL uses Core mode. For security testing use ?mode=security.");
 
         scrollViewer.Content = rootStack;

@@ -14,9 +14,11 @@ Layered coverage for open-source contributors. GUI is manual; APIs and scripting
 |-------|-----------|
 | `quick` | `Trowser.Tests` only (no WebView2 host) |
 | `smoke` | quick + ApiTests `Category=Smoke` + regression `01–07` |
-| `full` | smoke + ApiTests sweeps + full regression (nightly breadth) |
+| `full` | smoke + ApiTests sweeps + full regression (local / pre-release; not GitHub nightly) |
 
 Set `TROWSER_EXE` to point at a specific `Trowser.exe` if Release/Debug discovery picks the wrong build.
+
+**GitHub nightly** ([`nightly.yml`](../.github/workflows/nightly.yml)): Release build, `Trowser.Tests`, and `api-coverage-report.ps1` (no WebView2). Push CI ([`build.yml`](../.github/workflows/build.yml)) remains the browser gate.
 
 ## Test categories (xUnit traits)
 
@@ -24,7 +26,7 @@ Set `TROWSER_EXE` to point at a specific `Trowser.exe` if Release/Debug discover
 |-------|-----|-----|
 | (none) | Every push | Unit + static contracts in `Trowser.Tests` |
 | `Category=Smoke` | Every push | Fast REST/MCP integration; one shared `--serve` instance |
-| `Category=Sweep` | Nightly | OpenAPI fuzz, auth matrix, safe-mode sample |
+| `Category=Sweep` | Local `full` only | OpenAPI fuzz, auth matrix, safe-mode sample |
 | `Category=Quarantine` | **Not** in CI | Work-in-progress or flaky tests — fix before relying on them |
 
 Filter examples:
@@ -41,8 +43,8 @@ dotnet test src/Trowser.ApiTests/Trowser.ApiTests.csproj -c Release --filter "Ca
 | **Unit + analyzers** | [`src/Trowser.Tests`](../src/Trowser.Tests/) | Every push (`build.yml`) |
 | **Static contracts** | Same project: script compile, OpenAPI vs index, MCP dispatch | Every push |
 | **API smoke** | [`src/Trowser.ApiTests`](../src/Trowser.ApiTests/) `Category=Smoke` | Every push |
-| **Offline regression** | [`tests/regression`](regression/) | Push subset `01–07`; full suite nightly |
-| **OpenAPI sweeps** | ApiTests `Category=Sweep` | Nightly |
+| **Offline regression** | [`tests/regression`](regression/) | Push subset `01–07`; full suite local `full` |
+| **OpenAPI sweeps** | ApiTests `Category=Sweep` | Local `full` |
 | **Manual smoke** | Quicktest `TrowserSmokePass` (offline mock) | Manual |
 
 ## Run locally (manual commands)

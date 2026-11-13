@@ -1,3 +1,5 @@
+# Scheduled breadth without WebView2: unit/contract tests + API coverage heuristics.
+# Browser API sweeps and full offline regression stay on push smoke CI and local test.ps1 -Level full.
 name: Nightly tests
 
 on:
@@ -9,9 +11,9 @@ permissions:
   contents: read
 
 jobs:
-  full-suite:
+  unit-and-coverage:
     runs-on: windows-latest
-    timeout-minutes: 120
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
@@ -21,11 +23,6 @@ jobs:
         run: dotnet build Trowser.sln -c Release
       - name: Unit and contract tests
         run: dotnet test src/Trowser.Tests/Trowser.Tests.csproj -c Release --no-build --logger trx --results-directory TestResults --collect:"XPlat Code Coverage"
-      - name: API integration and sweeps
-        run: dotnet test src/Trowser.ApiTests/Trowser.ApiTests.csproj -c Release --no-build --logger trx --results-directory TestResults --collect:"XPlat Code Coverage"
-      - name: Offline regression suite
-        shell: pwsh
-        run: ./tests/regression/run-regression.ps1 -Exe "src/Trowser/bin/Release/net8.0-windows/win-x64/Trowser.exe"
       - name: API coverage report
         shell: pwsh
         run: ./scripts/api-coverage-report.ps1
@@ -36,5 +33,4 @@ jobs:
           name: nightly-test-results
           path: |
             TestResults
-            tests/regression/results.txt
             tests/api-coverage.md

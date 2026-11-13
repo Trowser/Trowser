@@ -15,7 +15,7 @@ All from the repository root, in PowerShell. Windows only.
 | Build (what CI does) | `dotnet build Trowser.sln -c Release -warnaserror` |
 | Unit and contract tests, plus doc drift check (no browser needed) | `.\scripts\test.ps1 -Level quick` |
 | What push CI runs (needs WebView2) | `.\scripts\test.ps1 -Level smoke` |
-| Everything, including nightly sweeps and the full regression | `.\scripts\test.ps1 -Level full` |
+| Everything, including ApiTests sweeps and the full regression (local; GitHub nightly is unit-only) | `.\scripts\test.ps1 -Level full` |
 | One unit test class | `dotnet test src\Trowser.Tests -c Release --filter "FullyQualifiedName~SafeModePolicyTests"` |
 | Offline regression suite | `.\tests\regression\run-regression.ps1` (subset: `-Filter "03-*"`) |
 | Regenerate the API index and OpenAPI after an API change | `.\scripts\regen-docs.ps1` |

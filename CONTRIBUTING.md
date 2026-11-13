@@ -33,7 +33,7 @@ dotnet build Trowser.sln -c Release
 .\scripts\test.ps1 -Level smoke
 ```
 
-`smoke` matches push CI: unit/contract tests, API smoke (WebView2 + `--serve`), and offline regression `01–07`. Use `.\scripts\test.ps1 -Level quick` when you only changed logic covered by `Trowser.Tests`. Use `-Level full` before large automation changes (includes nightly sweeps and the full regression suite).
+`smoke` matches push CI: unit/contract tests, API smoke (WebView2 + `--serve`), and offline regression `01–07`. Use `.\scripts\test.ps1 -Level quick` when you only changed logic covered by `Trowser.Tests`. Use `-Level full` before large automation changes (ApiTests sweeps and the full regression suite — run locally; not on GitHub nightly).
 
 Automated tests require **Windows** and **WebView2**. Optional: set `TROWSER_EXE` to the `Trowser.exe` you built.
 

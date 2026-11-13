@@ -125,6 +125,6 @@ $tmp = "$env:TEMP\trowser-cal.csx"
 ## Design notes
 
 - **No priority on GUI** — CLI hidden window only.
-- **CI** — GitHub Actions runs regression `01–07` on every push; full suite nightly. Locally: `.\tests\regression\run-regression.ps1` or `.\scripts\test.ps1 -Level smoke`.
+- **CI** — GitHub Actions runs regression `01–07` on every push; full suite via `.\scripts\test.ps1 -Level full` or `.\tests\regression\run-regression.ps1` locally.
 - **Positive + clean twin** reduces false-positive regressions.
 - Runner uses a unique `--session` per test (not `--ephemeral`) to avoid WebView2 lockfile cleanup races on exit.

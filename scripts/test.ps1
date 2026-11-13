@@ -56,7 +56,7 @@ if ($Level -eq 'smoke') {
     exit 0
 }
 
-Write-Host "`n--- API sweeps (nightly breadth) ---" -ForegroundColor Cyan
+Write-Host "`n--- API sweeps (full) ---" -ForegroundColor Cyan
 dotnet test $api -c Release --no-build --filter "Category=Sweep" --logger "console;verbosity=minimal"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

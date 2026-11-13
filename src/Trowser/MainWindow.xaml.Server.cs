@@ -186,6 +186,20 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Used by LLM Settings' Start Claude Code button. Starts the REST API if it is off,
+    /// the same way the status bar toggle does. Returns the live port, or null if it failed.
+    /// </summary>
+    private int? EnsureApiRunningForLauncher()
+    {
+        if (_apiServer?.IsRunning != true)
+        {
+            _apiUserWantsServerRunning = true;
+            ToggleApiOn();
+        }
+        return _apiServer?.IsRunning == true ? _apiPort : null;
+    }
+
     private void ToggleApiOff()
     {
         _apiServer?.Dispose();
@@ -1200,7 +1214,7 @@ public partial class MainWindow
 
     private void OpenLlmSettings_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new LlmSettingsDialog(this, _llmSettings, _apiPort, _apiKey);
+        var dialog = new LlmSettingsDialog(this, _llmSettings, _apiPort, _apiKey, EnsureApiRunningForLauncher);
         if (dialog.ShowDialog() != true)
             return;
 

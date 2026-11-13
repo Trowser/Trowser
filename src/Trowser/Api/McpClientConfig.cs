@@ -61,6 +61,36 @@ public static class McpClientConfig
         _ => $"Bearer ${{{ApiKeyEnvVar}}}"
     };
 
+    /// <summary>A starter prompt for Claude Code, opened by the LLM Settings launch button.</summary>
+    public sealed record ClaudeStarter(string Name, ExternalMcpMode Mode, string Prompt);
+
+    public static IReadOnlyList<ClaudeStarter> ClaudeStarters { get; } =
+    [
+        new("Explore a site", ExternalMcpMode.Core,
+            "You are connected to Trowser through the MCP server named trowser. Check that its tools respond, then ask me which site to explore and what I am testing. Then navigate, look around, and report what you find with evidence."),
+        new("Accessibility check", ExternalMcpMode.Core,
+            "You are connected to Trowser through the MCP server named trowser. Ask me for the page URL, then run the accessibility checks on it and report the findings by severity with evidence."),
+        new("Security check (safe mode)", ExternalMcpMode.Security,
+            "You are connected to Trowser through the MCP server named trowser in security mode. Stay in safe mode: run only passive checks unless I approve an active probe. Ask me for the target URL before you start."),
+        new("Write a regression script", ExternalMcpMode.Core,
+            "You are connected to Trowser through the MCP server named trowser. Ask me what flow to cover. Then drive the browser through it and write a C# .csx script that repeats the steps.")
+    ];
+
+    /// <summary>
+    /// Build the command line that registers Trowser with Claude Code (user scope) and starts a
+    /// session with <paramref name="starter"/>. Removes any old registration first so the key is current.
+    /// </summary>
+    public static string BuildClaudeCodeLaunch(int port, ClaudeStarter starter, string? apiKey)
+    {
+        var url = BuildMcpUrl(port, starter.Mode);
+        var bearer = string.IsNullOrWhiteSpace(apiKey) ? "trowser_YOUR_API_KEY" : apiKey.Trim();
+        var prompt = starter.Prompt.Replace("'", "''");
+        return
+            "claude mcp remove trowser -s user 2>$null; " +
+            $"claude mcp add -s user --transport http trowser \"{url}\" --header \"Authorization: Bearer {bearer}\"; " +
+            $"claude '{prompt}'";
+    }
+
     /// <summary>
     /// Build a ready-to-paste JSON config for the selected client.
     /// Embeds <paramref name="apiKey"/> when provided so Cursor/etc. work without a restart.

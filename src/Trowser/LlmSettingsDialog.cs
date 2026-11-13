@@ -16,8 +16,6 @@ namespace Trowser;
 public class LlmSettingsDialog : Window
 {
     private readonly ComboBox _mcpClientCombo;
-    private readonly RadioButton _useBuiltInChat;
-    private readonly RadioButton _useExternalAgent;
     private readonly ComboBox _providerCombo;
     private readonly TextBox _endpointTextBox;
     private readonly TextBlock _endpointHint;
@@ -78,7 +76,6 @@ public class LlmSettingsDialog : Window
             StreamResponsesUserSet = true,
             ConfirmSensitiveAssistantActions = _confirmSensitiveActionsCheckBox.IsChecked != false,
             ConfirmActiveSafetyProbes = _confirmActiveSafetyProbesCheckBox.IsChecked != false,
-            UseExternalAgent = _useExternalAgent.IsChecked == true,
             Providers = LlmSettings.CloneProfiles(_providerProfiles),
             ProxyEnabled = _proxyEnabled,
             ProxyUrl = _proxyUrl,
@@ -107,7 +104,7 @@ public class LlmSettingsDialog : Window
         Owner = owner;
         Title = "LLM Settings";
         Width = 560;
-        Height = 680;
+        Height = 820;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ResizeMode = ResizeMode.NoResize;
         Background = BgMedium;
@@ -135,50 +132,18 @@ public class LlmSettingsDialog : Window
 
         var rootStack = new StackPanel { Margin = new Thickness(24, 20, 24, 12) };
 
-        // ─── Section: AI / LLM ───
-        AddSectionHeader(rootStack, "AI / LLM");
-
         _systemPromptChat = llmSettings.SystemPromptChat;
         _systemPromptFull = llmSettings.SystemPromptFull;
         _systemPromptEconomical = llmSettings.SystemPromptEconomical;
 
-        // Top switch: built-in Chat (needs an API key) or an external agent connected over MCP.
-        // Only the chosen side's fields are shown.
-        AddLabel(rootStack, "How do you want to use AI?");
-        _useBuiltInChat = new RadioButton
-        {
-            Content = "Built-in Chat — uses an API key",
-            Foreground = FgText,
-            FontSize = 12,
-            Margin = new Thickness(0, 2, 0, 2),
-            GroupName = "AiSurface",
-            IsChecked = !llmSettings.UseExternalAgent
-        };
-        rootStack.Children.Add(_useBuiltInChat);
-        _useExternalAgent = new RadioButton
-        {
-            Content = "External agent — Claude Code, Cursor, OpenCode…",
-            Foreground = FgText,
-            FontSize = 12,
-            Margin = new Thickness(0, 2, 0, 12),
-            GroupName = "AiSurface",
-            IsChecked = llmSettings.UseExternalAgent
-        };
-        rootStack.Children.Add(_useExternalAgent);
-
+        // Two sections, both always shown and usable together: built-in Chat (API key) first,
+        // external agent (MCP) below.
         var chatStack = new StackPanel();
         var agentStack = new StackPanel();
+        AddSectionHeader(rootStack, "Built-in Chat — uses an API key");
         rootStack.Children.Add(chatStack);
+        AddSectionHeader(rootStack, "External agent — Claude Code, Cursor, OpenCode…", topMargin: 24);
         rootStack.Children.Add(agentStack);
-        void ShowSurface()
-        {
-            var external = _useExternalAgent.IsChecked == true;
-            chatStack.Visibility = external ? Visibility.Collapsed : Visibility.Visible;
-            agentStack.Visibility = external ? Visibility.Visible : Visibility.Collapsed;
-        }
-        _useBuiltInChat.Checked += (_, _) => ShowSurface();
-        _useExternalAgent.Checked += (_, _) => ShowSurface();
-        ShowSurface();
 
         AddLabel(chatStack, "Interaction Mode");
         var modeHint = new TextBlock
@@ -517,6 +482,7 @@ public class LlmSettingsDialog : Window
         DarkComboBoxHelper.ApplyDarkStyle(mcpModeCombo);
         agentRow.Children.Add(mcpModeCombo);
         agentStack.Children.Add(agentRow);
+        AddHint(agentStack, "Copy MCP config: paste into the agent's MCP config. Enable Keep API key in Settings if you want a stable key. Prefer user-level mcp.json over committing secrets.");
         ExternalMcpMode SelectedMcpMode() =>
             mcpModeCombo.SelectedIndex == 1 ? ExternalMcpMode.Security : ExternalMcpMode.Core;
 
@@ -594,11 +560,10 @@ public class LlmSettingsDialog : Window
 
         var mcpCopyBtn = new Button
         {
-            Content = "Copy config",
+            Content = "Copy MCP config",
             Height = 30,
             Padding = new Thickness(10, 0, 10, 0),
-            Margin = new Thickness(0, 10, 0, 4),
-            HorizontalAlignment = HorizontalAlignment.Left,
+            Margin = new Thickness(8, 0, 0, 0),
             Background = Bc("#3F3F46"),
             Foreground = Brushes.White,
             BorderBrush = BorderClr,
@@ -623,16 +588,15 @@ public class LlmSettingsDialog : Window
         };
         void ResetAgentButtons()
         {
-            mcpCopyBtn.Content = "Copy config";
+            mcpCopyBtn.Content = "Copy MCP config";
             claudePanel.Visibility = McpClientConfig.Clients[_mcpClientCombo.SelectedIndex].Kind == McpClientConfig.ClientKind.ClaudeCode
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
         _mcpClientCombo.SelectionChanged += (_, _) => ResetAgentButtons();
-        mcpModeCombo.SelectionChanged += (_, _) => mcpCopyBtn.Content = "Copy config";
+        mcpModeCombo.SelectionChanged += (_, _) => mcpCopyBtn.Content = "Copy MCP config";
         ResetAgentButtons();
-        agentStack.Children.Add(mcpCopyBtn);
-        AddHint(agentStack, "Paste into the agent's MCP config. Enable Keep API key in Settings if you want a stable key. Prefer user-level mcp.json over committing secrets.");
+        agentRow.Children.Add(mcpCopyBtn);
 
         scrollViewer.Content = rootStack;
         Grid.SetRow(scrollViewer, 0);

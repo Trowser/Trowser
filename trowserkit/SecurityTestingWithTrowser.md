@@ -1578,7 +1578,7 @@ Returns all attack surfaces, findings, proofs, and verdicts in a structured form
 
 ### Secrets Harvest Methodology
 
-`POST /api/security/secrets-harvest` scans all captured network responses and JS bundles for credentials, tokens, and sensitive data.
+`POST /api/security/secrets-harvest` scans captured network responses, request URLs (JWTs in the query or fragment, including OIDC logout `id_token_hint`), and JS bundles for credentials, tokens, and sensitive data.
 
 **Best practices:**
 - Browse extensively first — the harvest scans everything in the network log

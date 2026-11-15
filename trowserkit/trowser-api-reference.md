@@ -3657,7 +3657,9 @@ Automated scan pipeline: derives endpoints from captured traffic, then **`includ
 **MCP:** `browser_security_auto_scan`.
 
 ### POST /api/security/secrets-harvest
-Unified **secret/credential harvesting** across all browser sources in one call: **JS bundles** (hardcoded credentials, API keys, internal URLs via `js-audit`), **cookies & storage** (JWT tokens, auth tokens, PII via `jwt-analyze` + `storage` audit), **network responses** (leaked credentials, bearer tokens, password hashes in response bodies), **network request headers** (Bearer tokens, API keys in `Authorization`, `X-Api-Key`, `X-Auth-Token` headers — category `api-key-in-request`), **visible page text** (debug output, exposed secrets), and **source maps** (exposed `.map` files, debug mode indicators). Returns **deduplicated**, **severity-prioritized** findings. Includes **false positive suppression** for known library patterns (e.g. lodash FP alias mappings).
+Unified **secret/credential harvesting** across all browser sources in one call: **JS bundles** (hardcoded credentials, API keys, internal URLs via `js-audit`), **cookies & storage** (JWT tokens, auth tokens, PII via `jwt-analyze` + `storage` audit), **network responses** (leaked credentials, bearer tokens, password hashes in response bodies), **network request URLs** (JWTs in the query string or fragment — category `jwt-in-url`), **network request headers** (Bearer tokens, API keys in `Authorization`, `X-Api-Key`, `X-Auth-Token` headers — category `api-key-in-request`), **visible page text** (debug output, exposed secrets), and **source maps** (exposed `.map` files, debug mode indicators). Returns **deduplicated**, **severity-prioritized** findings. Includes **false positive suppression** for known library patterns (e.g. lodash FP alias mappings).
+
+Request-URL JWTs are reported even when the request host is not the page host (OIDC logout often leaves the app for the IdP). Well-known CDN and analytics hosts are skipped. The snippet is the full token so it can be pasted at jwt.io. `id_token_hint` is **low**; `access_token`, `refresh_token`, and `id_token` are **medium**.
 
 **Safety gate:** `"safetyMode": "safe"` runs the **passive** sources (cookies/storage, captured network log, page text/HTML comments). `"safetyMode": "active"` additionally **fetches** JS bundles and source maps (new outbound requests). **Blocked in `--safe` CLI mode.**
 
@@ -3666,7 +3668,7 @@ Unified **secret/credential harvesting** across all browser sources in one call:
 | `safetyMode` | `"safe"` | `"safe"` (passive sources) or `"active"`/`"aggressive"` (also fetch JS bundles + source maps). (`confirmBackend: true` accepted as legacy alias for active.) |
 | `includeJsBundles` | `true` (active only) | Scan JS assets for hardcoded secrets — **only runs under active** (needs outbound fetch); forced off under safe. URLs come from **`script[src]` on the current page** plus **same-origin `ResourceType: Script` rows** from the network log (covers extensionless `/app` scripts and other paths without `.js` in the URL when the log already captured them). |
 | `includeCookiesAndStorage` | `true` | Analyze cookies, localStorage, sessionStorage for tokens/PII (passive) |
-| `includeNetworkResponses` | `true` | Scan captured network response bodies for credential exposure (passive) |
+| `includeNetworkResponses` | `true` | Scan captured network response bodies, request headers, request bodies, and request URLs (JWTs) for credential exposure (passive) |
 | `includePageText` | `true` | Scan visible page text for secrets/debug output (passive) |
 | `includeSourceMaps` | `true` (active only) | Check for exposed source maps and debug mode — **only runs under active** (needs outbound fetch); forced off under safe. |
 | `maxJsScripts` | `20` | Max JS scripts to fetch and scan |
@@ -3675,7 +3677,7 @@ Unified **secret/credential harvesting** across all browser sources in one call:
 | `includeHtmlComments` | `true` | Scan HTML comments in page source (passive) |
 | `timeoutMs` | `30000` | Timeout for JS bundle fetches |
 
-**Response:** `url`, `totalFindings`, `filteredNoise` (findings dropped by hard suppress and per-script comment caps), `findings[]` (source, category, severity, location, description, snippet), `warnings[]` (e.g. large-bundle truncation — not counted as secrets), `summary` (critical, high, medium, low, info, bySource, byCategory), `sourcesScanned[]`, `passiveOnly` (true when JS/source-map fetching was skipped under safe), `errors[]`, `elapsedMs`. Detects emails, Luhn-valid credit cards, PEM private keys, JWTs, API keys, and comment-embedded secrets.
+**Response:** `url`, `totalFindings`, `filteredNoise` (findings dropped by hard suppress and per-script comment caps), `findings[]` (source, category, severity, location, description, snippet), `warnings[]` (e.g. large-bundle truncation — not counted as secrets), `summary` (critical, high, medium, low, info, bySource, byCategory), `sourcesScanned[]`, `passiveOnly` (true when JS/source-map fetching was skipped under safe), `errors[]`, `elapsedMs`. Detects emails, Luhn-valid credit cards, PEM private keys, JWTs (including JWTs in request URLs, category `jwt-in-url`), API keys, and comment-embedded secrets.
 
 **MCP:** `browser_security_secrets_harvest`.
 

@@ -3,7 +3,7 @@
 Quick-scan table of contents for all Trowser REST endpoints and MCP tools.
 No arguments — just method, path, and one-line purpose.
 
-> **Auto-generated** from `TrowserApiServer*.cs` and `McpHandler.ToolDefinitions.cs` on 2026-11-11.
+> **Auto-generated** from `TrowserApiServer*.cs` and `McpHandler.ToolDefinitions.cs` on 2026-11-15.
 > Do not edit by hand — run `scripts/generate-api-index.ps1` after API changes.
 > Full details: [trowser-api-reference.md](trowser-api-reference.md) · Doc map: [DOCUMENTATION.md](../DOCUMENTATION.md)
 
@@ -370,7 +370,7 @@ No arguments — just method, path, and one-line purpose.
 | POST | `/api/security/saml-capture` | Capture SAML assertions during SSO login flows. |
 | POST | `/api/security/saml-decode` | Decode SAML messages from the network log or raw input. |
 | POST | `/api/security/saml-replay` | Replay a captured SAML assertion with modifications for security testing. |
-| POST | `/api/security/secrets-harvest` | Unified secret/credential harvesting: JS bundles, cookies, storage, network responses, network request headers (Bearer t… |
+| POST | `/api/security/secrets-harvest` | Unified secret/credential harvesting: JS bundles, cookies, storage, network responses, request URLs (JWTs in query or fr… |
 | POST | `/api/security/service-worker-audit` | Browser-native **service worker** review on the **current origin** (callable without running client-surface first). |
 | POST | `/api/security/session-fixation-scan` | Detects **session fixation** — captures **all** cookies before login, authenticates, flags unchanged **session-like** co… |
 | POST | `/api/security/session-id` | Session identifier strength analysis. |

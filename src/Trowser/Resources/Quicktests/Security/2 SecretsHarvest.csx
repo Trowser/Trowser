@@ -2,7 +2,7 @@
 // @shadow never
 // @effects mutates
 // Secrets harvest: unified credential/secret scan across JS bundles, cookies, storage,
-// network responses, visible page text, and source maps.
+// network responses, request URLs (JWTs, including OIDC id_token_hint), visible page text, and source maps.
 // NOTE: This test fetches external JS scripts for analysis.
 
 var url = await GetCurrentUrl();

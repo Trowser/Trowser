@@ -1,3 +1,4 @@
+using Trowser.Automation;
 using Trowser.Security;
 using Xunit;
 
@@ -96,5 +97,150 @@ public class SecretsHarvestNoiseTests
         SecretsHarvestHeuristics.CalibrateFinding(finding);
 
         Assert.Equal("low", finding.Severity);
+    }
+
+    private const string SampleJwt =
+        "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0cm93c2VyLXRlc3QifQ.b8RpOamNdE-74IqW2Q4kXRDkT8mmhObd3c";
+
+    [Fact]
+    public void RequestUrl_FlagsOidcLogoutIdTokenHint()
+    {
+        var url = "https://idp.example.test/connect/endsession?id_token_hint=" + SampleJwt
+                  + "&post_logout_redirect_uri=https%3A%2F%2Fapp.example.test";
+        var result = HarvestUrls(
+            "https://app.example.test/home",
+            new NetworkEntry { Method = "GET", Url = url, ResourceType = "Document", StatusCode = 302 });
+
+        var hit = Assert.Single(result.Findings);
+        Assert.Equal("jwt-in-url", hit.Category);
+        Assert.Equal("low", hit.Severity);
+        Assert.Equal("network-request-url", hit.Source);
+        Assert.Contains("id_token_hint", hit.Description, StringComparison.Ordinal);
+        Assert.Contains("jwt.io", hit.Description, StringComparison.Ordinal);
+        Assert.Contains("/connect/endsession?id_token_hint=", hit.Location, StringComparison.Ordinal);
+        Assert.Equal(SampleJwt, hit.Snippet);
+        Assert.DoesNotContain(SampleJwt, hit.Location);
+        Assert.Equal("credential-exposure", SecretsCategoryMapper.ToVpxCategory(hit.Category));
+    }
+
+    [Fact]
+    public void RequestUrl_FlagsIdTokenHintWhenLogoutHostIsNotTheApp()
+    {
+        var url = "https://login.example.test/connect/endsession?id_token_hint=" + SampleJwt;
+        var result = HarvestUrls(
+            "https://app.example.test/",
+            new NetworkEntry { Method = "GET", Url = url, StatusCode = 302 });
+
+        var hit = Assert.Single(result.Findings);
+        Assert.Equal("low", hit.Severity);
+        Assert.Contains("login.example.test", hit.Location, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RequestUrl_AccessTokenInQueryIsMedium()
+    {
+        var url = "https://app.example.test/callback?access_token=" + SampleJwt;
+        var result = HarvestUrls(new NetworkEntry { Method = "GET", Url = url, StatusCode = 200 });
+
+        var hit = Assert.Single(result.Findings);
+        Assert.Equal("medium", hit.Severity);
+        Assert.Contains("access_token", hit.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RequestUrl_IdTokenInFragmentIsMedium()
+    {
+        var url = "https://app.example.test/callback#id_token=" + SampleJwt;
+        var result = HarvestUrls(new NetworkEntry { Method = "GET", Url = url, StatusCode = 200 });
+
+        var hit = Assert.Single(result.Findings);
+        Assert.Equal("medium", hit.Severity);
+        Assert.Contains("#id_token=", hit.Location, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RequestUrl_DecodesPercentEncodedJwt()
+    {
+        var encoded = SampleJwt.Replace(".", "%2E", StringComparison.Ordinal);
+        var url = "https://idp.example.test/connect/endsession?id_token_hint=" + encoded;
+        var result = HarvestUrls(new NetworkEntry { Method = "GET", Url = url, StatusCode = 302 });
+
+        var hit = Assert.Single(result.Findings);
+        Assert.Equal(SampleJwt, hit.Snippet);
+    }
+
+    [Fact]
+    public void RequestUrl_IgnoresUrlsWithoutAJwt()
+    {
+        var result = HarvestUrls(
+            new NetworkEntry
+            {
+                Method = "GET",
+                Url = "https://app.example.test/connect/endsession?post_logout_redirect_uri=https%3A%2F%2Fapp.example.test",
+                StatusCode = 302
+            });
+
+        Assert.Empty(result.Findings);
+    }
+
+    [Fact]
+    public void RequestUrl_SkipsWellKnownThirdPartyHosts()
+    {
+        var url = "https://cdnjs.cloudflare.com/ajax/libs/lib.js?token=" + SampleJwt;
+        var result = HarvestUrls(new NetworkEntry { Method = "GET", Url = url, StatusCode = 200 });
+
+        Assert.Empty(result.Findings);
+    }
+
+    [Fact]
+    public void RequestUrl_DedupesTheSameTokenAcrossRedirects()
+    {
+        var logout = "https://idp.example.test/connect/endsession?id_token_hint=" + SampleJwt;
+        var result = HarvestUrls(
+            new NetworkEntry { Method = "GET", Url = logout, StatusCode = 302 },
+            new NetworkEntry { Method = "GET", Url = logout + "&state=abc", StatusCode = 302 });
+
+        Assert.Single(result.Findings);
+    }
+
+    [Fact]
+    public void RequestUrl_FlagsJwtOnTheCurrentPageWhenTheLogMissedIt()
+    {
+        var result = HarvestUrls(
+            "https://idp.example.test/connect/endsession?id_token_hint=" + SampleJwt);
+
+        var hit = Assert.Single(result.Findings);
+        Assert.Equal("page-url", hit.Source);
+        Assert.Equal("low", hit.Severity);
+    }
+
+    [Fact]
+    public void CalibrateFinding_LeavesJwtInUrlSeverityAlone()
+    {
+        var finding = new SecretsHarvestPipeline.SecretFinding
+        {
+            Source = "network-request-url",
+            Category = "jwt-in-url",
+            Severity = "low",
+            Location = "https://idp.example.test/connect/authorize?client_id=app&grant_type=code",
+            Description = "JWT in URL query string parameter 'id_token_hint'."
+        };
+
+        SecretsHarvestHeuristics.CalibrateFinding(finding);
+
+        Assert.Equal("low", finding.Severity);
+        Assert.Equal("jwt-in-url", finding.Category);
+    }
+
+    private static SecretsHarvestPipeline.HarvestResult HarvestUrls(params NetworkEntry[] entries)
+        => HarvestUrls(pageUrl: null, entries);
+
+    private static SecretsHarvestPipeline.HarvestResult HarvestUrls(string? pageUrl, params NetworkEntry[] entries)
+    {
+        var result = new SecretsHarvestPipeline.HarvestResult();
+        SecretsHarvestPipeline.CollectJwtInUrlFindings(entries, pageUrl, result);
+        foreach (var finding in result.Findings)
+            SecretsHarvestHeuristics.CalibrateFinding(finding);
+        return result;
     }
 }

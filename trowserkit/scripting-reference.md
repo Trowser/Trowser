@@ -1454,7 +1454,7 @@ await PrintAutoScanReport(includeDetails: true);
 
 ## Secrets harvest (credential/secret exposure)
 
-Unified **secret/credential harvesting** across all browser sources in one call: **JS bundles** (hardcoded credentials, API keys), **cookies & storage** (JWT tokens, auth tokens, PII), **network responses** (leaked credentials, bearer tokens), **visible page text** (debug output), and **source maps** (exposed `.map` files, debug mode). Returns **deduplicated**, **severity-prioritized** findings.
+Unified **secret/credential harvesting** across all browser sources in one call: **JS bundles** (hardcoded credentials, API keys), **cookies & storage** (JWT tokens, auth tokens, PII), **network responses** (leaked credentials, bearer tokens), **request URLs** (JWTs in the query or fragment, including OIDC `id_token_hint`), **visible page text** (debug output), and **source maps** (exposed `.map` files, debug mode). Returns **deduplicated**, **severity-prioritized** findings.
 
 | Method | Parameters | Returns |
 |--------|------------|---------|
@@ -1468,9 +1468,9 @@ Unified **secret/credential harvesting** across all browser sources in one call:
 
 **HarvestSummary:** `Critical`, `High`, `Medium`, `Low`, `Info`, `BySource`, `ByCategory`
 
-**Sources:** `js-bundle`, `cookies-storage`, `web-storage`, `network-response`, `page-text`, `source-maps`
+**Sources:** `js-bundle`, `cookies-storage`, `web-storage`, `network-response`, `network-request-url`, `page-url`, `page-text`, `source-maps`
 
-**Categories:** `jwt-token`, `jwt-sensitive-claim`, `api-key`, `bearer-token`, `password`, `aws-access-key`, `private-key`, `connection-string`, `secret-assignment`, `email-password-combo`, `hardcoded-credential`, `internal-url`, `debug-flag`, `source-map-exposed`, `debug-mode-active`, and more.
+**Categories:** `jwt-token`, `jwt-in-url`, `jwt-sensitive-claim`, `api-key`, `bearer-token`, `password`, `aws-access-key`, `private-key`, `connection-string`, `secret-assignment`, `email-password-combo`, `hardcoded-credential`, `internal-url`, `debug-flag`, `source-map-exposed`, `debug-mode-active`, and more.
 
 ```csharp
 // Assert no secrets exposed

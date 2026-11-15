@@ -6434,7 +6434,7 @@ paths:
     post:
       operationId: post_security_secrets_harvest
       tags: [Security Testing]
-      summary: "Unified secret/credential harvesting: JS bundles, cookies, storage, network responses, network request headers (Bearer t..."
+      summary: "Unified secret/credential harvesting: JS bundles, cookies, storage, network responses, request URLs (JWTs in query or fr..."
       description: |
         May require safetyMode in the request body (passive, safe, active, aggressive).
         Legacy confirmBackend true is accepted as alias for active.

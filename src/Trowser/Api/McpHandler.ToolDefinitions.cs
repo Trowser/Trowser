@@ -2059,7 +2059,8 @@ public partial class McpHandler
         Tool("browser_security_secrets_harvest",
             "Unified secret/credential harvesting across all browser sources: " +
             "JS bundles (hardcoded creds, API keys), cookies & storage (JWTs, tokens, PII), " +
-            "network responses (leaked credentials, bearer tokens), visible page text (debug output), " +
+            "network responses (leaked credentials, bearer tokens), request URLs (JWTs in the query " +
+            "or fragment, including OIDC id_token_hint), visible page text (debug output), " +
             "and source maps (exposed source code). Returns deduplicated, severity-prioritized findings. " +
             "safetyMode 'safe' runs passive sources (cookies/storage, network log, page text); 'active' also " +
             "fetches JS bundles and source maps. REST: POST /api/security/secrets-harvest.",
@@ -2067,7 +2068,7 @@ public partial class McpHandler
                 ("safetyMode", SStr("Safety mode: safe (passive sources) | active (also fetch JS/source maps) | aggressive. Default: safe")),
                 ("includeJsBundles", SBool("Scan JS script[src] assets for hardcoded secrets (active only; default true)")),
                 ("includeCookiesAndStorage", SBool("Analyze cookies, localStorage, sessionStorage for tokens/PII (default true)")),
-                ("includeNetworkResponses", SBool("Scan captured network response bodies for credential exposure (default true)")),
+                ("includeNetworkResponses", SBool("Scan captured network bodies, request headers, and JWTs in request URLs (default true)")),
                 ("includePageText", SBool("Scan visible page text for secrets/debug output (default true)")),
                 ("includeSourceMaps", SBool("Check for exposed source maps and debug mode (active only; default true)")),
                 ("maxJsScripts", SInt("Max JS scripts to fetch and scan (default 20)")),

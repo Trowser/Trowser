@@ -267,7 +267,7 @@ public class LlmClient
             }
 
             if (retriedSend)
-                OnStatus?.Invoke("Thinking...");
+                OnStatus?.Invoke("Thinking…");
 
             // Native tool_calls missing: some models (Copilot, OpenRouter free, prompt-tool
             // fallback) narrate <tool_call> JSON in the text instead.

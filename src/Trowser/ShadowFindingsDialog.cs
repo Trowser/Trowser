@@ -109,7 +109,7 @@ public partial class ShadowFindingsDialog : Window
         DockPanel.SetDock(_toggleBtn, Dock.Right);
         summaryRow.Children.Add(_toggleBtn);
 
-        var settingsBtn = CreateButton("Settings...", false);
+        var settingsBtn = CreateButton("Settings…", false);
         settingsBtn.Width = 84;
         settingsBtn.Height = 24;
         settingsBtn.FontSize = 11;

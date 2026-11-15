@@ -71,7 +71,7 @@ public class SessionLogDialog : Window
         root.Children.Add(Label("Log file (.md):"));
         var fileRow = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
 
-        var browseBtn = StyledButton("Browse...", 80);
+        var browseBtn = StyledButton("Browse…", 80);
         browseBtn.Click += BrowseButton_Click;
         DockPanel.SetDock(browseBtn, Dock.Right);
         fileRow.Children.Add(browseBtn);

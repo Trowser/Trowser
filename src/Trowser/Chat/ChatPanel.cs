@@ -446,7 +446,7 @@ public class ChatPanel : Border
         _sendButton.Visibility = Visibility.Collapsed;
         _stopButton.Visibility = Visibility.Visible;
         _inputBox.IsEnabled = false;
-        SetStatus("Thinking...");
+        SetStatus("Thinking…");
 
         _cts = new CancellationTokenSource();
         ResetStreamState();
@@ -493,12 +493,12 @@ public class ChatPanel : Border
         var tokens = _llmClient.EstimateConversationTokens(_conversation);
         if (tokens < 100)
         {
-            SetStatus("Nothing much to compact yet.");
+            SetStatus("Nothing much to compact yet");
             return;
         }
 
         _isProcessing = true;
-        SetStatus("Compacting...");
+        SetStatus("Compacting…");
         try
         {
             if (!await _llmClient.ManualCompact(_conversation))
@@ -713,7 +713,7 @@ public class ChatPanel : Border
     private void ShowToolCallStarted(string toolName)
     {
         FinalizeCurrentStreamBubble();
-        SetStatus($"Running {toolName}...");
+        SetStatus($"Running {toolName}…");
 
         var display = FormatToolName(toolName);
         var panel = new StackPanel
@@ -746,7 +746,7 @@ public class ChatPanel : Border
 
     private void ShowToolCallCompleted(string toolName, string result)
     {
-        SetStatus("Thinking...");
+        SetStatus("Thinking…");
         if (!LooksLikeToolError(result))
             return;
 

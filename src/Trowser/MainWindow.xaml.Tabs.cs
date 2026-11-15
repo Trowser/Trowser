@@ -423,7 +423,7 @@ public partial class MainWindow
             : (string.IsNullOrEmpty(tab.Url) ? "New Tab" : ShortenUrl(tab.Url));
 
         if (title.Length > 30)
-            title = title[..27] + "...";
+            title = title[..29] + "…";
 
         var owner = tab.Owner ?? TabOwners.Human;
         var badge = new TextBlock
@@ -753,7 +753,7 @@ public partial class MainWindow
 
         Dispatcher.Invoke(() =>
         {
-            StatusText.Text = $"Loading {e.Uri}...";
+            StatusText.Text = $"Loading {e.Uri}…";
             StatusText.Foreground = new SolidColorBrush(Colors.White);
 
             if (IsActiveTab(tab))

@@ -234,7 +234,7 @@ public partial class MainWindow
     private void UpdateScopeDisplay()
     {
         var scope = _navigationGuard.Scope;
-        var displayScope = scope.Length > 50 ? scope[..47] + "..." : scope;
+        var displayScope = scope.Length > 50 ? scope[..49] + "…" : scope;
         ScopeStatusText.Text = _navigationGuard.IsRestricted
             ? $"\U0001F512 Scope: {displayScope}"
             : $"\U0001F513 Scope: {displayScope}";
@@ -337,7 +337,7 @@ public partial class MainWindow
         {
             IsScriptPanelVisible = true;
             ClearOutput();
-            StatusText.Text = "Running endpoint probes...";
+            StatusText.Text = "Running endpoint probes…";
         };
         dlg.ProbeRunFinished += status =>
         {
@@ -554,7 +554,7 @@ public partial class MainWindow
 
         IsScriptPanelVisible = true;
         ClearOutput();
-        StatusText.Text = "Running BOLA / authz comparison...";
+        StatusText.Text = "Running BOLA / authz comparison…";
 
         try
         {
@@ -844,7 +844,7 @@ public partial class MainWindow
             ShadowStatusText.Text = "Shadow: off";
             ShadowStatusText.Foreground = new SolidColorBrush(
                 (Color)ColorConverter.ConvertFromString("#888888"));
-            ((Border)ShadowStatusText.Parent).ToolTip = "Shadow — off\nClick to view findings\nEnable via Settings... on that dialog, or Settings → Experimental";
+            ((Border)ShadowStatusText.Parent).ToolTip = "Shadow — off\nClick to view findings\nEnable via Settings… on that dialog, or Settings → Experimental";
             return;
         }
 
@@ -1034,14 +1034,14 @@ public partial class MainWindow
         menu.Items.Add(CreateDarkMenuItem("AI Assistant  (Ctrl+L)", ChatToggleButton_Click));
         menu.Items.Add(CreateDarkMenuItem("Script Console  (Ctrl+0)", ScriptToggleButton_Click));
         menu.Items.Add(new Separator { Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3F3F46")), Margin = new Thickness(0, 2, 0, 2) });
-        menu.Items.Add(CreateDarkMenuItem("Session Log...", SessionLogMenu_Click));
-        menu.Items.Add(CreateDarkMenuItem("Peer sessions...", PeerSessionsMenu_Click));
-        menu.Items.Add(CreateDarkMenuItem("Race Lab...", RaceLabMenu_Click));
-        menu.Items.Add(CreateDarkMenuItem("Live Authz Shadow...", AuthzShadowMenu_Click));
+        menu.Items.Add(CreateDarkMenuItem("Session Log…", SessionLogMenu_Click));
+        menu.Items.Add(CreateDarkMenuItem("Peer sessions…", PeerSessionsMenu_Click));
+        menu.Items.Add(CreateDarkMenuItem("Race Lab…", RaceLabMenu_Click));
+        menu.Items.Add(CreateDarkMenuItem("Live Authz Shadow…", AuthzShadowMenu_Click));
         menu.Items.Add(new Separator { Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3F3F46")), Margin = new Thickness(0, 2, 0, 2) });
-        menu.Items.Add(CreateDarkMenuItem("Test data...  (Ctrl+D)", OpenTestData_Click));
-        menu.Items.Add(CreateDarkMenuItem("LLM Settings...", OpenLlmSettings_Click));
-        menu.Items.Add(CreateDarkMenuItem("Settings...", OpenSettings_Click));
+        menu.Items.Add(CreateDarkMenuItem("Test data…  (Ctrl+D)", OpenTestData_Click));
+        menu.Items.Add(CreateDarkMenuItem("LLM Settings…", OpenLlmSettings_Click));
+        menu.Items.Add(CreateDarkMenuItem("Settings…", OpenSettings_Click));
         menu.Items.Add(new Separator { Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3F3F46")), Margin = new Thickness(0, 2, 0, 2) });
         menu.Items.Add(CreateDarkMenuItem("Introduction", ManualTrowser_Click));
         menu.Items.Add(CreateDarkMenuItem("Help", HelpPaper_Click));
@@ -1164,7 +1164,7 @@ public partial class MainWindow
             else
             {
                 var kindLabel = _testDataService.ActiveKind == TestDataKind.Payloads ? "payloads" : "test strings";
-                StatusText.Text = $"No {kindLabel} available — open Test Data dialog to add entries";
+                StatusText.Text = $"No {kindLabel} available — open Test Data dialog to add entries.";
             }
         }
         catch (Exception ex)
@@ -1299,7 +1299,7 @@ public partial class MainWindow
 
             if (proxyChanged)
             {
-                StatusText.Text = "Settings updated \u2014 restart Trowser for proxy changes to take effect";
+                StatusText.Text = "Settings updated \u2014 restart Trowser for proxy changes to take effect.";
                 MessageBox.Show(this,
                     "Proxy settings are applied when the browser engine starts.\nPlease restart Trowser for the changes to take effect.",
                     "Restart Required", MessageBoxButton.OK, MessageBoxImage.Information);

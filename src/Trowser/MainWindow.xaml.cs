@@ -596,7 +596,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         try
         {
-            StatusText.Text = "Initializing browser engine...";
+            StatusText.Text = "Initializing browser engine…";
 
             _webView2Environment = await CreateWebView2EnvironmentAsync();
 

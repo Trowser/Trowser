@@ -351,7 +351,7 @@ public partial class MainWindow
 
         if (_playRun != null || _scriptConsoleRun != null)
         {
-            StatusText.Text = "Show me — another script is already running";
+            StatusText.Text = "Show me — another script is already running.";
             return;
         }
 

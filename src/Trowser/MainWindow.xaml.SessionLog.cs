@@ -227,7 +227,7 @@ public partial class MainWindow
                 _noteOverlay = null;
             }
 
-            StatusText.Text = edit == null ? "Opening note overlay..." : "Editing journal entry...";
+            StatusText.Text = edit == null ? "Opening note overlay…" : "Editing journal entry…";
             _noteOverlay = new NoteOverlay(this, _sessionLogger, () =>
             {
                 Dispatcher.Invoke(() =>

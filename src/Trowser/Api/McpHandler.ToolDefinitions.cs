@@ -2060,7 +2060,7 @@ public partial class McpHandler
             "Unified secret/credential harvesting across all browser sources: " +
             "JS bundles (hardcoded creds, API keys), cookies & storage (JWTs, tokens, PII), " +
             "network responses (leaked credentials, bearer tokens), request URLs (JWTs in the query " +
-            "or fragment, including OIDC id_token_hint), visible page text (debug output), " +
+            "or fragment, plus named secret query params), visible page text (debug output), " +
             "and source maps (exposed source code). Returns deduplicated, severity-prioritized findings. " +
             "safetyMode 'safe' runs passive sources (cookies/storage, network log, page text); 'active' also " +
             "fetches JS bundles and source maps. REST: POST /api/security/secrets-harvest.",

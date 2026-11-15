@@ -12,7 +12,7 @@ public static class SecretsCategoryMapper
 
         return cat switch
         {
-            "jwt-in-url" => "credential-exposure",
+            "jwt-in-url" or "sensitive-query-param" => "credential-exposure",
 
             "jwt-token" or "jwt-sensitive-claim" or "md5-password-hash-in-jwt"
                 or "jwtinstorage" or "authtokeninstorage" or "bearertokeninstorage"

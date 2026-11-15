@@ -3661,6 +3661,8 @@ Unified **secret/credential harvesting** across all browser sources in one call:
 
 Request-URL JWTs are reported even when the request host is not the page host (OIDC logout often leaves the app for the IdP). Well-known CDN and analytics hosts are skipped. The snippet is the full token so it can be pasted at jwt.io. `id_token_hint` is **low**; `access_token`, `refresh_token`, and `id_token` are **medium**.
 
+A separate pass flags **named secret parameters** in query or fragment (`sensitive-query-param`): `client_secret`, `password`, and `api_key` → **high**; other high-risk names (`secret`, `private_key`, …) with plausible values → **medium**. Routine OAuth/OIDC params (`state`, `code`, …) and CSRF fields are skipped. JWT-shaped values stay on `jwt-in-url` only.
+
 **Safety gate:** `"safetyMode": "safe"` runs the **passive** sources (cookies/storage, captured network log, page text/HTML comments). `"safetyMode": "active"` additionally **fetches** JS bundles and source maps (new outbound requests). **Blocked in `--safe` CLI mode.**
 
 | Field | Default | Description |
@@ -3677,7 +3679,7 @@ Request-URL JWTs are reported even when the request host is not the page host (O
 | `includeHtmlComments` | `true` | Scan HTML comments in page source (passive) |
 | `timeoutMs` | `30000` | Timeout for JS bundle fetches |
 
-**Response:** `url`, `totalFindings`, `filteredNoise` (findings dropped by hard suppress and per-script comment caps), `findings[]` (source, category, severity, location, description, snippet), `warnings[]` (e.g. large-bundle truncation — not counted as secrets), `summary` (critical, high, medium, low, info, bySource, byCategory), `sourcesScanned[]`, `passiveOnly` (true when JS/source-map fetching was skipped under safe), `errors[]`, `elapsedMs`. Detects emails, Luhn-valid credit cards, PEM private keys, JWTs (including JWTs in request URLs, category `jwt-in-url`), API keys, and comment-embedded secrets.
+**Response:** `url`, `totalFindings`, `filteredNoise` (findings dropped by hard suppress and per-script comment caps), `findings[]` (source, category, severity, location, description, snippet), `warnings[]` (e.g. large-bundle truncation — not counted as secrets), `summary` (critical, high, medium, low, info, bySource, byCategory), `sourcesScanned[]`, `passiveOnly` (true when JS/source-map fetching was skipped under safe), `errors[]`, `elapsedMs`. Detects emails, Luhn-valid credit cards, PEM private keys, JWTs (`jwt-in-url`), named secrets in request URLs (`sensitive-query-param`), API keys, and comment-embedded secrets.
 
 **MCP:** `browser_security_secrets_harvest`.
 

@@ -1470,7 +1470,7 @@ Unified **secret/credential harvesting** across all browser sources in one call:
 
 **Sources:** `js-bundle`, `cookies-storage`, `web-storage`, `network-response`, `network-request-url`, `page-url`, `page-text`, `source-maps`
 
-**Categories:** `jwt-token`, `jwt-in-url`, `jwt-sensitive-claim`, `api-key`, `bearer-token`, `password`, `aws-access-key`, `private-key`, `connection-string`, `secret-assignment`, `email-password-combo`, `hardcoded-credential`, `internal-url`, `debug-flag`, `source-map-exposed`, `debug-mode-active`, and more.
+**Categories:** `jwt-token`, `jwt-in-url`, `sensitive-query-param`, `jwt-sensitive-claim`, `api-key`, `bearer-token`, `password`, `aws-access-key`, `private-key`, `connection-string`, `secret-assignment`, `email-password-combo`, `hardcoded-credential`, `internal-url`, `debug-flag`, `source-map-exposed`, `debug-mode-active`, and more.
 
 ```csharp
 // Assert no secrets exposed

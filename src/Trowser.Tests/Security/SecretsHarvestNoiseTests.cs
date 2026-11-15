@@ -235,10 +235,69 @@ public class SecretsHarvestNoiseTests
     private static SecretsHarvestPipeline.HarvestResult HarvestUrls(params NetworkEntry[] entries)
         => HarvestUrls(pageUrl: null, entries);
 
+    [Fact]
+    public void RequestUrl_FlagsClientSecretInQueryAsHigh()
+    {
+        const string secret = "s3cr3t-client-secret-value-9a8b";
+        var url = "https://app.example.test/oauth/callback?client_secret=" + secret;
+        var result = HarvestUrls(new NetworkEntry { Method = "GET", Url = url, StatusCode = 200 });
+
+        var hit = Assert.Single(result.Findings);
+        Assert.Equal("sensitive-query-param", hit.Category);
+        Assert.Equal("high", hit.Severity);
+        Assert.Equal(secret, hit.Snippet);
+    }
+
+    [Fact]
+    public void RequestUrl_FlagsApiKeyInQueryAsHigh()
+    {
+        const string key = "sk_live_abcd1234efgh5678";
+        var url = "https://app.example.test/embed?api_key=" + key;
+        var result = HarvestUrls(new NetworkEntry { Method = "GET", Url = url, StatusCode = 200 });
+
+        var hit = Assert.Single(result.Findings);
+        Assert.Equal("high", hit.Severity);
+        Assert.Contains("api_key", hit.Description, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RequestUrl_SkipsOAuthStateParam()
+    {
+        var url = "https://app.example.test/callback?state=" + new string('A', 32);
+        var result = HarvestUrls(new NetworkEntry { Method = "GET", Url = url, StatusCode = 200 });
+        Assert.Empty(result.Findings);
+    }
+
+    [Fact]
+    public void RequestUrl_SkipsCsrfUserTokenParam()
+    {
+        var url = "https://app.example.test/submit?user_token=" + new string('a', 32);
+        var result = HarvestUrls(new NetworkEntry { Method = "GET", Url = url, StatusCode = 200 });
+        Assert.Empty(result.Findings);
+    }
+
+    [Fact]
+    public void RequestUrl_SkipsPlaceholderPasswordInQuery()
+    {
+        var url = "https://app.example.test/legacy?password=changeme";
+        var result = HarvestUrls(new NetworkEntry { Method = "GET", Url = url, StatusCode = 200 });
+        Assert.Empty(result.Findings);
+    }
+
+    [Fact]
+    public void RequestUrl_JwtTakesPrecedenceOverGenericSecretParamName()
+    {
+        var url = "https://app.example.test/callback?secret=" + SampleJwt;
+        var result = HarvestUrls(new NetworkEntry { Method = "GET", Url = url, StatusCode = 200 });
+        Assert.Single(result.Findings);
+        Assert.Equal("jwt-in-url", result.Findings[0].Category);
+    }
+
     private static SecretsHarvestPipeline.HarvestResult HarvestUrls(string? pageUrl, params NetworkEntry[] entries)
     {
         var result = new SecretsHarvestPipeline.HarvestResult();
         SecretsHarvestPipeline.CollectJwtInUrlFindings(entries, pageUrl, result);
+        SecretsHarvestPipeline.CollectSensitiveQueryParamFindings(entries, pageUrl, result);
         foreach (var finding in result.Findings)
             SecretsHarvestHeuristics.CalibrateFinding(finding);
         return result;

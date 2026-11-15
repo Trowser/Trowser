@@ -406,7 +406,10 @@ public static class SecretsHarvestPipeline
             // Full log, not the scope-host subset: OIDC logout often hops to another host.
             try
             {
-                CollectJwtInUrlFindings(ctx.Network.Entries, result.Url, result, options.MaxNetworkResponses);
+                SecretsHarvestRequestUrlScanner.CollectJwtInUrlFindings(
+                    ctx.Network.Entries, result.Url, result, options.MaxNetworkResponses);
+                SecretsHarvestRequestUrlScanner.CollectSensitiveQueryParamFindings(
+                    ctx.Network.Entries, result.Url, result, options.MaxNetworkResponses);
             }
             catch (Exception ex)
             {
@@ -539,196 +542,21 @@ public static class SecretsHarvestPipeline
             result.SourcesScanned.Add($"network-request-bodies ({hits} plaintext password field(s))");
     }
 
-    /// <summary>
-    /// JWTs carried in a request URL (query or fragment). Includes OIDC logout
-    /// <c>id_token_hint</c>: the spec puts the identity token in the query string,
-    /// and that value still lands in browser history, access logs, and Referer.
-    /// Captured requests on other hosts are included (the IdP is often not the app
-    /// origin). Well-known CDN and analytics hosts are skipped.
-    /// </summary>
+    /// <inheritdoc cref="SecretsHarvestRequestUrlScanner.CollectJwtInUrlFindings"/>
     public static void CollectJwtInUrlFindings(
         IReadOnlyList<NetworkEntry> entries,
         string? pageUrl,
         HarvestResult result,
-        int maxHits = 20)
-    {
-        if (maxHits <= 0) return;
+        int maxHits = 20) =>
+        SecretsHarvestRequestUrlScanner.CollectJwtInUrlFindings(entries, pageUrl, result, maxHits);
 
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var hits = 0;
-
-        foreach (var entry in entries)
-        {
-            if (hits >= maxHits) break;
-            if (entry.IsTrowserGenerated) continue;
-            if (SecurityHostScope.IsWellKnownThirdPartyHost(entry.Host)) continue;
-            hits += AppendJwtUrlFindings(entry.Url, "network-request-url", seen, result, maxHits - hits);
-        }
-
-        if (hits < maxHits && !string.IsNullOrEmpty(pageUrl))
-            hits += AppendJwtUrlFindings(pageUrl, "page-url", seen, result, maxHits - hits);
-
-        if (hits > 0)
-            result.SourcesScanned.Add($"network-request-urls ({hits} jwt)");
-    }
-
-    private static int AppendJwtUrlFindings(
-        string url, string source, HashSet<string> seen, HarvestResult result, int remaining)
-    {
-        var added = 0;
-        foreach (var hit in EnumerateJwtInUrl(url))
-        {
-            if (added >= remaining) break;
-            var dedup = hit.Parameter + "|" + hit.Placement + "|" + TokenFingerprint(hit.Token);
-            if (!seen.Add(dedup)) continue;
-
-            var where = hit.Placement switch
-            {
-                "fragment" => "fragment",
-                "path" => "path",
-                _ => "query"
-            };
-            result.Findings.Add(new SecretFinding
-            {
-                Source = source,
-                Category = "jwt-in-url",
-                Severity = JwtUrlSeverity(hit.Parameter),
-                Location = FormatJwtUrlLocation(url, hit.Parameter, hit.Placement),
-                Description = DescribeJwtInUrl(hit.Parameter, where),
-                Snippet = hit.Token
-            });
-            added++;
-        }
-
-        return added;
-    }
-
-    private readonly struct JwtUrlMatch
-    {
-        public string Parameter { get; init; }
-        public string Placement { get; init; }
-        public string Token { get; init; }
-    }
-
-    private static IEnumerable<JwtUrlMatch> EnumerateJwtInUrl(string url)
-    {
-        if (string.IsNullOrEmpty(url) || url.IndexOf("eyJ", StringComparison.Ordinal) < 0)
-            yield break;
-
-        var hash = url.IndexOf('#');
-        var queryStart = url.IndexOf('?');
-        if (queryStart >= 0 && (hash < 0 || queryStart < hash))
-        {
-            var end = hash > queryStart ? hash : url.Length;
-            foreach (var hit in JwtParamsIn(url[(queryStart + 1)..end], "query"))
-                yield return hit;
-        }
-
-        if (hash >= 0 && hash + 1 < url.Length)
-        {
-            foreach (var hit in JwtParamsIn(url[(hash + 1)..], "fragment"))
-                yield return hit;
-        }
-
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
-            yield break;
-
-        var pathMatch = JwtPattern.Match(uri.AbsolutePath);
-        if (!pathMatch.Success)
-            yield break;
-
-        yield return new JwtUrlMatch
-        {
-            Parameter = "",
-            Placement = "path",
-            Token = pathMatch.Value
-        };
-    }
-
-    private static IEnumerable<JwtUrlMatch> JwtParamsIn(string raw, string placement)
-    {
-        foreach (var part in raw.Split('&', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var eq = part.IndexOf('=');
-            string name;
-            string value;
-            if (eq <= 0)
-            {
-                name = "";
-                value = UnescapeUrlPart(part);
-            }
-            else
-            {
-                name = UnescapeUrlPart(part[..eq]);
-                value = UnescapeUrlPart(part[(eq + 1)..]);
-            }
-
-            var match = JwtPattern.Match(value);
-            if (!match.Success) continue;
-            yield return new JwtUrlMatch
-            {
-                Parameter = name,
-                Placement = placement,
-                Token = match.Value
-            };
-        }
-    }
-
-    private static string UnescapeUrlPart(string value)
-    {
-        try
-        {
-            return Uri.UnescapeDataString(value);
-        }
-        catch (UriFormatException)
-        {
-            return value;
-        }
-    }
-
-    /// <summary>
-    /// Bearer credentials in the URL are medium. <c>id_token_hint</c> and any other
-    /// JWT-shaped parameter stay low: interesting (history, logs, Referer) without
-    /// failing a medium secrets bar on a spec-compliant OIDC logout.
-    /// </summary>
-    private static string JwtUrlSeverity(string parameter)
-    {
-        if (parameter.Equals("access_token", StringComparison.OrdinalIgnoreCase)
-            || parameter.Equals("refresh_token", StringComparison.OrdinalIgnoreCase)
-            || parameter.Equals("id_token", StringComparison.OrdinalIgnoreCase))
-            return "medium";
-        return "low";
-    }
-
-    private static string DescribeJwtInUrl(string parameter, string where)
-    {
-        var place = string.IsNullOrEmpty(parameter)
-            ? $"JWT in the URL {where}."
-            : $"JWT in {where} parameter '{parameter}'.";
-        return place + " Paste it at jwt.io and check that the payload has no sensitive claims.";
-    }
-
-    private static string FormatJwtUrlLocation(string url, string parameter, string placement)
-    {
-        var label = string.IsNullOrEmpty(parameter) ? "jwt" : parameter;
-        if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
-        {
-            var path = uri.GetLeftPart(UriPartial.Path);
-            if (placement == "path")
-                return Truncate(path, 180);
-            var mark = placement == "fragment" ? "#" : "?";
-            return Truncate($"{path}{mark}{label}=…", 180);
-        }
-
-        return Truncate($"{label}=…", 180);
-    }
-
-    /// <summary>Last 8 characters of the signature — unique per token, not the payload.</summary>
-    private static string TokenFingerprint(string token)
-    {
-        if (string.IsNullOrEmpty(token)) return "";
-        return token.Length <= 8 ? token : token[^8..];
-    }
+    /// <inheritdoc cref="SecretsHarvestRequestUrlScanner.CollectSensitiveQueryParamFindings"/>
+    public static void CollectSensitiveQueryParamFindings(
+        IReadOnlyList<NetworkEntry> entries,
+        string? pageUrl,
+        HarvestResult result,
+        int maxHits = 20) =>
+        SecretsHarvestRequestUrlScanner.CollectSensitiveQueryParamFindings(entries, pageUrl, result, maxHits);
 
     private static async Task ScanPageText(
         AutomationContext ctx, HarvestResult result, CancellationToken ct)
@@ -1081,7 +909,17 @@ public static class SecretsHarvestPipeline
         // URL JWTs share a header prefix (eyJhbGciOiJSUzI1…). Key off the signature tail
         // so distinct tokens stay separate while the snippet remains the full JWT.
         if (finding.Category.Equals("jwt-in-url", StringComparison.OrdinalIgnoreCase))
-            return TokenFingerprint(finding.Snippet ?? "");
+        {
+            var tail = finding.Snippet ?? "";
+            if (tail.Length <= 8) return tail;
+            return tail[^8..];
+        }
+
+        if (finding.Category.Equals("sensitive-query-param", StringComparison.OrdinalIgnoreCase))
+        {
+            var v = finding.Snippet ?? "";
+            return v.Length <= 16 ? v : v[..8] + v[^8..];
+        }
         return NormalizeForDedup(finding.Snippet);
     }
 

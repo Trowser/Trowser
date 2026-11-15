@@ -291,8 +291,8 @@ public static class SecretsHarvestHeuristics
         var loc = f.Location ?? "";
         var snippet = f.Snippet ?? "";
 
-        // Severity is chosen by the URL scanner (logout hint vs bearer-in-URL).
-        if (cat == "jwt-in-url")
+        // Severity is chosen by the URL scanners.
+        if (cat is "jwt-in-url" or "sensitive-query-param")
             return;
 
         if (cat == "authtokeninstorage" || cat == "jwtinstorage")

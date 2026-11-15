@@ -148,7 +148,7 @@ public class LlmSettingsDialog : Window
         AddLabel(chatStack, "Interaction Mode");
         var modeHint = new TextBlock
         {
-            Text = "Choose your style of assistant, and change in Prompt... for fruther customization.",
+            Text = "Choose your style of assistant, and change in Prompt... for further customization.",
             Foreground = FgDim,
             FontSize = 11,
             TextWrapping = TextWrapping.Wrap,

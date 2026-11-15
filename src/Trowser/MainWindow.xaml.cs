@@ -56,6 +56,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private const string ScriptPauseIcon = "II";
     private ScriptRunControl? _playRun;
     private ScriptRunControl? _scriptConsoleRun;
+    /// <summary>When the Script Console shows a Law catalog file, Run evaluates loaded Laws from this source instead of re-declaring.</summary>
+    private string? _scriptConsoleLawCatalogSource;
     private string? _playRunStatusText;
     private readonly ScriptRecorder _recorder = new();
     private bool _recorderAddressBarNav;

@@ -160,6 +160,7 @@ Blocked in `--safe` mode (same as `execute-script` / `browser_run_script`).
 | `a.ApproxEquals(b, 0.01)` · `total.ApproxEquals(p.Numbers(".line"), 0.01)` | Tolerant number comparison / sum check (avoid `==` on money) |
 | `await CheckLaws()` | Evaluate **Laws declared in this script run** (`Law(...)` above); prints `[Law PASS/FAIL/…]` in the Script Console. Does not re-run embedded/user Laws already enforced by Shadow. |
 | `await CheckLaws(allLoaded: true)` | Evaluate all loaded page Laws (embedded + `Documents\…\Laws`). |
+| `await CheckLaws(allLoaded: true, includeTraffic: true, sourceFile: "embedded:GenericWebLaws.csx")` | Evaluate only Laws from one catalog file (page + response + console). Quicktests → Laws **Run** uses this automatically so the editor can show real `Law(...)` source without duplicate registration. |
 | `await AssertLaws()` | Same scope as `CheckLaws()`; throws on failure |
 | `await LoadLaws(path)` | Load a Law file from disk into the registry |
 | `GetLawResults()` | Last `CheckLaws` results |

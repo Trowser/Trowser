@@ -22,7 +22,7 @@ public partial class TrowserApiServer
     {
         var laws = _context.Laws ?? throw new InvalidOperationException("Law service not initialized.");
         Task<LawCheckSummary>? runTask = null;
-        await _dispatcher.InvokeAsync(() => { runTask = laws.CheckLawsAsync(nameFilter, scope, includeTraffic, ct); });
+        await _dispatcher.InvokeAsync(() => { runTask = laws.CheckLawsAsync(nameFilter, scope, includeTraffic, ct: ct); });
         return await runTask!;
     }
 

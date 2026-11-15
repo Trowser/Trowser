@@ -17,14 +17,23 @@ public partial class AutomationContext
     }
 
     /// <param name="allLoaded">When true, evaluate every loaded Law (embedded + user files). Default: Laws declared in this Script Console run only.</param>
-    public async Task<LawCheckSummary> CheckLaws(string? nameFilter = null, bool report = true, bool allLoaded = false)
+    /// <param name="includeTraffic">When true, evaluate response/console Laws against the session network and console buffers.</param>
+    /// <param name="sourceFile">When set, only Laws from this catalog source (e.g. <c>embedded:GenericWebLaws.csx</c> or a user file path).</param>
+    public async Task<LawCheckSummary> CheckLaws(
+        string? nameFilter = null,
+        bool report = true,
+        bool allLoaded = false,
+        bool includeTraffic = false,
+        string? sourceFile = null)
     {
         if (Laws == null)
             throw new InvalidOperationException("Law service is not available.");
-        var scope = allLoaded ? LawCheckScope.AllLoaded : LawCheckScope.ScriptConsoleDeclared;
-        var summary = await Laws.CheckLawsAsync(nameFilter, scope, ct: ScriptCancellation);
+        var scope = allLoaded || !string.IsNullOrWhiteSpace(sourceFile)
+            ? LawCheckScope.AllLoaded
+            : LawCheckScope.ScriptConsoleDeclared;
+        var summary = await Laws.CheckLawsAsync(nameFilter, scope, includeTraffic, sourceFile, ScriptCancellation);
         if (report)
-            PrintLawCheckSummary(summary, scope);
+            PrintLawCheckSummary(summary, scope, sourceFile);
         return summary;
     }
 
@@ -41,13 +50,18 @@ public partial class AutomationContext
         throw new InvalidOperationException($"Law assertion failed: {msg}");
     }
 
-    public void PrintLawCheckSummary(LawCheckSummary summary, LawCheckScope scope = LawCheckScope.ScriptConsoleDeclared)
+    public void PrintLawCheckSummary(
+        LawCheckSummary summary,
+        LawCheckScope scope = LawCheckScope.ScriptConsoleDeclared,
+        string? sourceFile = null)
     {
         if (summary.Results.Count == 0)
         {
-            var hint = scope == LawCheckScope.ScriptConsoleDeclared
-                ? "Laws: none declared in this script (add Law(...) above, or use CheckLaws(allLoaded: true))."
-                : "Laws: no loaded page Laws matched (check name filter or OnPage patterns).";
+            var hint = !string.IsNullOrWhiteSpace(sourceFile)
+                ? $"Laws: none loaded from {sourceFile} (or none matched the current page/traffic)."
+                : scope == LawCheckScope.ScriptConsoleDeclared
+                    ? "Laws: none declared in this script (add Law(...) above, or use CheckLaws(allLoaded: true))."
+                    : "Laws: no loaded page Laws matched (check name filter or OnPage patterns).";
             Log(hint, "#888888");
             return;
         }

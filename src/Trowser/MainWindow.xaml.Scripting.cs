@@ -1240,16 +1240,18 @@ public partial class MainWindow
                 return;
             }
 
+            SetScriptConsoleLawCatalogSource(ShadowConfig.NormalizeLawSourceKey(source) ?? source);
+
             if (!code.Contains("CheckLaws", StringComparison.OrdinalIgnoreCase))
             {
                 code = code.TrimEnd() + Environment.NewLine + Environment.NewLine +
-                       "// Checks Laws declared above in this Run only (not all Shadow Laws):" + Environment.NewLine +
+                       "// Run checks Laws already loaded from this catalog file (declarations above are for reference)." + Environment.NewLine +
                        "await CheckLaws();" + Environment.NewLine;
             }
 
             ScriptInput.Text = code;
             IsScriptPanelVisible = true;
-            StatusText.Text = "Law loaded into Script Console — Run declares Laws and runs CheckLaws()";
+            StatusText.Text = "Law catalog in Script Console — Run evaluates loaded Laws from this file";
         }
         catch (Exception ex)
         {
@@ -1316,6 +1318,7 @@ public partial class MainWindow
         if (_automationContext == null) return;
         var urlText = await _automationContext.GetCurrentUrl();
         Uri? pageUrl = Uri.TryCreate(urlText, UriKind.Absolute, out var u) ? u : null;
+        SetScriptConsoleLawCatalogSource(null);
         ScriptInput.Text = Trowser.Laws.LawCodeGenerator.FromElement(element, pageUrl, forScriptConsoleRun: true);
         IsScriptPanelVisible = true;
         StatusText.Text = "Law in Script Console — Run to try, then right-click editor → Save as Law";
@@ -1560,6 +1563,8 @@ public partial class MainWindow
         var code = ScriptInput.Text;
         if (string.IsNullOrWhiteSpace(code)) return;
 
+        var codeToRun = ResolveScriptExecutionCode(code);
+
         if (_recorder.IsRecording)
             _recorder.RecordScriptBlock(code);
 
@@ -1568,12 +1573,19 @@ public partial class MainWindow
         ClearOutput();
         StatusText.Text = "Running script...";
 
+        if (_scriptConsoleLawCatalogSource != null)
+        {
+            LogColoredToOutput(
+                $"[Law catalog] Evaluating Laws loaded from {_scriptConsoleLawCatalogSource} (editor shows source; Run does not re-register).",
+                "#569CD6");
+        }
+
         _automationContext.Assert.Reset();
         _lawService.BeginScriptLawSession();
 
         try
         {
-            var result = await ExecuteScriptOffUiThreadAsync(code, _scriptConsoleRun);
+            var result = await ExecuteScriptOffUiThreadAsync(codeToRun, _scriptConsoleRun);
 
             if (result.IsCancelled)
             {
@@ -1812,6 +1824,7 @@ public partial class MainWindow
         {
             try
             {
+                PrepareQuicktestEditorLoad(manifestResourceName: null, userFilePath: dialog.FileName);
                 ScriptInput.Text = File.ReadAllText(dialog.FileName);
                 StatusText.Text = $"Loaded: {dialog.FileName}";
             }
@@ -1846,6 +1859,28 @@ public partial class MainWindow
     }
 
     #region Quicktests
+
+    private void SetScriptConsoleLawCatalogSource(string? sourceKey) =>
+        _scriptConsoleLawCatalogSource = sourceKey;
+
+    /// <summary>Tracks Law catalog origin so Run can evaluate the registry copy instead of re-declaring <c>Law(...)</c>.</summary>
+    private void PrepareQuicktestEditorLoad(string? manifestResourceName, string? userFilePath)
+    {
+        SetScriptConsoleLawCatalogSource(null);
+        if (manifestResourceName != null
+            && LawCatalogScript.TryGetEmbeddedLawSourceKey(manifestResourceName, out var embeddedKey))
+            SetScriptConsoleLawCatalogSource(embeddedKey);
+        else if (userFilePath != null
+                 && LawCatalogScript.TryGetUserLawSourceKey(userFilePath, out var userKey))
+            SetScriptConsoleLawCatalogSource(userKey);
+    }
+
+    private string ResolveScriptExecutionCode(string editorCode)
+    {
+        if (string.IsNullOrWhiteSpace(_scriptConsoleLawCatalogSource))
+            return editorCode;
+        return LawCatalogScript.BuildScriptConsoleRunner(_scriptConsoleLawCatalogSource);
+    }
 
     private static readonly object QuicktestFolderMenuTag = new();
 
@@ -1933,6 +1968,7 @@ public partial class MainWindow
         {
             try
             {
+                PrepareQuicktestEditorLoad(manifestResourceName: null, userFilePath: userFile.Path);
                 ScriptInput.Text = File.ReadAllText(userFile.Path);
                 StatusText.Text = $"Loaded: {userFile.Path}";
             }
@@ -1950,6 +1986,7 @@ public partial class MainWindow
         using var stream = assembly.GetManifestResourceStream(resourceName);
         if (stream == null) return;
         using var reader = new StreamReader(stream);
+        PrepareQuicktestEditorLoad(manifestResourceName: resourceName, userFilePath: null);
         ScriptInput.Text = reader.ReadToEnd();
     }
 
@@ -2098,6 +2135,7 @@ public partial class MainWindow
             return;
         }
         using var reader = new StreamReader(stream);
+        PrepareQuicktestEditorLoad(manifestResourceName: resourceName, userFilePath: null);
         ScriptInput.Text = reader.ReadToEnd();
 
         IsScriptPanelVisible = true;

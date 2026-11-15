@@ -963,6 +963,7 @@ public partial class MainWindow
         using var stream = assembly.GetManifestResourceStream(resourceName);
         if (stream == null) return;
         using var reader = new StreamReader(stream);
+        PrepareQuicktestEditorLoad(manifestResourceName: resourceName, userFilePath: null);
         ScriptInput.Text = reader.ReadToEnd();
         IsScriptPanelVisible = true;
         _ = RunCurrentScriptAsync();

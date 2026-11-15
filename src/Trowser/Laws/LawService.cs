@@ -243,6 +243,7 @@ public sealed class LawService : IPageFactsFetcher
         string? nameFilter = null,
         LawCheckScope scope = LawCheckScope.AllLoaded,
         bool includeTraffic = false,
+        string? sourceFile = null,
         CancellationToken ct = default)
     {
         if (_context == null)
@@ -252,16 +253,7 @@ public sealed class LawService : IPageFactsFetcher
         var title = await _context.GetTitle();
         var host = Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : "";
 
-        IEnumerable<LawDefinition> pageLaws = _shadow != null
-            ? QueryForShadow().Where(l => l.UsesPageFacts)
-            : Registry.All.Where(l => l.UsesPageFacts);
-        if (scope == LawCheckScope.ScriptConsoleDeclared)
-            pageLaws = pageLaws.Where(l => IsEphemeralScriptSource(l.SourceFile));
-        else
-            pageLaws = pageLaws.Where(l => !IsEphemeralScriptSource(l.SourceFile));
-
-        if (!string.IsNullOrWhiteSpace(nameFilter))
-            pageLaws = pageLaws.Where(l => l.Name.Contains(nameFilter, StringComparison.OrdinalIgnoreCase));
+        var pageLaws = SelectLawsForCheck(scope, sourceFile, nameFilter).Where(l => l.UsesPageFacts);
 
         var pageLawList = pageLaws.ToList();
         var prefetched = await Evaluator.PrefetchAsync(
@@ -278,15 +270,7 @@ public sealed class LawService : IPageFactsFetcher
         var consoleEntriesChecked = 0;
         if (includeTraffic)
         {
-            IEnumerable<LawDefinition> trafficBase = _shadow != null
-                ? QueryForShadow()
-                : Registry.All;
-            if (scope == LawCheckScope.ScriptConsoleDeclared)
-                trafficBase = trafficBase.Where(l => IsEphemeralScriptSource(l.SourceFile));
-            else
-                trafficBase = trafficBase.Where(l => !IsEphemeralScriptSource(l.SourceFile));
-            if (!string.IsNullOrWhiteSpace(nameFilter))
-                trafficBase = trafficBase.Where(l => l.Name.Contains(nameFilter, StringComparison.OrdinalIgnoreCase));
+            var trafficBase = SelectLawsForCheck(scope, sourceFile, nameFilter);
 
             var responseLaws = trafficBase.Where(l => l.Trigger == LawTriggerKind.Response).ToList();
             var consoleLaws = trafficBase.Where(l => l.Trigger == LawTriggerKind.Console).ToList();
@@ -330,6 +314,29 @@ public sealed class LawService : IPageFactsFetcher
             ResponseEntriesChecked = responseEntriesChecked,
             ConsoleEntriesChecked = consoleEntriesChecked
         };
+    }
+
+    private IEnumerable<LawDefinition> SelectLawsForCheck(
+        LawCheckScope scope,
+        string? sourceFile,
+        string? nameFilter)
+    {
+        IEnumerable<LawDefinition> laws = _shadow != null ? QueryForShadow() : Registry.All;
+
+        if (!string.IsNullOrWhiteSpace(sourceFile))
+        {
+            laws = laws.Where(l => LawCatalogScript.SourceFileMatches(l.SourceFile, sourceFile));
+            laws = laws.Where(l => !IsEphemeralScriptSource(l.SourceFile));
+        }
+        else if (scope == LawCheckScope.ScriptConsoleDeclared)
+            laws = laws.Where(l => IsEphemeralScriptSource(l.SourceFile));
+        else
+            laws = laws.Where(l => !IsEphemeralScriptSource(l.SourceFile));
+
+        if (!string.IsNullOrWhiteSpace(nameFilter))
+            laws = laws.Where(l => l.Name.Contains(nameFilter, StringComparison.OrdinalIgnoreCase));
+
+        return laws;
     }
 
     public async Task AssertLawsAsync(string? nameFilter = null, CancellationToken ct = default)
@@ -818,6 +825,13 @@ public sealed class LawService : IPageFactsFetcher
         foreach (var meta in QuicktestCatalog.Embedded.Where(q =>
                      q.IsReadOnlyEffects && _shadow!.Config.HeavyQuicktests.Contains(q.Leaf)))
         {
+            if (LawCatalogScript.TryGetQuicktestResourceLawSourceKey(meta.ResourceName, out var lawSource))
+            {
+                await RunLawCatalogAsShadowFindingAsync(meta.Leaf, lawSource, ct);
+                count++;
+                continue;
+            }
+
             var code = await LoadQuicktestCodeAsync(meta.ResourceName, ct);
             if (code == null) continue;
             await RunQuicktestAsShadowFindingAsync(meta.Leaf, code, ct);
@@ -840,9 +854,51 @@ public sealed class LawService : IPageFactsFetcher
 
         foreach (var meta in QuicktestCatalog.ResolveLightRunList(_shadow.Config.LightQuicktests))
         {
+            if (LawCatalogScript.TryGetQuicktestResourceLawSourceKey(meta.ResourceName, out var lawSource))
+            {
+                await RunLawCatalogAsShadowFindingAsync(meta.Leaf, lawSource, ct);
+                continue;
+            }
+
             var code = await LoadQuicktestCodeAsync(meta.ResourceName, ct);
             if (code == null) continue;
             await RunQuicktestAsShadowFindingAsync(meta.Leaf, code, ct);
+        }
+    }
+
+    private async Task RunLawCatalogAsShadowFindingAsync(string leaf, string sourceKey, CancellationToken ct)
+    {
+        if (_context == null)
+            return;
+
+        try
+        {
+            var summary = await CheckLawsAsync(
+                scope: LawCheckScope.AllLoaded,
+                includeTraffic: true,
+                sourceFile: sourceKey,
+                ct: ct);
+            var problems = summary.Results
+                .Where(r => r.Verdict is LawVerdict.Fail or LawVerdict.Error)
+                .ToList();
+            if (problems.Count == 0)
+                return;
+
+            _shadow?.AddCustomFinding(
+                Severity.Medium,
+                $"Law catalog check: {leaf}",
+                $"{problems.Count} Law(s) failed from {sourceKey}.",
+                audit: $"quicktest:{leaf}",
+                url: await _context.GetCurrentUrl());
+        }
+        catch (Exception ex)
+        {
+            _shadow?.AddCustomFinding(
+                Severity.Medium,
+                $"Law catalog check failed: {leaf}",
+                ex.Message,
+                audit: $"quicktest:{leaf}",
+                url: await _context.GetCurrentUrl());
         }
     }
 

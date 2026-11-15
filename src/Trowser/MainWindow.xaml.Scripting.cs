@@ -128,7 +128,7 @@ public partial class MainWindow
         {
             result?.DeleteTempFiles();
             ClearRecordingCapture();
-            StatusText.Text = "Nothing was recorded";
+            StatusText.Text = "Nothing was recorded.";
             if (closeAfter)
             {
                 _allowCloseDespiteRecording = true;
@@ -526,7 +526,7 @@ public partial class MainWindow
                 if (string.IsNullOrWhiteSpace(selector))
                 {
                     Dispatcher.Invoke(() =>
-                        StatusText.Text = "Run Script: no element selector at this location.");
+                        StatusText.Text = "Run Script: no element selector at this location");
                     return;
                 }
 
@@ -551,7 +551,7 @@ public partial class MainWindow
                 if (element == null || !element.HasTarget)
                 {
                     Dispatcher.Invoke(() =>
-                        StatusText.Text = "Declare as Law: no element at this location.");
+                        StatusText.Text = "Declare as Law: no element at this location");
                     return;
                 }
 
@@ -570,7 +570,7 @@ public partial class MainWindow
                 if (element == null || !element.HasTarget)
                 {
                     Dispatcher.Invoke(() =>
-                        StatusText.Text = "Send to Chat: no element at this location.");
+                        StatusText.Text = "Send to Chat: no element at this location");
                     return;
                 }
 
@@ -1236,7 +1236,7 @@ public partial class MainWindow
 
             if (string.IsNullOrEmpty(code))
             {
-                StatusText.Text = "Could not open Law source.";
+                StatusText.Text = "Could not open Law source";
                 return;
             }
 
@@ -1251,7 +1251,7 @@ public partial class MainWindow
 
             ScriptInput.Text = code;
             IsScriptPanelVisible = true;
-            StatusText.Text = "Law catalog in Script Console — Run evaluates loaded Laws from this file";
+            StatusText.Text = "Law catalog in Script Console — Run evaluates loaded Laws from this file.";
         }
         catch (Exception ex)
         {
@@ -1267,7 +1267,7 @@ public partial class MainWindow
         {
             WatchModeButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF9552"));
             WatchModeButton.Foreground = new SolidColorBrush(Colors.White);
-            StatusText.Text = "Watch mode ON — script runs on navigation; Shadow Laws enabled";
+            StatusText.Text = "Watch mode ON — script runs on navigation; Shadow Laws enabled.";
             if (!_securityShadow.Enabled)
                 _securityShadow.Configure(true);
             _securityShadow.Config.LawsEnabled = true;
@@ -1321,7 +1321,7 @@ public partial class MainWindow
         SetScriptConsoleLawCatalogSource(null);
         ScriptInput.Text = Trowser.Laws.LawCodeGenerator.FromElement(element, pageUrl, forScriptConsoleRun: true);
         IsScriptPanelVisible = true;
-        StatusText.Text = "Law in Script Console — Run to try, then right-click editor → Save as Law";
+        StatusText.Text = "Law in Script Console — Run to try, then right-click editor → Save as Law.";
     }
 
     private void WireScriptInputContextMenu()
@@ -1334,7 +1334,7 @@ public partial class MainWindow
             Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2D2D30")),
             BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#3F3F46"))
         };
-        var saveItem = CreateDarkMenuItem("Save as Law...", (_, _) => _ = SaveScriptConsoleAsLawAsync());
+        var saveItem = CreateDarkMenuItem("Save as Law…", (_, _) => _ = SaveScriptConsoleAsLawAsync());
         menu.Items.Add(saveItem);
         ScriptInput.ContextMenu = menu;
     }
@@ -1366,7 +1366,7 @@ public partial class MainWindow
             var code = LawCodeGenerator.StripConsoleRunnerLines(raw);
             await File.WriteAllTextAsync(dialog.FileName, code);
             await _lawService.LoadLaws(dialog.FileName);
-            StatusText.Text = $"Saved Law to {dialog.FileName} — Shadow loads it automatically";
+            StatusText.Text = $"Saved Law to {dialog.FileName} — Shadow loads it automatically.";
         }
         catch (Exception ex)
         {
@@ -1383,7 +1383,7 @@ public partial class MainWindow
 
     private void PauseScript_Click(object sender, RoutedEventArgs e)
     {
-        ToggleScriptPause(_scriptConsoleRun, RunButton, PauseScriptButton, StopScriptButton, "\u25B6 Run", "Running script...");
+        ToggleScriptPause(_scriptConsoleRun, RunButton, PauseScriptButton, StopScriptButton, "\u25B6 Run", "Running script…");
     }
 
     private void StopScript_Click(object sender, RoutedEventArgs e)
@@ -1571,7 +1571,7 @@ public partial class MainWindow
         _scriptConsoleRun = new ScriptRunControl();
         SetScriptConsoleRunUiRunning();
         ClearOutput();
-        StatusText.Text = "Running script...";
+        StatusText.Text = "Running script…";
 
         if (_scriptConsoleLawCatalogSource != null)
         {

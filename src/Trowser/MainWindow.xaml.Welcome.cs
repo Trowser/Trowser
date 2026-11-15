@@ -100,7 +100,7 @@ public partial class MainWindow
                         ToggleApiOn();
                         SaveApiUserSettings();
                     }
-                    StatusText.Text = $"API running on http://localhost:{_apiPort} (MCP at /mcp) - give your agent the trowserkit folder";
+                    StatusText.Text = $"API running on http://localhost:{_apiPort} (MCP at /mcp) - give your agent the trowserkit folder.";
                     break;
 
                 case "manual":

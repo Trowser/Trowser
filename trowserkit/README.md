@@ -26,6 +26,7 @@ Further development was helped by Rahul Parwal and Alan Richardson.
 Trowser is now open-source under MIT license
 Repository: https://github.com/Trowser/Trowser
 Product site: https://trowser.github.io/
+Contributors: Rikard Edgren, Rahul Parwal, Santhosh Tuppad
 
 Creator can be reached at thetesteye.com, LinkedIn, or rikard.edgren@thetesteye.com.
 

@@ -172,5 +172,9 @@ Customizable Shadow Laws
 API improvements, including better support for EventStream
 Added smaller trowser-api-core.md for basic LLM usage of REST API
 
+1.4.2 2026-11-19
+Start Claude Code integration for smoother AI usage with subscription price
+Contributors: Rikard Edgren, Rahul Parwal, Santhosh Tuppad
+
 
 All releases also include minor bug fixes and enhancements.

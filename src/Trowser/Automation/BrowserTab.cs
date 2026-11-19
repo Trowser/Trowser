@@ -190,6 +190,48 @@ public class BrowserTab
     public int? OpenerTabId { get; set; }
 
     /// <summary>
+    /// Set when the tab has been removed from the tab list. Its WebView2 is disposed shortly after, so
+    /// deferred callbacks (timers, queued dispatcher work) must check this before touching <see cref="WebView"/>.
+    /// </summary>
+    public bool IsClosed { get; internal set; }
+
+    private const System.Reflection.BindingFlags PrivateInstance =
+        System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+
+    /// <summary>The control's private <c>WebView2Base</c> member, which owns the close handler.</summary>
+    internal static readonly System.Reflection.FieldInfo? WpfHostBaseField =
+        typeof(WebView2).GetField("m_webview2Base", PrivateInstance);
+
+    internal static readonly System.Reflection.MethodInfo? WpfHostCloseHandler =
+        WpfHostBaseField?.FieldType.GetMethod("CoreWebView2_WindowCloseRequested", PrivateInstance);
+
+    /// <summary>
+    /// The WPF WebView2 control answers a page's window.close() by closing its parent Window, which for
+    /// a tab is the whole app. Remove that handler so the host decides what window.close() means.
+    /// </summary>
+    internal void DetachWpfHostCloseHandler()
+    {
+        var core = WebView.CoreWebView2;
+        if (core == null)
+            return;
+        var host = WpfHostBaseField?.GetValue(WebView);
+        if (host == null || WpfHostCloseHandler == null)
+        {
+            TrowserLog.Warn("WebView2Base.CoreWebView2_WindowCloseRequested not found; window.close() may close Trowser.");
+            return;
+        }
+        try
+        {
+            core.WindowCloseRequested -= (EventHandler<object>)Delegate.CreateDelegate(
+                typeof(EventHandler<object>), host, WpfHostCloseHandler);
+        }
+        catch (Exception ex)
+        {
+            TrowserLog.Swallowed(ex);
+        }
+    }
+
+    /// <summary>
     /// True while a full document navigation (NavigationStarting -> NavigationCompleted) is in flight.
     /// Used to distinguish real page loads from same-document SPA route changes (hash routing or the
     /// History API), which raise SourceChanged without NavigationStarting/NavigationCompleted. See

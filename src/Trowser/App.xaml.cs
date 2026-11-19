@@ -172,8 +172,23 @@ public partial class App : Application
         // Safety nets: ensure HttpListener is released even on abnormal exit.
         // Without these, HTTP.sys may hold the URL prefix and block restart.
         AppDomain.CurrentDomain.ProcessExit += (_, _) => CleanupMainWindow();
-        AppDomain.CurrentDomain.UnhandledException += (_, _) => CleanupMainWindow();
-        DispatcherUnhandledException += (_, _) => CleanupMainWindow();
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            TrowserLog.Error($"Unhandled exception (terminating={args.IsTerminating}): {args.ExceptionObject}");
+            CleanupMainWindow();
+        };
+        // A long test run must survive a bug in one UI-thread callback (event handler, timer tick,
+        // async void); log it and keep the process alive.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            TrowserLog.Error($"Unhandled UI-thread exception (recovered): {args.Exception}");
+            args.Handled = true;
+        };
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            TrowserLog.Warn($"Unobserved task exception: {args.Exception}");
+            args.SetObserved();
+        };
 
         var mainWindow = new MainWindow();
 

@@ -15,7 +15,7 @@ public sealed class XsLeakObserveMode
 
     public static async Task<ObserveResult?> RunAsync(
         AutomationContext ctx,
-        int homeTabIdx,
+        int homeTabId,
         int probeTabIdx,
         string attackerOrigin,
         string runId,
@@ -27,9 +27,11 @@ public sealed class XsLeakObserveMode
 
         foreach (var state in states.Take(4))
         {
-            ctx.SwitchTab(homeTabIdx);
+            if (!ctx.TrySwitchToTabId(homeTabId))
+                break;
             await applyState(state);
-            ctx.SwitchTab(probeTabIdx);
+            if (!ctx.TrySwitchTab(probeTabIdx))
+                break;
 
             var pageUrl = AttackerPageBuilder.PageUrl($"{runId}/observe/{state.Label}", attackerOrigin);
             var html = BuildObserveHtml(state);

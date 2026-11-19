@@ -331,7 +331,7 @@ public sealed class XsLeakScanner
 
         string? sessionCheckpoint = null;
         var tabScope = SecurityScanTabScope.Begin(_ctx);
-        var homeTabIdx = tabScope.HomeTabIndex;
+        var homeTabId = tabScope.HomeTabId;
         _activeScanTabs = tabScope;
         _activeScanVictimHost = victimHost;
         try
@@ -347,7 +347,7 @@ public sealed class XsLeakScanner
         var active = mode >= SafetyMode.Active;
         var sessionProfile = await XsLeakSessionProfile.BuildAsync(
             _ctx, _identities, states, victimHost, options.IdentifyAuthCookie && active);
-        var validation = await new XsLeakStateValidator().ValidateAsync(_ctx, _identities, states, homeTabIdx);
+        var validation = await new XsLeakStateValidator().ValidateAsync(_ctx, _identities, states, homeTabId);
         _probeTimeoutMs = validation.ProbeTimeoutMs;
 
         if (sessionCheckpoint != null)
@@ -398,7 +398,7 @@ public sealed class XsLeakScanner
         {
             var credPageUrl = AttackerPageBuilder.PageUrl("cred-probe", _attackerOrigin);
             credProbeTabIdx = await _ctx.NewTab(credPageUrl, owner: "agent");
-            CopyNetworkRules(homeTabIdx, credProbeTabIdx);
+            CopyNetworkRulesFromHome(homeTabId, credProbeTabIdx);
             _ctx.Tabs[credProbeTabIdx].MockResponse(credPageUrl, 200,
                 "<!DOCTYPE html><html><head><title>xsleak cred probe</title></head><body></body></html>",
                 headers: new Dictionary<string, string> { ["Content-Type"] = "text/html; charset=utf-8" });
@@ -412,11 +412,17 @@ public sealed class XsLeakScanner
         }
         finally
         {
-            if (credProbeTabIdx >= 0 && _ctx.Tabs.Count > 1)
+            if (credProbeTabIdx >= 0 && credProbeTabIdx < _ctx.Tabs.Count && _ctx.Tabs.Count > 1)
             {
-                try { await _ctx.CloseTab(credProbeTabIdx); } catch { /* ignore */ }
+                try
+                {
+                    var openerId = _ctx.Tabs[credProbeTabIdx].Id;
+                    await _ctx.ClosePageOpenedChildrenAsync(openerId);
+                    await _ctx.CloseTab(credProbeTabIdx);
+                }
+                catch { /* ignore */ }
             }
-            _ctx.SwitchTab(homeTabIdx);
+            tabScope.TrySwitchToHome();
         }
 
         var plan = XsLeakTechniquePlanner.Build(
@@ -587,14 +593,14 @@ public sealed class XsLeakScanner
             {
                 var probeTabIdx = await _ctx.NewTab(
                     AttackerPageBuilder.PageUrl("observe", _attackerOrigin), owner: "agent");
-                CopyNetworkRules(homeTabIdx, probeTabIdx);
+                CopyNetworkRulesFromHome(homeTabId, probeTabIdx);
                 result.Observe = await XsLeakObserveMode.RunAsync(
-                    _ctx, homeTabIdx, probeTabIdx, _attackerOrigin, runId, states, ApplyStateAsync);
+                    _ctx, homeTabId, probeTabIdx, _attackerOrigin, runId, states, ApplyStateAsync);
                 if (probeTabIdx >= 0 && _ctx.Tabs.Count > 1)
                 {
                     try { await _ctx.CloseTab(probeTabIdx); } catch { /* ignore */ }
                 }
-                _ctx.SwitchTab(homeTabIdx);
+                tabScope.TrySwitchToHome();
             }
             catch
             {
@@ -663,8 +669,11 @@ public sealed class XsLeakScanner
             var sessionHealthy = true;
 
             await RunTrialBatchAsync(
-                screeningStates, screeningTrials, warmup: !options.SkipWarmup, tech, runId, homeTabIdx,
+                screeningStates, screeningTrials, warmup: !options.SkipWarmup, tech, runId, homeTabId,
                 sw, maxSeconds, valuesByState, timingByState, statusByState, allMitigations, result);
+
+            if (result.SessionLostDuringScan)
+                break;
 
             if (result.BudgetExhausted)
                 break;
@@ -685,7 +694,7 @@ public sealed class XsLeakScanner
                 if (baseline != null)
                 {
                     var (ok, msg) = await new XsLeakStateValidator().VerifyHitSessionStableAsync(
-                        _ctx, _identities, hitState, homeTabIdx, baseline);
+                        _ctx, _identities, hitState, homeTabId, baseline);
                     sessionHealthy = ok;
                     if (!ok && msg != null)
                         result.Warnings.Add(msg);
@@ -704,7 +713,7 @@ public sealed class XsLeakScanner
                     if (controlState != null)
                         confirmStates.Add(controlState);
                     await RunTrialBatchAsync(
-                        confirmStates, XsLeakConfirmation.ConfirmTrials, warmup: false, tech, runId, homeTabIdx,
+                        confirmStates, XsLeakConfirmation.ConfirmTrials, warmup: false, tech, runId, homeTabId,
                         sw, maxSeconds, valuesByState, timingByState, statusByState, allMitigations, result);
                     ranConfirmation = true;
                 }
@@ -1183,7 +1192,7 @@ public sealed class XsLeakScanner
         bool warmup,
         XsLeakTechniques.TechniqueDef tech,
         string runId,
-        int homeTabIdx,
+        int homeTabId,
         Stopwatch sw,
         int maxSeconds,
         Dictionary<string, List<string?>> valuesByState,
@@ -1195,7 +1204,14 @@ public sealed class XsLeakScanner
         var schedule = BuildTrialSchedule(trialStates, trials, warmup);
         var probeTabIdx = -1;
         var popupPerTrial = tech.Id == "popup-closed";
-        int ResolveHomeTabIdx() => _activeScanTabs?.HomeTabIndex ?? homeTabIdx;
+        int ResolveHomeTabIdx() =>
+            _activeScanTabs?.HomeTabIndex ?? _ctx.FindTabIndexById(homeTabId);
+        bool SwitchHome()
+        {
+            if (_activeScanTabs != null && _activeScanTabs.TrySwitchToHome())
+                return true;
+            return _ctx.TrySwitchToTabId(homeTabId);
+        }
 
         try
         {
@@ -1214,7 +1230,13 @@ public sealed class XsLeakScanner
                     break;
                 }
 
-                _ctx.SwitchTab(ResolveHomeTabIdx());
+                if (!SwitchHome())
+                {
+                    result.SessionLostDuringScan = true;
+                    result.Warnings.Add(
+                        "XS-Leaks stopped — the home tab was closed during the scan. Keep one tester tab open and re-run.");
+                    break;
+                }
                 await ApplyStateAsync(slot.State);
 
                 if (popupPerTrial)
@@ -1223,8 +1245,11 @@ public sealed class XsLeakScanner
                         AttackerPageBuilder.PageUrl($"session-{runId}", _attackerOrigin), owner: "agent");
                     CopyNetworkRules(ResolveHomeTabIdx(), probeTabIdx);
                 }
-                else
-                    _ctx.SwitchTab(probeTabIdx);
+                else if (!_ctx.TrySwitchTab(probeTabIdx))
+                {
+                    result.SessionLostDuringScan = true;
+                    break;
+                }
 
                 var networkMark = _ctx.ActiveTab.Network.Count;
                 var observation = await RunOneTrialOnActiveTabAsync(
@@ -1259,13 +1284,7 @@ public sealed class XsLeakScanner
                 }
                 catch { /* ignore */ }
             }
-            try
-            {
-                var homeIdx = ResolveHomeTabIdx();
-                if (homeIdx >= 0 && homeIdx < _ctx.Tabs.Count)
-                    _ctx.SwitchTab(homeIdx);
-            }
-            catch { /* ignore */ }
+            SwitchHome();
         }
     }
 
@@ -1281,8 +1300,18 @@ public sealed class XsLeakScanner
         {
                 var la = sa.Label;
                 var lb = sb.Label;
-                var a = valuesByState[la];
-                var b = valuesByState[lb];
+                if (!valuesByState.TryGetValue(la, out var a) || !valuesByState.TryGetValue(lb, out var b)
+                    || a.Count == 0 || b.Count == 0)
+                {
+                    pairs.Add(new StatePairResult
+                    {
+                        StateA = la,
+                        StateB = lb,
+                        Verdict = "indistinguishable",
+                        Detail = "No completed trials for this state pair."
+                    });
+                    continue;
+                }
                 var timingA = timingByState[la];
                 var timingB = timingByState[lb];
 
@@ -1456,6 +1485,9 @@ public sealed class XsLeakScanner
             return;
         _ctx.Tabs[destTabIdx].CopyNetworkRulesFrom(_ctx.Tabs[sourceTabIdx]);
     }
+
+    private void CopyNetworkRulesFromHome(int homeTabId, int destTabIdx) =>
+        CopyNetworkRules(_ctx.FindTabIndexById(homeTabId), destTabIdx);
 
     private Task ApplyStateAsync(StateSpec state) =>
         XsLeakStateValidator.ApplyStateAsync(_ctx, _identities, state);

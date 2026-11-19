@@ -29,14 +29,11 @@ public sealed class SecurityScanTabScope
 
     public int HomeTabIndex => _ctx.FindTabIndexById(_homeTabId);
 
-    public bool TrySwitchToHome()
-    {
-        var idx = HomeTabIndex;
-        if (idx < 0)
-            return false;
-        _ctx.SwitchTab(idx);
-        return true;
-    }
+    public bool TrySwitchToHome() => _ctx.TrySwitchToTabId(_homeTabId);
+
+    public bool IsHomeTabOpen => FindHomeTabIndex() >= 0;
+
+    private int FindHomeTabIndex() => _ctx.FindTabIndexById(_homeTabId);
 
     public int CountTabsOpenedDuringScan() =>
         _ctx.Tabs.Count(t => !_baselineTabIds.Contains(t.Id));

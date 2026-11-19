@@ -171,6 +171,10 @@ public partial class MainWindow
         coreWv2.DocumentTitleChanged += (s, e) => Tab_DocumentTitleChanged(tab);
         coreWv2.SourceChanged += (s, e) => Tab_SourceChanged(tab);
         coreWv2.NewWindowRequested += (s, e) => Tab_NewWindowRequested(tab, e);
+        tab.DetachWpfHostCloseHandler();
+        coreWv2.WindowCloseRequested += (s, e) => Tab_WindowCloseRequested(tab);
+        coreWv2.ProcessFailed += (s, e) =>
+            TrowserLog.Error($"WebView2 process failed on tab {tab.Id} ({tab.Url}): kind={e.ProcessFailedKind}, reason={e.Reason}, exitCode={e.ExitCode}");
 
         // Console capture + runtime sensor / iframe web messages
         coreWv2.WebMessageReceived += (s, e) => Tab_WebMessageReceived(tab, e);
@@ -329,10 +333,18 @@ public partial class MainWindow
     /// </summary>
     private void OnTabRemovedByContext(BrowserTab tab)
     {
+        var webView = tab.WebView;
         Dispatcher.Invoke(() =>
         {
-            TabContentArea.Children.Remove(tab.WebView);
+            StopTabTimers(tab);
+            TabContentArea.Children.Remove(webView);
             RebuildTabStrip();
+        });
+        // Releases the WebView2 browser processes; any code that can still run for this tab must check tab.IsClosed.
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, () =>
+        {
+            try { webView.Dispose(); }
+            catch (Exception ex) { TrowserLog.Swallowed(ex); }
         });
     }
 
@@ -996,11 +1008,6 @@ public partial class MainWindow
     private readonly ConditionalWeakTable<BrowserTab, DispatcherTimer> _softNavTimers = new();
     private readonly ConditionalWeakTable<BrowserTab, DispatcherTimer> _sseLivePollTimers = new();
 
-    /// <summary>
-    /// Decide whether a SourceChanged represents a soft (same-document) navigation and, if so,
-    /// schedule the post-navigation features. Full document loads are ignored here because they are
-    /// handled by <see cref="Tab_NavigationCompleted"/>.
-    /// </summary>
     private void EnsureSseLiveBodyPoll(BrowserTab tab)
     {
         if (_sseLivePollTimers.TryGetValue(tab, out _))
@@ -1009,15 +1016,46 @@ public partial class MainWindow
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         timer.Tick += async (_, _) =>
         {
-            if (tab.WebView.CoreWebView2 == null) return;
-            if (tab.Sse.GetConnections(stateFilter: "open").Count == 0) return;
-            try { await SseCdpLiveBodySync.PollOpenStreamsAsync(tab); }
-            catch { /* best-effort */ }
+            try
+            {
+                if (tab.IsClosed)
+                {
+                    timer.Stop();
+                    return;
+                }
+                if (tab.WebView.CoreWebView2 == null) return;
+                if (tab.Sse.GetConnections(stateFilter: "open").Count == 0) return;
+                await SseCdpLiveBodySync.PollOpenStreamsAsync(tab);
+            }
+            catch (Exception ex)
+            {
+                TrowserLog.Swallowed(ex);
+            }
         };
         timer.Start();
         _sseLivePollTimers.Add(tab, timer);
     }
 
+    /// <summary>Stop per-tab background timers so nothing touches the tab's WebView2 after it is disposed.</summary>
+    private void StopTabTimers(BrowserTab tab)
+    {
+        if (_sseLivePollTimers.TryGetValue(tab, out var sse))
+        {
+            sse.Stop();
+            _sseLivePollTimers.Remove(tab);
+        }
+        if (_softNavTimers.TryGetValue(tab, out var softNav))
+        {
+            softNav.Stop();
+            _softNavTimers.Remove(tab);
+        }
+    }
+
+    /// <summary>
+    /// Decide whether a SourceChanged represents a soft (same-document) navigation and, if so,
+    /// schedule the post-navigation features. Full document loads are ignored here because they are
+    /// handled by <see cref="Tab_NavigationCompleted"/>.
+    /// </summary>
     private void MaybeScheduleSoftNavigation(BrowserTab tab, string newUrl)
     {
         if (string.IsNullOrEmpty(newUrl))
@@ -1048,10 +1086,17 @@ public partial class MainWindow
             timer.Tick += (_, _) =>
             {
                 timer.Stop();
-                if (tab.FullNavigationInProgress)
+                if (tab.IsClosed || tab.FullNavigationInProgress)
                     return;
-                var url = tab.WebView.CoreWebView2?.Source ?? tab.Url;
-                Tab_SoftNavigationCompleted(tab, url);
+                try
+                {
+                    var url = tab.WebView.CoreWebView2?.Source ?? tab.Url;
+                    Tab_SoftNavigationCompleted(tab, url);
+                }
+                catch (Exception ex)
+                {
+                    TrowserLog.Swallowed(ex);
+                }
             };
             _softNavTimers.Add(tab, timer);
         }
@@ -1113,6 +1158,31 @@ public partial class MainWindow
         var deferral = e.GetDeferral();
         e.Handled = true;
         _ = CompleteNewWindowAsync(tab, e, deferral);
+    }
+
+    /// <summary>
+    /// window.close() from script (a popup closing itself, or an opener calling w.close()). Unhandled,
+    /// WebView2 closes the host window and takes the whole app down, so close just this tab.
+    /// </summary>
+    private void Tab_WindowCloseRequested(BrowserTab tab)
+    {
+        TrowserLog.Info($"Page requested window.close() on tab {tab.Id}");
+        Dispatcher.BeginInvoke(async () =>
+        {
+            try
+            {
+                if (tab.IsClosed || _automationContext == null)
+                    return;
+                var idx = _automationContext.IndexOfTab(tab);
+                if (idx < 0 || _automationContext.Tabs.Count <= 1)
+                    return;
+                await _automationContext.CloseTab(idx);
+            }
+            catch (Exception ex)
+            {
+                TrowserLog.Swallowed(ex);
+            }
+        });
     }
 
     private async Task CompleteNewWindowAsync(

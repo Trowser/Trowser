@@ -64,12 +64,13 @@ public sealed class XsLeakStateValidator
         AutomationContext ctx,
         IdentityStore identities,
         IReadOnlyList<XsLeakScanner.StateSpec> states,
-        int homeTabIdx)
+        int homeTabId)
     {
         var credSnapshots = new List<StateFetchSnapshot>();
         foreach (var state in states)
         {
-            ctx.SwitchTab(homeTabIdx);
+            if (!ctx.TrySwitchToTabId(homeTabId))
+                break;
             await ApplyStateAsync(ctx, identities, state);
             credSnapshots.Add(await FetchSnapshotAsync(ctx, state, withCookies: true));
         }
@@ -80,7 +81,8 @@ public sealed class XsLeakStateValidator
         var anonSnapshots = new List<StateFetchSnapshot>();
         foreach (var state in states)
         {
-            ctx.SwitchTab(homeTabIdx);
+            if (!ctx.TrySwitchToTabId(homeTabId))
+                break;
             await ctx.ApplyAnonymousSiteSessionAsync(
                 Uri.TryCreate(state.Url, UriKind.Absolute, out var u) ? u.Host : "",
                 Uri.TryCreate(state.Url, UriKind.Absolute, out var o) ? o.GetLeftPart(UriPartial.Authority) + "/" : null);
@@ -119,10 +121,11 @@ public sealed class XsLeakStateValidator
         AutomationContext ctx,
         IdentityStore identities,
         XsLeakScanner.StateSpec hitState,
-        int homeTabIdx,
+        int homeTabId,
         StateFetchSnapshot baseline)
     {
-        ctx.SwitchTab(homeTabIdx);
+        if (!ctx.TrySwitchToTabId(homeTabId))
+            return (false, "Home tab closed — confirmation skipped.");
         await ApplyStateAsync(ctx, identities, hitState);
         var snap = await FetchSnapshotAsync(ctx, hitState, withCookies: true);
         if (snap.Status != baseline.Status || !string.Equals(snap.BodyHash, baseline.BodyHash, StringComparison.Ordinal))

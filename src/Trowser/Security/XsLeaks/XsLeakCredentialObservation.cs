@@ -25,10 +25,16 @@ public sealed class XsLeakCredentialObservation
         var probeCookie = XsLeakSessionProfile.PickCredentialProbeCookie(authCookies, cookieMode);
         var authName = probeCookie?.Name;
         var tab = ctx.Tabs[probeTabIdx];
-        var sub = await ObserveOneAsync(tab, attackerOrigin, victimUrl, subresource: true, authName);
-        var top = includeTopLevel
-            ? await ObserveOneAsync(tab, attackerOrigin, victimUrl, subresource: false, authName)
-            : "not-run";
+
+        var sub = await ObserveOneAsync(tab, attackerOrigin, victimUrl, channel: "img", authName);
+        await ctx.ClosePageOpenedChildrenAsync(tab.Id);
+
+        var top = "not-run";
+        if (includeTopLevel)
+            top = await ObserveOneAsync(tab, attackerOrigin, victimUrl, channel: "popup", authName);
+
+        await ctx.ClosePageOpenedChildrenAsync(tab.Id);
+
         return new DeliveryResult
         {
             Subresource = sub,
@@ -41,17 +47,16 @@ public sealed class XsLeakCredentialObservation
         BrowserTab tab,
         string attackerOrigin,
         string victimUrl,
-        bool subresource,
+        string channel,
         string? authCookieName)
     {
-        var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-
         try
         {
-            await tab.WebView.Dispatcher.InvokeAsync(async () =>
+            return await await tab.WebView.Dispatcher.InvokeAsync(async () =>
             {
-                var core = tab.WebView.CoreWebView2;
-                await core.CallDevToolsProtocolMethodAsync("Network.enable", "{}");
+                var tcs = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+                CoreWebView2DevToolsProtocolEventReceiver? receiver = null;
+                CoreWebView2? core = null;
 
                 void OnExtra(object? _, CoreWebView2DevToolsProtocolEventReceivedEventArgs e)
                 {
@@ -64,7 +69,8 @@ public sealed class XsLeakCredentialObservation
                         {
                             var name = item.TryGetProperty("cookie", out var c)
                                 && c.TryGetProperty("name", out var n)
-                                ? n.GetString() : null;
+                                    ? n.GetString()
+                                    : null;
                             if (authCookieName != null
                                 && !string.Equals(name, authCookieName, StringComparison.OrdinalIgnoreCase))
                                 continue;
@@ -93,27 +99,43 @@ public sealed class XsLeakCredentialObservation
                     }
                 }
 
-                var receiver = core.GetDevToolsProtocolEventReceiver("Network.requestWillBeSentExtraInfo");
-                receiver.DevToolsProtocolEventReceived += OnExtra;
-
-                var page = $"{attackerOrigin.TrimEnd('/')}/xsleak/credential-probe-{(subresource ? "img" : "popup")}";
-                var html = subresource
-                    ? $"""<!DOCTYPE html><html><body><img src="{victimUrl}"></body></html>"""
-                    : $"""<!DOCTYPE html><html><body><script>window.open({JsonSerializer.Serialize(victimUrl)},"_blank","width=10,height=10");</script></body></html>""";
-                tab.MockResponse(page, 200, html,
-                    headers: new Dictionary<string, string> { ["Content-Type"] = "text/html; charset=utf-8" });
-                core.Navigate(page);
-
-                _ = Task.Run(async () =>
+                try
                 {
-                    await Task.Delay(5200);
-                    receiver.DevToolsProtocolEventReceived -= OnExtra;
-                    tcs.TrySetResult("unknown");
-                });
-            });
+                    core = tab.WebView.CoreWebView2;
+                    if (core == null)
+                        return "unknown";
 
-            var completed = await Task.WhenAny(tcs.Task, Task.Delay(5500));
-            return completed == tcs.Task ? await tcs.Task : "unknown";
+                    await core.CallDevToolsProtocolMethodAsync("Network.enable", "{}");
+                    receiver = core.GetDevToolsProtocolEventReceiver("Network.requestWillBeSentExtraInfo");
+                    receiver.DevToolsProtocolEventReceived += OnExtra;
+
+                    var victimJson = JsonSerializer.Serialize(victimUrl);
+                    var page = $"{attackerOrigin.TrimEnd('/')}/xsleak/credential-probe-{channel}";
+                    var html = channel switch
+                    {
+                        "img" =>
+                            $"""<!DOCTYPE html><html><body><img src="{victimUrl}" alt=""></body></html>""",
+                        _ =>
+                            "<!DOCTYPE html><html><body><script>window.open(" + victimJson +
+                            ",\"_blank\",\"width=10,height=10\");</script></body></html>"
+                    };
+                    tab.MockResponse(page, 200, html,
+                        headers: new Dictionary<string, string> { ["Content-Type"] = "text/html; charset=utf-8" });
+                    core.Navigate(page);
+
+                    var completed = await Task.WhenAny(tcs.Task, Task.Delay(5000));
+                    return completed == tcs.Task ? await tcs.Task : "unknown";
+                }
+                catch
+                {
+                    return "unknown";
+                }
+                finally
+                {
+                    if (receiver != null)
+                        receiver.DevToolsProtocolEventReceived -= OnExtra;
+                }
+            });
         }
         catch
         {

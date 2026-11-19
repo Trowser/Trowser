@@ -808,6 +808,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             return;
         }
 
+        TrowserLog.Info("Main window closing");
         // RestoreBounds is still valid here (the HWND may be gone by OnClosed).
         try { SaveGuiSettings(); }
         catch (Exception ex) { TrowserLog.Warn($"Failed to persist GUI settings on close: {ex.Message}"); }

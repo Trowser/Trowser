@@ -675,9 +675,21 @@ public partial class AutomationContext
         return LastTabOwnershipWarning;
     }
 
+    /// <summary>Close <c>window.open</c> tabs spawned from a probe tab before tearing it down.</summary>
+    public async Task ClosePageOpenedChildrenAsync(int openerTabId)
+    {
+        while (true)
+        {
+            var childIdx = _tabs.FindIndex(t => t.OpenedByPageWindow && t.OpenerTabId == openerTabId);
+            if (childIdx < 0)
+                break;
+            await CloseTab(childIdx);
+        }
+    }
+
     /// <summary>
     /// Close a tab by index. If no index is given, closes the active tab.
-    /// Cannot close the last remaining tab.
+    /// Cannot close the last remaining tab. Child popups are closed first.
     /// </summary>
     public async Task CloseTab(int? tabIndex = null)
     {
@@ -689,6 +701,13 @@ public partial class AutomationContext
             throw new InvalidOperationException("Cannot close the last tab.");
 
         var tab = _tabs[idx];
+        await ClosePageOpenedChildrenAsync(tab.Id);
+        idx = _tabs.IndexOf(tab);
+        if (idx < 0)
+            return;
+        if (_tabs.Count <= 1)
+            throw new InvalidOperationException("Cannot close the last tab.");
+        tab.IsClosed = true;
         _tabs.RemoveAt(idx);
         OnTabRemoved?.Invoke(tab);
 
@@ -714,6 +733,22 @@ public partial class AutomationContext
         SetActiveTab(tabIndex);
         if (IsAgentAutomation)
             _agentChoseHumanTab = _tabs[tabIndex].Owner == TabOwners.Human;
+    }
+
+    /// <summary>Switch tabs without throwing when the index is stale (tab closed mid-scan).</summary>
+    public bool TrySwitchTab(int tabIndex)
+    {
+        if (tabIndex < 0 || tabIndex >= _tabs.Count)
+            return false;
+        SwitchTab(tabIndex);
+        return true;
+    }
+
+    /// <summary>Resolve a tab id to its current list index and switch when it still exists.</summary>
+    public bool TrySwitchToTabId(int tabId)
+    {
+        var idx = FindTabIndexById(tabId);
+        return TrySwitchTab(idx);
     }
 
     /// <summary>
@@ -767,6 +802,7 @@ public partial class AutomationContext
         var idx = _tabs.IndexOf(tab);
         if (idx >= 0)
         {
+            tab.IsClosed = true;
             _tabs.RemoveAt(idx);
             if (_activeTabIndex >= _tabs.Count)
                 _activeTabIndex = Math.Max(0, _tabs.Count - 1);

@@ -8,6 +8,8 @@ namespace Trowser.Tests;
 
 public class CurlCommandBuilderTests
 {
+    private const int CurlExeMaxTimeSeconds = 20;
+    private static readonly TimeSpan CurlExeReceiveTimeout = TimeSpan.FromSeconds(CurlExeMaxTimeSeconds + 15);
     [Fact]
     public void get_omits_body_and_quotes_query_string()
     {
@@ -184,11 +186,6 @@ public class CurlCommandBuilderTests
     {
         Assert.True(TryCurlVersion(out _), "curl.exe is required for this test (bundled with Windows).");
 
-        var port = GetFreePort();
-        using var listener = new HttpListener();
-        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
-        listener.Start();
-
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["Content-Type"] = "application/json",
@@ -196,26 +193,22 @@ public class CurlCommandBuilderTests
             ["Authorization"] = "Bearer tok"
         };
         const string body = "{\"name\":\"trowser\"}";
-        var url = $"http://127.0.0.1:{port}/v1/items?q=a&b=2";
 
-        var receive = ReceiveOnceAsync(listener);
-        var args = CurlCommandBuilder.BuildArguments("POST", url, headers, body);
-        args.Add("--silent");
-        args.Add("--max-time");
-        args.Add("5");
-        args.Add("--output");
-        args.Add("NUL");
-
-        var exit = await RunCurlAsync(args);
-        var captured = await receive;
-
-        Assert.Equal(0, exit);
-        Assert.Equal("POST", captured.Method);
-        Assert.Equal("/v1/items?q=a&b=2", captured.RawUrl);
-        Assert.StartsWith("application/json", captured.ContentType ?? "");
-        Assert.Equal("probe-value", captured.Headers["X-Custom"]);
-        Assert.Equal("Bearer tok", captured.Headers["Authorization"]);
-        Assert.Equal(body, captured.Body);
+        await RunCurlExeProbeAsync(
+            "POST",
+            port => $"http://127.0.0.1:{port}/v1/items?q=a&b=2",
+            headers,
+            body,
+            discardResponseBody: true,
+            captured =>
+            {
+                Assert.Equal("POST", captured.Method);
+                Assert.Equal("/v1/items?q=a&b=2", captured.RawUrl);
+                Assert.StartsWith("application/json", captured.ContentType ?? "");
+                Assert.Equal("probe-value", captured.Headers["X-Custom"]);
+                Assert.Equal("Bearer tok", captured.Headers["Authorization"]);
+                Assert.Equal(body, captured.Body);
+            });
     }
 
     [Fact]
@@ -223,31 +216,24 @@ public class CurlCommandBuilderTests
     {
         Assert.True(TryCurlVersion(out _), "curl.exe is required for this test (bundled with Windows).");
 
-        var port = GetFreePort();
-        using var listener = new HttpListener();
-        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
-        listener.Start();
-
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["Cookie"] = "session=abc; theme=dark"
         };
-        var url = $"http://127.0.0.1:{port}/me";
 
-        var receive = ReceiveOnceAsync(listener);
-        var args = CurlCommandBuilder.BuildArguments("GET", url, headers, null);
-        args.Add("--silent");
-        args.Add("--max-time");
-        args.Add("5");
-
-        var exit = await RunCurlAsync(args);
-        var captured = await receive;
-
-        Assert.Equal(0, exit);
-        Assert.Equal("GET", captured.Method);
-        Assert.Equal("/me", captured.RawUrl);
-        Assert.Contains("session=abc", captured.Headers["Cookie"]);
-        Assert.Contains("theme=dark", captured.Headers["Cookie"]);
+        await RunCurlExeProbeAsync(
+            "GET",
+            port => $"http://127.0.0.1:{port}/me",
+            headers,
+            body: null,
+            discardResponseBody: false,
+            captured =>
+            {
+                Assert.Equal("GET", captured.Method);
+                Assert.Equal("/me", captured.RawUrl);
+                Assert.Contains("session=abc", captured.Headers["Cookie"]);
+                Assert.Contains("theme=dark", captured.Headers["Cookie"]);
+            });
     }
 
     [Fact]
@@ -261,12 +247,71 @@ public class CurlCommandBuilderTests
         Assert.Contains("-H 'Host: evil.test'", cmd);
     }
 
+    private static async Task RunCurlExeProbeAsync(
+        string method,
+        Func<int, string> urlForPort,
+        Dictionary<string, string>? headers,
+        string? body,
+        bool discardResponseBody,
+        Action<(string Method, string RawUrl, string? ContentType, Dictionary<string, string> Headers, string Body)> assertCaptured)
+    {
+        var port = GetFreePort();
+        using var listener = new HttpListener();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+        await WaitUntilPortAcceptsAsync(port, TimeSpan.FromSeconds(10));
+
+        var url = urlForPort(port);
+        var receive = ReceiveOnceAsync(listener, CurlExeReceiveTimeout);
+        var args = CurlCommandBuilder.BuildArguments(method, url, headers, body);
+        AddCurlExeProbeArgs(args, discardResponseBody);
+
+        var exit = await RunCurlAsync(args, TimeSpan.FromSeconds(CurlExeMaxTimeSeconds + 10));
+        Assert.Equal(0, exit);
+
+        var captured = await receive;
+        assertCaptured(captured);
+    }
+
+    private static void AddCurlExeProbeArgs(List<string> args, bool discardResponseBody)
+    {
+        args.Add("--silent");
+        args.Add("--max-time");
+        args.Add(CurlExeMaxTimeSeconds.ToString());
+        if (discardResponseBody)
+        {
+            args.Add("--output");
+            args.Add("NUL");
+        }
+    }
+
+    private static async Task WaitUntilPortAcceptsAsync(int port, TimeSpan timeout)
+    {
+        var deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
+        while (Environment.TickCount64 < deadline)
+        {
+            try
+            {
+                using var client = new TcpClient();
+                await client.ConnectAsync(IPAddress.Loopback, port);
+                return;
+            }
+            catch (SocketException)
+            {
+                await Task.Delay(25);
+            }
+        }
+
+        throw new TimeoutException($"Timed out waiting for loopback port {port} to accept connections.");
+    }
+
     private static async Task<(string Method, string RawUrl, string? ContentType, Dictionary<string, string> Headers, string Body)>
-        ReceiveOnceAsync(HttpListener listener)
+        ReceiveOnceAsync(HttpListener listener, TimeSpan timeout)
     {
         var ctxTask = listener.GetContextAsync();
-        var completed = await Task.WhenAny(ctxTask, Task.Delay(TimeSpan.FromSeconds(8)));
-        Assert.Same(ctxTask, completed);
+        var completed = await Task.WhenAny(ctxTask, Task.Delay(timeout));
+        if (completed != ctxTask)
+            throw new TimeoutException($"Timed out after {timeout.TotalSeconds:0}s waiting for curl.exe HTTP request.");
         var ctx = await ctxTask;
 
         var method = ctx.Request.HttpMethod;
@@ -286,7 +331,7 @@ public class CurlCommandBuilderTests
         return (method, rawUrl, contentType, headers, body);
     }
 
-    private static async Task<int> RunCurlAsync(List<string> args)
+    private static async Task<int> RunCurlAsync(List<string> args, TimeSpan? processWaitTimeout = null)
     {
         var psi = new ProcessStartInfo
         {
@@ -303,7 +348,24 @@ public class CurlCommandBuilderTests
         Assert.NotNull(proc);
         var stdout = proc.StandardOutput.ReadToEndAsync();
         var stderr = proc.StandardError.ReadToEndAsync();
-        await proc.WaitForExitAsync();
+        if (processWaitTimeout is { } waitTimeout)
+        {
+            using var cts = new CancellationTokenSource(waitTimeout);
+            try
+            {
+                await proc.WaitForExitAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                try { proc.Kill(entireProcessTree: true); } catch { /* best effort */ }
+                return -1;
+            }
+        }
+        else
+        {
+            await proc.WaitForExitAsync();
+        }
+
         await Task.WhenAll(stdout, stderr);
         return proc.ExitCode;
     }

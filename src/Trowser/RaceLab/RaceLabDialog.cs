@@ -219,8 +219,23 @@ public sealed class RaceLabDialog : Window
         }
     }
 
-    private IEnumerable<string> PeerNames() =>
-        _peers?.GetAll().Select(p => p.Name) ?? [];
+    private IEnumerable<string> PeerNames()
+    {
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (_ctx.PeerSessionManager != null)
+        {
+            foreach (var state in _ctx.PeerSessionManager.Sessions)
+                names.Add(state.Config.Name);
+        }
+
+        if (_peers != null)
+        {
+            foreach (var peer in _peers.GetAll())
+                names.Add(peer.Name);
+        }
+
+        return names;
+    }
 
     private void LoadGuiState()
     {

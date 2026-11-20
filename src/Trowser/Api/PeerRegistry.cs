@@ -154,18 +154,60 @@ public class PeerRegistry
     /// </summary>
     public async Task<(bool alive, string? sessionName, int? port, string? error)> PingAsync(string peerName)
     {
-        var resp = await ForwardAsync(peerName, "GET", "/api/ping", timeoutMs: 5000);
-        if (!resp.Success)
-            return (false, null, null, FormatPeerError(resp));
+        var peer = Get(peerName);
+        if (peer == null)
+            return (false, null, null, $"Peer \"{peerName}\" is not registered.");
 
-        var infoResp = await ForwardAsync(peerName, "GET", "/api/info", timeoutMs: 5000);
+        return await PingEndpointAsync(peer.BaseUrl, peer.ApiKey);
+    }
+
+    /// <summary>
+    /// Reachability check against a configured localhost peer URL without registering it.
+    /// </summary>
+    public async Task<(bool alive, string? sessionName, int? port, string? error)> PingEndpointAsync(
+        string baseUrl,
+        string? apiKey)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            return (false, null, null, "Peer baseUrl is required.");
+
+        var pingUrl = baseUrl.TrimEnd('/') + "/api/ping";
+        using var pingRequest = new HttpRequestMessage(HttpMethod.Get, pingUrl);
+        if (!string.IsNullOrEmpty(apiKey))
+            pingRequest.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+
+        try
+        {
+            using var cts = new CancellationTokenSource(5000);
+            var pingResponse = await _httpClient.SendAsync(pingRequest, cts.Token);
+            var pingBody = await pingResponse.Content.ReadAsStringAsync(cts.Token);
+            if (!pingResponse.IsSuccessStatusCode)
+            {
+                return (false, null, null, pingBody.Length > 300 ? pingBody[..300] : pingBody);
+            }
+        }
+        catch (Exception ex)
+        {
+            return (false, null, null, ex.Message);
+        }
+
+        var infoUrl = baseUrl.TrimEnd('/') + "/api/info";
+        using var infoRequest = new HttpRequestMessage(HttpMethod.Get, infoUrl);
+        if (!string.IsNullOrEmpty(apiKey))
+            infoRequest.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+
         string? sessionName = null;
         int? port = null;
-        if (infoResp.Success)
+        try
         {
-            try
+            using var cts = new CancellationTokenSource(5000);
+            var infoResponse = await _httpClient.SendAsync(infoRequest, cts.Token);
+            if (infoResponse.IsSuccessStatusCode)
             {
-                using var doc = JsonDocument.Parse(infoResp.Body ?? "{}");
+                var infoBody = await infoResponse.Content.ReadAsStringAsync(cts.Token);
+                using var doc = JsonDocument.Parse(infoBody ?? "{}");
                 if (doc.RootElement.TryGetProperty("data", out var data))
                 {
                     if (data.TryGetProperty("sessionName", out var sn))
@@ -174,8 +216,8 @@ public class PeerRegistry
                         port = p.GetInt32();
                 }
             }
-            catch { /* best effort */ }
         }
+        catch { /* best effort */ }
 
         return (true, sessionName, port, null);
     }

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Trowser.Api;
 using Trowser.Automation;
+using Trowser.Peers;
 
 namespace Trowser.Security.RaceLab;
 
@@ -19,11 +20,24 @@ public sealed class RaceLabEngine
         _log = log;
     }
 
+    /// <summary>
+    /// Peer names used when expanding <see cref="RaceLabSessions.AllPeers"/>.
+    /// GUI session peers respect alive + "Use for tests"; API-only registrations are kept.
+    /// </summary>
+    public static IReadOnlyList<string> ResolveExpansionPeerNames(
+        PeerRegistry? peers,
+        IReadOnlyList<PeerSessionState>? sessions)
+    {
+        if (peers == null || peers.Count == 0)
+            return [];
+
+        return PeerSessionManager.SelectPeersForReplay(peers.GetAll().Select(p => p.Name), sessions);
+    }
+
     public static List<RaceLabRequest> ExpandSessions(
         IReadOnlyList<RaceLabRequest> requests,
-        PeerRegistry? peers)
+        IReadOnlyList<string> peerNames)
     {
-        var peerNames = peers?.GetAll().Select(p => p.Name).ToList() ?? [];
         var list = new List<RaceLabRequest>();
         foreach (var req in requests)
         {
@@ -38,13 +52,16 @@ public sealed class RaceLabEngine
         return list;
     }
 
+    private List<RaceLabRequest> ExpandSessions(IReadOnlyList<RaceLabRequest> requests) =>
+        ExpandSessions(requests, ResolveExpansionPeerNames(_peers, _ctx.PeerSessionManager?.Sessions));
+
     public async Task<RaceLabSyncResult> SynchronizeAsync(
         IReadOnlyList<RaceLabRequest> requests,
         RaceLabParameters parameters,
         bool ensurePeerOrigin,
         CancellationToken ct = default)
     {
-        var expanded = ExpandSessions(requests, _peers);
+        var expanded = ExpandSessions(requests);
         if (expanded.Count == 0)
             return new RaceLabSyncResult();
 
@@ -99,7 +116,7 @@ public sealed class RaceLabEngine
         var baseline = new List<RaceLabTimelineEntry>();
         var offset = 0L;
 
-        var requests = ExpandSessions(profile.Requests, _peers);
+        var requests = ExpandSessions(profile.Requests);
         foreach (var request in requests)
         {
             ct.ThrowIfCancellationRequested();
@@ -148,7 +165,7 @@ public sealed class RaceLabEngine
 
         dispatchOffsets ??= new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-        var expandedRequests = ExpandSessions(profile.Requests, _peers);
+        var expandedRequests = ExpandSessions(profile.Requests);
         var timeline = new List<RaceLabTimelineEntry>();
         var parameters = profile.Parameters.Clamped();
         var batchIndex = 0;

@@ -130,6 +130,7 @@ public sealed class PeerSessionManager
         {
             state.Alive = false;
             state.LastError = launch.Error;
+            Registry.Unregister(state.Config.Name);
             return (false, launch.Error);
         }
 
@@ -153,6 +154,7 @@ public sealed class PeerSessionManager
             {
                 state.Alive = false;
                 state.LastError = $"Peer process exited (code {state.Process.ExitCode}). {err}";
+                Registry.Unregister(state.Config.Name);
                 return (false, state.LastError);
             }
 
@@ -161,6 +163,7 @@ public sealed class PeerSessionManager
 
         state.Alive = false;
         state.LastError = pingError ?? "Peer did not respond within 45 seconds.";
+        Registry.Unregister(state.Config.Name);
         return (false, state.LastError);
     }
 
@@ -198,20 +201,25 @@ public sealed class PeerSessionManager
     {
         foreach (var state in _sessions)
         {
-            RegisterPeer(state);
-            var (alive, sessionName, actualPort, _) = await Registry.PingAsync(state.Config.Name);
+            var (alive, sessionName, actualPort, _) =
+                await Registry.PingEndpointAsync(state.BaseUrl, state.Config.ApiKey);
             SyncPeerPort(state, actualPort);
             var sessionOk = alive && SessionNamesMatch(sessionName, state.Config.SessionName);
             state.Alive = sessionOk;
             state.RemoteSessionName = sessionName;
-            if (alive && !sessionOk)
+            if (sessionOk)
             {
-                state.LastError =
-                    $"Session mismatch on port {state.Config.Port}: found \"{sessionName ?? "?"}\" (expected \"{state.Config.SessionName}\"). Click Launch.";
-            }
-            else if (sessionOk)
-            {
+                RegisterPeer(state);
                 state.LastError = null;
+            }
+            else
+            {
+                Registry.Unregister(state.Config.Name);
+                if (alive && !sessionOk)
+                {
+                    state.LastError =
+                        $"Session mismatch on port {state.Config.Port}: found \"{sessionName ?? "?"}\" (expected \"{state.Config.SessionName}\"). Click Launch.";
+                }
             }
 
             if (!alive && state.Process is { HasExited: true })

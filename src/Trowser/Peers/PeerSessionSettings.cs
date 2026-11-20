@@ -81,7 +81,7 @@ public sealed class PeerSessionConfig
     public int Port { get; set; } = 6924;
     public string ApiKey { get; set; } = "";
     public string SessionName { get; set; } = "peer1";
-    /// <summary>When true and the peer is alive, BOLA and Live Authz Shadow replay it. Defaults to false.</summary>
+    /// <summary>When true and the peer is alive, BOLA, Live Authz Shadow, and Race Lab (<c>all-peers</c>) include it. Defaults to false.</summary>
     public bool UseForTests { get; set; }
 }
 

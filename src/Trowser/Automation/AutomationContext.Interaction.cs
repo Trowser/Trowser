@@ -877,9 +877,16 @@ public partial class AutomationContext
     /// Public <c>POST /api/fetch</c>, <c>/api/fetch/batch</c>, and <c>browser_fetch</c> pass false so
     /// agent exploration is visible. Scanner replay keeps the default.
     /// </param>
-    public async Task<string> Fetch(string url, string method, Dictionary<string, string>? headers,
-        string? body, int timeoutMs = 30000, string? redirect = null,
-        bool serverSide = false, bool includeBrowserCookies = true, bool markSynthetic = true)
+    public async Task<string> Fetch(
+        string url,
+        string method = "GET",
+        Dictionary<string, string>? headers = null,
+        string? body = null,
+        int timeoutMs = 30000,
+        string? redirect = null,
+        bool serverSide = false,
+        bool includeBrowserCookies = true,
+        bool markSynthetic = true)
     {
         method = string.IsNullOrWhiteSpace(method) ? "GET" : method.Trim();
         var sw = Stopwatch.StartNew();
@@ -1330,7 +1337,9 @@ public partial class AutomationContext
                     /* identity audit is best-effort */
                 }
 
-                var json = await Fetch(req.Url, req.Method, req.Headers, req.Body, req.TimeoutMs, req.Redirect, markSynthetic);
+                var json = await Fetch(
+                    req.Url, req.Method, req.Headers, req.Body, req.TimeoutMs, req.Redirect,
+                    markSynthetic: markSynthetic);
                 sw.Stop();
                 using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;

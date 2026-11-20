@@ -797,8 +797,9 @@ For **wire-level** HTTP (duplicate headers, TE/CL shaping, custom request-line v
 | `ClearHeaderOverrides()` | — | `void` | Clear session header overrides. |
 
 ```csharp
-// Simple GET
+// Simple GET (method/headers/body are optional — same defaults as PeerFetch)
 var result = await Fetch("/api/health");
+var named = await Fetch("/api/user-info", "GET");
 Log(result);  // JSON: {"ok":true,"status":200,"statusText":"OK","headers":{...},"body":"...","durationMs":42}
 
 // POST with JSON body

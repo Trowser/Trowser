@@ -53,6 +53,14 @@ public class ScriptCompileTests
         AssertCompiles(File.ReadAllText(path), "ExampleQuicktest");
     }
 
+    [Fact]
+    public void Fetch_optional_parameter_signatures_compile()
+    {
+        AssertCompiles("await Fetch(\"/api/user-info\", \"GET\");", "Fetch url+method");
+        AssertCompiles("await Fetch(\"/api/user-info\");", "Fetch url only (default GET)");
+        AssertCompiles("await Fetch(\"/logout\", serverSide: true);", "Fetch named serverSide");
+    }
+
     public static IEnumerable<object[]> RegressionScripts()
     {
         var root = Path.Combine(RepoRoot(), "tests", "regression");

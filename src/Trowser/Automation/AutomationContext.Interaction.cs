@@ -864,19 +864,49 @@ public partial class AutomationContext
     /// Returns a JSON string with shape: {ok, status, statusText, headers, body, durationMs}.
     /// <c>durationMs</c> is the HTTP round-trip (in-page fetch or server-side fallback), not gate wait or <c>delayMs</c>.
     /// </summary>
+    /// <param name="serverSide">
+    /// When true, send via <see cref="DirectFetchHelper"/> (HttpClient) so forbidden headers such as
+    /// <c>Origin</c> and <c>Sec-Fetch-*</c> can be set; still merges the browser cookie jar unless
+    /// <paramref name="includeBrowserCookies"/> is false. TRACE and CONNECT always use server-side transport.
+    /// </param>
+    /// <param name="includeBrowserCookies">
+    /// When <paramref name="serverSide"/> is true, merge the WebView cookie jar before caller headers.
+    /// </param>
     /// <param name="markSynthetic">
     /// When true (default), the request is hidden from attack-surface discovery and costly-operations.
     /// Public <c>POST /api/fetch</c>, <c>/api/fetch/batch</c>, and <c>browser_fetch</c> pass false so
     /// agent exploration is visible. Scanner replay keeps the default.
     /// </param>
     public async Task<string> Fetch(string url, string method, Dictionary<string, string>? headers,
-        string? body, int timeoutMs = 30000, string? redirect = null, bool markSynthetic = true)
+        string? body, int timeoutMs = 30000, string? redirect = null,
+        bool serverSide = false, bool includeBrowserCookies = true, bool markSynthetic = true)
     {
+        method = string.IsNullOrWhiteSpace(method) ? "GET" : method.Trim();
         var sw = Stopwatch.StartNew();
         string result = "";
         string? error = null;
+        var useServerSide = serverSide
+                            || method.Equals("TRACE", StringComparison.OrdinalIgnoreCase)
+                            || method.Equals("CONNECT", StringComparison.OrdinalIgnoreCase);
+        var transport = useServerSide ? "server-side" : "browser";
         try
         {
+            if (useServerSide)
+            {
+                var allowRedirect = redirect is not ("manual" or "error");
+                var direct = await DirectFetchHelper.FetchAsync(
+                    this, url, method, headers, body, timeoutMs, allowRedirect, includeBrowserCookies);
+                if (direct.Error != null)
+                    throw new InvalidOperationException(direct.Error);
+
+                var callerCookie = headers != null
+                                   && headers.TryGetValue("Cookie", out var callerCookieHeader)
+                                   && !string.IsNullOrWhiteSpace(callerCookieHeader);
+                result = SerializeServerSideFetchJson(
+                    direct, sw.ElapsedMilliseconds, includeBrowserCookies, identitySource: null, callerCookie, method);
+                return result;
+            }
+
             result = await FetchCore(url, method, headers, body, timeoutMs, redirect, markSynthetic);
             return AppendDurationMs(result, sw.ElapsedMilliseconds);
         }
@@ -888,8 +918,41 @@ public partial class AutomationContext
         finally
         {
             sw.Stop();
-            CurrentRequestTrace?.Record(method, url, body, ParseFetchStatus(result), sw.ElapsedMilliseconds, error, "browser");
+            CurrentRequestTrace?.Record(method, url, body, ParseFetchStatus(result), sw.ElapsedMilliseconds, error, transport);
         }
+    }
+
+    private static string SerializeServerSideFetchJson(
+        DirectFetchHelper.DirectFetchResult direct,
+        long durationMs,
+        bool includeBrowserCookies,
+        string? identitySource,
+        bool callerCookie,
+        string method)
+    {
+        var identityUsed = FetchIdentity.Describe(
+            direct.IncludedBrowserCookies, direct.CookiesSent, identitySource, callerCookie);
+        string? note = method.Equals("TRACE", StringComparison.OrdinalIgnoreCase)
+                       || method.Equals("CONNECT", StringComparison.OrdinalIgnoreCase)
+            ? $"{method.ToUpperInvariant()} is not supported by browser fetch() — this request was made server-side via HttpClient."
+            : null;
+
+        return JsonSerializer.Serialize(new
+        {
+            ok = direct.Ok,
+            status = direct.Status,
+            statusText = direct.StatusText,
+            redirected = direct.Redirected,
+            type = "server-side",
+            url = direct.FinalUrl,
+            headers = direct.Headers,
+            body = direct.Body,
+            durationMs,
+            cookiesSent = direct.CookiesSent,
+            includeBrowserCookies = direct.IncludedBrowserCookies,
+            identityUsed,
+            note
+        });
     }
 
     /// <summary>

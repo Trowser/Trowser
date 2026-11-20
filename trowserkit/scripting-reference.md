@@ -270,6 +270,8 @@ Recorded scripts can serve as a guide for LLM agents using the REST API. The tab
 | `await GetAllStorage("local")` | `GET /api/storage?type=local` |
 | `await SetStorageItem("local", "key", "val")` | `POST /api/storage/set {"type":"local","key":"key","value":"val"}` |
 | `await Fetch("/api/users", "POST", body: "{...}")` | `POST /api/fetch {"url":"/api/users","method":"POST","body":"{...}"}` |
+| `await Fetch(url, serverSide: true, headers: …)` | `POST /api/fetch` with `"serverSide": true` |
+| `await FetchRaw(url, headers: "Host:…\n…")` | `POST /api/fetch-raw` |
 | `await FetchBatchAsync(items, concurrent: true)` | `POST /api/fetch/batch {"requests":[...],"concurrent":true}` |
 
 **Locator mapping:**
@@ -780,11 +782,15 @@ var testString = await GetRandomTestData("strings");
 
 Send HTTP requests directly from the browser context using `fetch()`. Includes the page's cookies, auth tokens, and session state automatically. Relative URLs resolve against the current page origin. Unlike `ExecuteJs` with manual `fetch()`, this returns a structured result.
 
+Set **`serverSide: true`** on `Fetch` (or `UseServerSide = true` on batch items) to send via HttpClient — same as `POST /api/fetch` `"serverSide": true` — so you can set forbidden headers (`Origin`, `Referer`, `Sec-Fetch-*`, …) while still merging the browser cookie jar. **TRACE** and **CONNECT** always use server-side transport.
+
+For **wire-level** HTTP (duplicate headers, TE/CL shaping, custom request-line versions), use **`FetchRaw`** — not HttpClient, not WebView. Raw sends do not attach cookies automatically; pair with **`GetCookieHeaderForUrl`** and a `Cookie:` line in the raw header block.
+
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
-| `Fetch(url, method?, headers?, body?, timeoutMs?, redirect?)` | `string url, string method = "GET", Dictionary<string, string>? headers = null, string? body = null, int timeoutMs = 30000, string? redirect = null` | `Task<string>` | Execute fetch() in the browser context. Returns JSON string with `ok`, `status`, `statusText`, `redirected`, `type`, `url`, `headers`, `body`, `durationMs`. Set `redirect` to `"manual"` to capture 3xx without following (SAML/OAuth/open-redirect testing). |
-| `FetchBatchAsync(requests, concurrent?)` | `IReadOnlyList<FetchBatchRequestItem> requests, bool concurrent = true` | `Task<IReadOnlyList<FetchBatchResultItem>>` | Multiple fetch() calls; set `concurrent` to fire in parallel for race testing. Each item supports `Redirect` property. |
-| `GetCookieHeaderForUrl(absoluteUrl)` | `string absoluteUrl` | `Task<string>` | Cookie header value for the URL from the WebView jar (HttpOnly included). Use with server-side tools that need session cookies. |
+| `Fetch(url, method?, headers?, body?, timeoutMs?, redirect?, serverSide?, includeBrowserCookies?)` | `string url, string method = "GET", Dictionary<string, string>? headers = null, string? body = null, int timeoutMs = 30000, string? redirect = null, bool serverSide = false, bool includeBrowserCookies = true` | `Task<string>` | Browser `fetch()` by default. With `serverSide: true`, HttpClient + cookie jar. JSON includes `ok`, `status`, `statusText`, `redirected`, `type`, `url`, `headers`, `body`, `durationMs`; server-side adds `cookiesSent`, `identityUsed`, and optional `note`. `redirect: "manual"` captures 3xx without following (SAML/OAuth/open-redirect testing). |
+| `FetchBatchAsync(requests, concurrent?)` | `IReadOnlyList<FetchBatchRequestItem> requests, bool concurrent = true` | `Task<IReadOnlyList<FetchBatchResultItem>>` | Multiple requests; `concurrent` fires in parallel for race testing. Each item: `Url`, `Method`, `Headers`, `Body`, `TimeoutMs`, `Redirect`, **`UseServerSide`**, **`IncludeBrowserCookies`**, `IdentitySource`. |
+| `GetCookieHeaderForUrl(absoluteUrl)` | `string absoluteUrl` | `Task<string>` | Cookie header value for the URL from the WebView jar (HttpOnly included). Use with `FetchRaw` or anonymous server-side probes. |
 | `FetchRaw(url, requestLine?, headers?, body?, method?, timeoutMs?, normalizeHeaders?)` | `string url, string? requestLine = null, string? headers = null, string? body = null, string? method = null, int timeoutMs = 15000, bool normalizeHeaders = true` | `Task<string>` | HTTP/1.x bytes on a new TCP/TLS connection. `headers` is a raw block (duplicates/TE/CL preserved). Session header overrides are not applied. |
 | `GetHeaderOverrides()` | — | `IReadOnlyList<HeaderOverride>` | Session WebView2 header overrides (name, value, enabled). |
 | `SetHeaderOverrides(items)` | `IEnumerable<HeaderOverride> items` | `void` | Replace session header overrides (browsing only). |
@@ -818,6 +824,17 @@ var deleted = await Fetch("/api/users/42", "DELETE");
 // With custom timeout
 var slow = await Fetch("/api/slow-endpoint", timeoutMs: 60000);
 
+// Server-side: forbidden headers + session cookies (same as POST /api/fetch serverSide:true)
+var probe = await Fetch("/sensitive", "GET",
+    headers: new Dictionary<string, string>
+    {
+        ["Sec-Fetch-Site"] = "cross-site",
+        ["Sec-Fetch-Mode"] = "navigate",
+        ["Sec-Fetch-Dest"] = "document",
+        ["Referer"] = "https://evil.example/"
+    },
+    serverSide: true);
+
 // Capture redirect without following (open-redirect / SAML / OAuth testing)
 // HTTP/1.x bytes (TE/CL and duplicates as written; no session header overrides)
 var raw = await FetchRaw("https://example.com/search",
@@ -835,7 +852,7 @@ Log($"Redirect captured: {rdStatus}, type={rdType}");
 var batch = new List<FetchBatchRequestItem>
 {
     new() { Url = "/api/a", Method = "GET" },
-    new() { Url = "/api/b", Method = "GET" }
+    new() { Url = "/api/b", Method = "GET", UseServerSide = true, Headers = new() { ["Origin"] = "https://evil.example" } }
 };
 var batchResults = await FetchBatchAsync(batch, concurrent: true);
 ```

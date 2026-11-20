@@ -260,6 +260,8 @@ Sends a request with the page's cookies and session, like the app would. Relativ
 
 Returns `ok`, `status`, `statusText`, `redirected`, `url`, `headers`, `body`, `durationMs`, plus `identityUsed` and `cookiesSent` (names only) — check those before concluding a response was anonymous.
 
+`POST /api/fetch-raw` — HTTP/1.x bytes on a new connection (duplicates, TE/CL, smuggling-shaped probes). Not HttpClient or WebView; no automatic cookies — add `Cookie` in the raw header block if needed.
+
 `POST /api/fetch/batch` — `requests: [ {same fields} ]`, `concurrent` (true), `includeBodies` (false; bodies truncated to `bodyMaxChars`, default 200).
 
 `PUT /api/header-overrides` — `{"headers": [{"name": "X-Test", "value": "1", "enabled": true}]}` adds or replaces headers on all browser traffic; `GET` lists, `DELETE` clears. Blocked by `--safe`.

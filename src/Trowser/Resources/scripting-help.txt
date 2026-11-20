@@ -41,7 +41,7 @@ Inspect: `GetText`, `GetAttribute`, `Exists`, `Count`, `GetPageText`, `GetAllPag
 Wait: `WaitForElement`, `WaitForIdle`, `WaitForNavigation`, `WaitForFinalNavigation`, `WaitForRequest`, `Sleep`
 Assert: `Assert.*`, `AssertPageContains`, `AssertElementVisible`, `AssertUrl`, `AssertTitle`, `AssertAccessible`, `AssertPerformance`, `AssertSecure`
 Errors: `GetConsoleErrors`, `GetPageConsoleErrors`, `Network.FindErrors`, `Network.FindPageErrors`, `ClearConsoleLog`, `ClearNetworkLog`
-HTTP: `Fetch`, `FetchBatchAsync`, `FetchRaw` (HTTP/1.x bytes; no session overrides)
+HTTP: `Fetch` (optional serverSide), `FetchBatchAsync`, `FetchRaw` (wire bytes; no jar cookies)
 Faults: `MockResponse`, `ClearMocks`
 Session: `ClearSession` (prefer over `ClearAll` when login must survive)
 
@@ -199,12 +199,19 @@ var response = await Fetch("/api/users", "POST",
     headers: new Dictionary<string, string> { ["Content-Type"] = "application/json" },
     body: "{\"name\":\"Alice\"}");
 
+// serverSide: HttpClient + cookie jar (Origin, Referer, Sec-Fetch-*, …)
+var probe = await Fetch("/logout", "GET",
+    headers: new() { ["Sec-Fetch-Site"] = "cross-site" },
+    serverSide: true);
+
 var batch = new List<FetchBatchRequestItem>
 {
     new() { Url = "/api/a", Method = "GET" },
-    new() { Url = "/api/b", Method = "GET" }
+    new() { Url = "/api/b", Method = "GET", UseServerSide = true }
 };
 var batchResults = await FetchBatchAsync(batch, concurrent: true);
+
+// Wire HTTP/1.x (duplicates/TE/CL): FetchRaw + GetCookieHeaderForUrl for cookies
 ```
 
 Prefer Fetch over ad-hoc ExecuteJs fetch for structured evidence. Result JSON includes durationMs (HTTP round-trip).

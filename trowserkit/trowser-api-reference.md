@@ -1233,6 +1233,8 @@ Use `body` for raw string payloads (form-encoded, XML, etc.). Use `json` as a sh
 
 **TRACE/CONNECT support:** These methods are blocked by browser `fetch()`. When used, Trowser automatically falls back to a server-side HttpClient request. The response includes `"type": "server-side"` and a `note` explaining this.
 
+**Wire-level HTTP:** `serverSide` uses HttpClient (one request shape per hop). For HTTP/1.x on a fresh TCP/TLS connection — duplicate header names, custom `Transfer-Encoding` / `Content-Length`, nonstandard request-line versions — use **`POST /api/fetch-raw`** (scripting: `FetchRaw`). Raw sends do not attach the browser cookie jar; use `GetCookieHeaderForUrl` / a `Cookie:` line when you need session cookies.
+
 ### POST /api/fetch-raw
 Send HTTP/1.x bytes on a new TCP/TLS connection (not `HttpClient`, not WebView2). Use this when you need `Transfer-Encoding`, a custom `Content-Length`, duplicate header names, or a nonstandard request-line version token (`HTTP/1.0`, `HTTP/1.2`, …). Session header overrides are **not** applied. Blocked in `--safe`. TLS ALPN is pinned to `http/1.1`.
 

@@ -131,7 +131,7 @@ public partial class TrowserApiServer
                 new { method = "POST", path = "/api/security/headers", description = "Analyze HTTP response headers for security misconfigurations (OWASP)" },
                 new { method = "POST", path = "/api/validate-html", description = "Validate HTML markup using html-validate" },
                 new { method = "POST", path = "/api/seo", description = "SEO audit: title, meta description, robots, canonical, OG/Twitter tags, hreflang, JSON-LD, h1 count" },
-                new { method = "POST", path = "/api/compatibility", description = "Analyze JavaScript for backward compatibility with older browsers (iOS 15, Android 10)" },
+                new { method = "POST", path = "/api/compatibility", description = "Analyze JavaScript for backward compatibility with older browsers (iOS 16, Android 13)" },
                 new { method = "POST", path = "/api/audit-all", description = "Full page health: accessibility, performance, security (CVE + XSS + mixed content), security/headers, validate-html, SEO, compatibility, check-links, consistency. Optional body merges all per-endpoint options." },
                 new { method = "POST", path = "/api/quicktest", description = "Alias for POST /api/audit-all — combined audits in a single round-trip." },
                 new { method = "POST", path = "/api/surpriseme", description = "Run a random non-destructive quicktest from the embedded catalog. Returns quicktest name and assertion summary." },

@@ -256,7 +256,7 @@ No arguments — just method, path, and one-line purpose.
 | POST | `/api/accessibility` | Run WCAG audit: { "level": "AA" } |
 | POST | `/api/audit-all` | Full page health: accessibility, performance, security (CVE + XSS + mixed content), security/headers, validate-html, SEO… |
 | POST | `/api/check-links` | Check links for broken URLs: { "scope": "anchors", "external": true, "timeoutMs": 5000, "concurrency": 10 } |
-| POST | `/api/compatibility` | Analyze JavaScript for backward compatibility with older browsers (iOS 15, Android 10) |
+| POST | `/api/compatibility` | Analyze JavaScript for backward compatibility with older browsers (iOS 16, Android 13) |
 | POST | `/api/consistency` | GUI consistency audit: fonts, colors, sizing, spacing |
 | POST | `/api/page-text/structured` | Extract structured text: headings, paragraphs, links, buttons, labels, images, word count |
 | POST | `/api/performance` | Measure Web Vitals performance: Core Web Vitals, navigation timing, resource summary |

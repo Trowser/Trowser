@@ -3293,10 +3293,10 @@ paths:
                   description: Scope accessibility audit to selector
                 minIos:
                   type: integer
-                  default: 15
+                  default: 16
                 minAndroid:
                   type: integer
-                  default: 10
+                  default: 13
                 scope:
                   type: string
                   enum: [anchors, resources, all]
@@ -3534,7 +3534,7 @@ paths:
       operationId: compatibility
       tags: [Auditing]
       summary: JavaScript backward compatibility analysis
-      description: Checks for modern JS features that may break on older browsers (iOS 15, Android 10).
+      description: Checks for modern JS features that may break on older browsers (iOS 16, Android 13).
       requestBody:
         content:
           application/json:

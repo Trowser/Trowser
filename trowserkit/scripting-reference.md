@@ -2068,7 +2068,7 @@ Analyzes the page's JavaScript for backward compatibility with older browsers. D
 **FeatureCategory enum:** `FeatureCategory.Syntax` (causes parse errors — critical), `FeatureCategory.Api` (runtime errors — moderate)
 
 ```csharp
-// Basic: assert compatible with iOS 15 and Android 10 (defaults)
+// Basic: assert compatible with iOS 16 and Android 13 (defaults)
 await AssertCompatible();
 
 // Custom targets

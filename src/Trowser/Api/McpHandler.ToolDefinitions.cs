@@ -2811,12 +2811,12 @@ public partial class McpHandler
             "Downloads and scans all scripts (inline and external) for modern ES2020+ syntax features " +
             "(optional chaining, nullish coalescing, private fields, etc.) and newer Web APIs " +
             "(structuredClone, Object.hasOwn, Array.at, etc.). " +
-            "Reports which features would break on target browsers. Defaults to iOS 15 and Android 10. " +
+            "Reports which features would break on target browsers. Defaults to iOS 16 and Android 13. " +
             "Syntax features cause complete script failure; API features cause runtime errors. " +
             "Returns a risk assessment with testing recommendations.",
             Schema(
                 ("minIos", SInt("Minimum iOS version to support (e.g. 15, 16). Maps to Safari version.")),
-                ("minAndroid", SInt("Minimum Android version to support (e.g. 9, 10). Maps to Chrome WebView version."))
+                ("minAndroid", SInt("Minimum Android version to support (e.g. 10, 13). Maps to Chrome WebView version."))
             )),
 
         Tool("browser_audit_all",

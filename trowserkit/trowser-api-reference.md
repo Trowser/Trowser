@@ -1384,7 +1384,7 @@ Disable throttling (restore full speed).
 | Field | Used by | Default |
 |-------|---------|---------|
 | `level`, `selector` | Accessibility | `AA`, full page |
-| `minIos`, `minAndroid` | Compatibility | iOS 15 / Android 10 |
+| `minIos`, `minAndroid` | Compatibility | iOS 16 / Android 13 |
 | `scope`, `external`, `timeoutMs`, `concurrency`, `delayMs` | Link check | `anchors`, `true`, `5000`, `10`, `100` |
 | `includeSecretsHarvest` | Secrets harvest | `true` |
 | `includeSupplyChain` | Retire.js + SRI + manifest/CI/CD path probes | `true` |
@@ -4319,7 +4319,7 @@ Adaptive **“attack this form”** probe: discovers editable fields wired to a 
 **MCP:** `browser_attack_form`.
 
 ### POST /api/compatibility
-JavaScript backward compatibility analysis (iOS 15, Android 10). No params needed.
+JavaScript backward compatibility analysis (iOS 16, Android 13). No params needed.
 
 ### POST /api/check-links
 Check all links on the page for broken URLs, redirects, and errors. Sends HEAD requests (falls back to GET on 405). Redirects are observations, not errors.

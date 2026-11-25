@@ -7,7 +7,7 @@ namespace Trowser.Compatibility;
 
 /// <summary>
 /// Scans JavaScript loaded on the current page for modern language features
-/// that may not be supported in older target browsers (iOS 15, Android 10, etc.).
+/// that may not be supported in older target browsers (iOS 16, Android 13, etc.).
 /// Detects both syntax-level features (which cause parse errors and break the entire
 /// script) and API-level features (which cause runtime errors only when called).
 /// Uses the vanilla version for the release of OS, which causes overly careful reporting.
@@ -26,8 +26,8 @@ public class CompatibilityChecker
     /// </summary>
     public static readonly List<(string Name, string Engine, string Version)> DefaultTargets =
     [
-        ("iOS 15 (Safari 15.0)", "safari", "15.0"),
-        ("Android 10 (Chrome 74)", "chrome", "74"),
+        ("iOS 16 (Safari 16.0)", "safari", "16.0"),
+        ("Android 13 (Chrome 107)", "chrome", "107"),
     ];
 
     /// <summary>

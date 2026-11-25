@@ -577,11 +577,11 @@
     <span class="fn">Log</span>(<span class="str">$"Mixed content: </span>{result.FindingCount}<span class="str"> issues (</span>{result.HighCount}<span class="str"> high)"</span>);</code></pre>
 
 <h2>Backward Compatibility</h2>
-<pre><code><span class="kw">await</span> <span class="fn">AssertCompatible</span>();                                     <span class="cm">// Default: iOS 15, Android 10</span>
-<span class="kw">await</span> <span class="fn">AssertCompatible</span>(minIos: 16, minAndroid: 10);             <span class="cm">// Custom targets</span>
-<span class="kw">await</span> <span class="fn">PrintCompatibilityReport</span>(minIos: 15, minAndroid: 10);     <span class="cm">// Print full report</span>
+<pre><code><span class="kw">await</span> <span class="fn">AssertCompatible</span>();                                     <span class="cm">// Default: iOS 16, Android 13</span>
+<span class="kw">await</span> <span class="fn">AssertCompatible</span>(minIos: 17, minAndroid: 14);             <span class="cm">// Custom targets</span>
+<span class="kw">await</span> <span class="fn">PrintCompatibilityReport</span>(minIos: 16, minAndroid: 13);     <span class="cm">// Print full report</span>
 
-<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckCompatibility</span>(minIos: 15);              <span class="cm">// iOS only</span>
+<span class="kw">var</span> result = <span class="kw">await</span> <span class="fn">CheckCompatibility</span>(minIos: 16);              <span class="cm">// iOS only</span>
 <span class="kw">foreach</span> (<span class="kw">var</span> f <span class="kw">in</span> result.Features)
     <span class="fn">Log</span>(<span class="str">$"</span>{f.Name}<span class="str">: Chrome </span>{f.ChromeMin}<span class="str">+, Safari </span>{f.SafariMin}<span class="str">+"</span>);
 

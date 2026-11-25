@@ -55,7 +55,7 @@ public enum FeatureCategory
 /// </summary>
 public class TargetBrowser
 {
-    /// <summary>Display name (e.g., "iOS 15 (Safari 15.0)").</summary>
+    /// <summary>Display name (e.g., "iOS 16 (Safari 16.0)").</summary>
     public string Name { get; init; } = "";
 
     /// <summary>Browser engine name for matching (e.g., "safari", "chrome").</summary>

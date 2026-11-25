@@ -562,6 +562,7 @@ public class JournalPanel : Border
             ("All types", ""),
             ("Bugs", "bug"),
             ("Enhancements", "enhancement"),
+            ("Bookmarks", "bookmark"),
             ("Pointers", "pointer"),
             ("Decisions", "decision"),
             ("Actions", "action"),
@@ -701,6 +702,15 @@ public class JournalPanel : Border
             var entry = _logger?.GetEntry(index.Value);
             var canShow = entry != null && JournalReportGenerator.CanShowMe(entry);
             AddMenuItem(menu, "Show me", () => DetailRequested?.Invoke($"trowser://show/{index.Value}"), canShow);
+            if (Bookmarks.BookmarkInfo.HasBookmarkEvidence(entry))
+            {
+                var bookmark = Bookmarks.BookmarkInfo.FromEntry(entry!);
+                if (bookmark.CanVerify)
+                    AddMenuItem(menu, "Verify (replay steps)", () => DetailRequested?.Invoke($"trowser://verify/{index.Value}"));
+                if (bookmark.CanRestore)
+                    AddMenuItem(menu, "Restore", () => DetailRequested?.Invoke($"trowser://go/{index.Value}"));
+                AddMenuItem(menu, "Export bookmark\u2026", () => DetailRequested?.Invoke($"trowser://bookmark-export/{index.Value}"));
+            }
             AddMenuItem(menu, "Copy", () => DetailRequested?.Invoke($"trowser://copy/{index.Value}"));
             AddMenuItem(menu, "Edit", () => DetailRequested?.Invoke($"trowser://edit/{index.Value}"));
             AddMenuItem(menu, "Delete", () => DetailRequested?.Invoke($"trowser://delete/{index.Value}"));
@@ -718,6 +728,7 @@ public class JournalPanel : Border
     {
         AddMenuItem(menu, "Open", () => DetailRequested?.Invoke("trowser://open"));
         AddMenuItem(menu, "Save", () => DetailRequested?.Invoke("trowser://save"));
+        AddMenuItem(menu, "Import bookmark\u2026", () => DetailRequested?.Invoke("trowser://bookmark-import"));
         AddMenuItem(menu, "Log Settings…", () => SessionLogRequested?.Invoke());
     }
 

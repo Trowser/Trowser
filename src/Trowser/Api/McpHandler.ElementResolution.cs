@@ -1084,7 +1084,7 @@ public partial class McpHandler
         }
 
         var effectiveKind = kind ?? existing.Kind ?? existing.Type;
-        var text = GetString(args, "note") ?? GetString(args, "text") ?? GetString(args, "title");
+        string? text = null;
 
         bool setSeverity = args.TryGetProperty("severity", out _);
         string? severity = null;
@@ -1134,6 +1134,8 @@ public partial class McpHandler
 
         bool setDetails = args.TryGetProperty("details", out _);
         var details = setDetails ? GetString(args, "details") : null;
+
+        JournalBookmarkPatch.ApplySummaryDetails(JsonBody.FromToolArguments(args), existing, ref text, ref details, ref setDetails);
 
         Dictionary<string, string>? fields = null;
         bool setFields = false;

@@ -76,6 +76,8 @@ public static class JournalBundle
     {
         public int Index { get; set; }
         public string? Timestamp { get; set; }
+        /// <summary>Round-trip UTC timestamp. <see cref="Timestamp"/> stays for readers and older bundles.</summary>
+        public string? TimestampUtc { get; set; }
         public string Type { get; set; } = "";
         public string? Kind { get; set; }
         public string Source { get; set; } = "";
@@ -105,6 +107,7 @@ public static class JournalBundle
             {
                 Index = e.Index,
                 Timestamp = e.Timestamp.ToString("yyyy-MM-dd HH:mm:ss"),
+                TimestampUtc = e.Timestamp.ToUniversalTime().ToString("O", System.Globalization.CultureInfo.InvariantCulture),
                 Type = e.Type,
                 Kind = e.Kind,
                 Source = e.Source,
@@ -122,7 +125,12 @@ public static class JournalBundle
         public SessionLogger.JournalEntry ToEntry()
         {
             DateTime ts;
-            if (!DateTime.TryParse(Timestamp, out ts))
+            if (!string.IsNullOrWhiteSpace(TimestampUtc)
+                && DateTime.TryParse(TimestampUtc, System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.RoundtripKind, out var utc))
+                ts = utc.ToLocalTime();
+            else if (!DateTime.TryParse(Timestamp, System.Globalization.CultureInfo.InvariantCulture,
+                         System.Globalization.DateTimeStyles.AssumeLocal, out ts))
                 ts = DateTime.Now;
 
             return new SessionLogger.JournalEntry

@@ -20,7 +20,7 @@ public static class ExportPathGuard
     private static readonly HashSet<string> AllowedExportExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         "", ".json", ".har", ".html", ".htm", ".md", ".markdown", ".txt", ".log", ".csv", ".xml",
-        ".yaml", ".yml", ".sarif", ".csx", ".trw", ".png", ".jpg", ".jpeg", ".pdf"
+        ".yaml", ".yml", ".sarif", ".csx", ".trw", ".png", ".jpg", ".jpeg", ".pdf", ".zip"
     };
 
     /// <summary>

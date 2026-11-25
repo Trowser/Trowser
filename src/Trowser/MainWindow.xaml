@@ -123,6 +123,36 @@
             </Setter>
         </Style>
 
+        <!-- Nav bar button — blue highlight (Bookmark) -->
+        <Style x:Key="NavButtonBlue" TargetType="Button" BasedOn="{StaticResource NavButtonHighlight}">
+            <Setter Property="Background" Value="#007ACC"/>
+            <Setter Property="BorderBrush" Value="#0062A3"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4"
+                                Padding="4,2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1C97EA"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#0062A3"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Window caption buttons (minimize / maximize / close) -->
         <Style x:Key="CaptionButton" TargetType="Button">
             <Setter Property="Width" Value="46"/>
@@ -322,6 +352,19 @@
                         Click="StrangeMomentButton_Click" DockPanel.Dock="Right"
                         ToolTip="Interesting — ask the AI about this moment (Ctrl+Shift+L)"
                         Width="42" FontSize="14" FontWeight="SemiBold"/>
+
+                <!-- Bookmark this moment — one journal entry with screenshot, steps, and last request -->
+                <Button x:Name="BookmarkButton" Style="{StaticResource NavButtonBlue}"
+                        Click="BookmarkButton_Click" DockPanel.Dock="Right"
+                        ToolTip="Bookmark this moment (Ctrl+B)"
+                        Width="42">
+                    <Viewbox Width="17" Height="17" Stretch="Uniform">
+                        <Canvas Width="24" Height="24">
+                            <Path Stroke="White" StrokeThickness="2.35" StrokeLineJoin="Round" Fill="Transparent"
+                                  Data="M6,3 L18,3 L18,21 L12,17 L6,21 Z"/>
+                        </Canvas>
+                    </Viewbox>
+                </Button>
 
                 <!-- HTTP Request Editor -->
                 <Button x:Name="RequestEditorButton" Content="&#x270F;" Style="{StaticResource NavButton}"

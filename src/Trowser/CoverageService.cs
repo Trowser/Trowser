@@ -1,5 +1,8 @@
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using Trowser.Api;
+using Trowser.Recording;
 using Trowser.SessionLog;
 
 namespace Trowser;
@@ -63,6 +66,9 @@ public class CoverageService
     ];
 
     private static readonly Regex UrlRegex = new(@"https?://[^\s""'<>\\]+", RegexOptions.Compiled);
+    private static readonly Regex NavigatedPathRegex = new(
+        @"^Navigated to (?<path>/[^\s""'<>]+)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public CoverageSnapshot Build(IReadOnlyList<SessionLogger.JournalEntry> entries, string? currentUrl)
     {
@@ -92,7 +98,23 @@ public class CoverageService
             if (!string.IsNullOrWhiteSpace(e.Url)) AddPage(pages, e.Url!);
             var haystack = $"{e.Summary} {e.Details}";
             if (haystack.Contains("navigate", StringComparison.OrdinalIgnoreCase))
+            {
                 foreach (Match m in UrlRegex.Matches(haystack)) AddPage(pages, m.Value);
+                if (NavigatedPathRegex.Match(haystack.Trim()) is { Success: true } nav)
+                {
+                    var rel = ResolveRelativePage(e.Url, currentUrl, nav.Groups["path"].Value);
+                    if (!string.IsNullOrEmpty(rel)) AddPage(pages, rel);
+                }
+            }
+
+            if (e.Type == "action" && e.Fields != null
+                && e.Fields.TryGetValue("path", out var apiPath)
+                && apiPath.Equals("/api/click", StringComparison.OrdinalIgnoreCase)
+                && e.Fields.TryGetValue("body", out var clickBody))
+            {
+                var dest = InferClickDestinationUrl(clickBody, e.Url, currentUrl);
+                if (!string.IsNullOrEmpty(dest)) AddPage(pages, dest);
+            }
 
             // Interactions: GUI/API actions that act on an element.
             if (e.Type == "action" && IsInteraction(e.Summary))
@@ -150,6 +172,45 @@ public class CoverageService
             || summary.Contains("/api/key", StringComparison.OrdinalIgnoreCase)
             || summary.Contains("/api/fill", StringComparison.OrdinalIgnoreCase)
             || summary.Contains("/api/press", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string? ResolveRelativePage(string? entryUrl, string? sessionUrl, string relativePath)
+    {
+        if (string.IsNullOrWhiteSpace(relativePath)) return null;
+        if (relativePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || relativePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            return relativePath;
+        foreach (var baseUrl in new[] { entryUrl, sessionUrl })
+        {
+            if (string.IsNullOrWhiteSpace(baseUrl)) continue;
+            if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var u)) continue;
+            if (Uri.TryCreate(u, relativePath, out var resolved)
+                && (resolved.Scheme == Uri.UriSchemeHttp || resolved.Scheme == Uri.UriSchemeHttps))
+                return resolved.ToString();
+        }
+
+        return null;
+    }
+
+    private static string? InferClickDestinationUrl(string? bodyJson, string? entryUrl, string? sessionUrl)
+    {
+        if (string.IsNullOrWhiteSpace(bodyJson)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(bodyJson);
+            var root = doc.RootElement;
+            if (root.TryGetProperty("href", out var href) && href.ValueKind == JsonValueKind.String)
+                return href.GetString();
+            if (root.TryGetProperty("selector", out var sel) && sel.ValueKind == JsonValueKind.String)
+            {
+                var s = sel.GetString() ?? "";
+                var m = Regex.Match(s, @"href\s*=\s*[""'](?<u>[^""']+)[""']", RegexOptions.IgnoreCase);
+                if (m.Success) return ResolveRelativePage(entryUrl, sessionUrl, m.Groups["u"].Value);
+            }
+        }
+        catch (JsonException) { /* ignore */ }
+
+        return null;
     }
 
     private static void AddPage(HashSet<string> pages, string url)

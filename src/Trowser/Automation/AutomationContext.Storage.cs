@@ -169,7 +169,7 @@ public partial class AutomationContext
 
     public async Task SetCookie(string name, string value,
         string? domain = null, string? path = null,
-        bool? secure = null, bool? httpOnly = null, string? sameSite = null)
+        bool? secure = null, bool? httpOnly = null, string? sameSite = null, DateTime? expiresUtc = null)
     {
         var webView = ActiveTab.WebView;
         var url = await GetCurrentUrl();
@@ -182,6 +182,7 @@ public partial class AutomationContext
             var cookie = webView.CoreWebView2.CookieManager.CreateCookie(name, value, cookieDomain, cookiePath);
             if (secure.HasValue) cookie.IsSecure = secure.Value;
             if (httpOnly.HasValue) cookie.IsHttpOnly = httpOnly.Value;
+            if (expiresUtc.HasValue) cookie.Expires = DateTime.SpecifyKind(expiresUtc.Value, DateTimeKind.Utc).ToLocalTime();
             if (sameSite != null)
             {
                 cookie.SameSite = sameSite.ToLower() switch
@@ -282,7 +283,19 @@ public partial class AutomationContext
         var escapedKey = JsonEscape(key);
         var js = $"JSON.stringify({storageObj}.getItem({escapedKey}))";
         var result = await RunJs(js);
-        return result == "null" ? null : result;
+        if (string.IsNullOrEmpty(result) || result == "null") return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(result);
+            if (doc.RootElement.ValueKind == JsonValueKind.String)
+                return doc.RootElement.GetString();
+        }
+        catch (JsonException)
+        {
+            /* legacy: raw string without JSON quoting */
+        }
+
+        return result;
     }
 
     public async Task SetStorageItem(string type, string key, string value)

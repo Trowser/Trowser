@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using Trowser.Bookmarks;
 
 namespace Trowser.SessionLog;
 
@@ -329,9 +330,14 @@ public class NoteOverlay : Window
 
     private void Prefill(SessionLogger.JournalEntry edit)
     {
+        var editKind = edit.Kind ?? edit.Type;
+        if (string.Equals(edit.Type, Bookmarks.BookmarkFields.EntryType, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(editKind, Bookmarks.BookmarkFields.EntryType, StringComparison.OrdinalIgnoreCase))
+            editKind = NoteKinds.Note;
+
         for (int i = 0; i < _kindBox.Items.Count; i++)
         {
-            if ((_kindBox.Items[i] as ComboBoxItem)?.Tag as string == (edit.Kind ?? edit.Type))
+            if ((_kindBox.Items[i] as ComboBoxItem)?.Tag as string == editKind)
             {
                 _kindBox.SelectedIndex = i;
                 break;

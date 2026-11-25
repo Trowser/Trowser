@@ -73,7 +73,8 @@ public partial class McpHandler
         "browser_journal_add", "browser_journal_get", "browser_journal_export", "browser_journal_import", "browser_journal_update", "browser_journal_delete",
         "browser_compact", "browser_session_memory",
         "browser_inspiration", "browser_coverage", "browser_test_data",
-        "browser_point", "browser_pointers", "browser_checkpoint",
+        "browser_point", "browser_pointers", "browser_checkpoint", "browser_bookmark",
+        "browser_bookmark_restore", "browser_bookmark_verify",
         "browser_decide", "browser_decisions",
         "browser_repro_capture",
         "browser_record_start", "browser_record_status", "browser_record_stop",
@@ -118,7 +119,8 @@ public partial class McpHandler
         "browser_assert_text", "browser_assert_element", "browser_assert_url", "browser_assert_title",
         "browser_journal_add", "browser_journal_get", "browser_journal_export", "browser_journal_import", "browser_journal_update", "browser_journal_delete",
         "browser_inspiration", "browser_coverage", "browser_test_data",
-        "browser_point", "browser_pointers", "browser_checkpoint",
+        "browser_point", "browser_pointers", "browser_checkpoint", "browser_bookmark",
+        "browser_bookmark_restore", "browser_bookmark_verify",
         "browser_decide", "browser_decisions",
         "browser_repro_capture",
         "browser_record_start", "browser_record_status", "browser_record_stop",
@@ -3531,6 +3533,69 @@ public partial class McpHandler
                 ("action", SStr("Set to 'list' to list checkpoints instead of creating one.")),
                 ("id", SStr("Fetch a single checkpoint (with a 'since' summary) by id."))
             )),
+
+        Tool("browser_bookmark",
+            "Bookmark this moment so a human (or you, later) can see exactly what the page looked like and how you got there. " +
+            "One call writes one journal entry with a screenshot, the narrated steps since the previous checkpoint, the last network " +
+            "request (method, status, URL — no headers or body), and a replayable .trw when those steps can be replayed. It also moves " +
+            "the checkpoint, so the next bookmark's steps start here. Same as the tester's bookmark button (Ctrl+B). " +
+            "Use it at a notable moment: just before a bug shows, after reaching a hard-to-reach state, or at a step you want to " +
+            "compare later. action='list' lists bookmarks; action='get' with id fetches one. To restore cookies and storage, use " +
+            "browser_bookmark_restore; to replay the steps, use browser_bookmark_verify (or browser_repro_verify with the bookmark's trwPath).",
+            Schema(
+                ("action", SStr("'create' (default), 'list', or 'get'.")),
+                ("note", SStr("Optional: why this moment matters (stored as the entry's details).")),
+                ("id", SStr("Bookmark id (or journal index) for action='get'.")),
+                ("view", SStr("For action='list': 'index' returns one compact row per bookmark (id, number, summary, url, flags); 'full' (default) returns steps and paths."))
+            )),
+
+        Tool("browser_bookmark_restore",
+            "Go back to a bookmark: restore the cookies, localStorage, and sessionStorage saved when it was caught. By default " +
+            "navigate to its URL afterward; when storage was written the page reloads so SPAs re-read localStorage/sessionStorage. " +
+            "Set navigate=false to stay on the tab's pre-restore URL (restoredPreviousUrl in the response). The server is NOT restored — " +
+            "anything created or deleted since then is still there; replay the steps with browser_bookmark_verify if you need them. " +
+            "Cookies keep their saved expiry; cookies that have expired since the bookmark are skipped (cookiesSkipped) unless " +
+            "includeExpired=true (then they come back as session cookies, listed in expiredCookiesRestored). " +
+            "Bookmarks caught in safe mode, on non-http pages, or imported from a zip have no restorable state.",
+            Schema(
+                ("id", SStr("Bookmark id (or journal index) — required.")),
+                ("navigate", SBool("Navigate to the bookmark URL after restoring (default true).")),
+                ("includeExpired", SBool("Also restore cookies that have expired since the bookmark, as session cookies (default false)."))
+            ),
+            required: ["id"]),
+
+        Tool("browser_bookmark_verify",
+            "Replay a bookmark's .trw workflow (defaults to safetyMode active when omitted; blocked in --safe). " +
+            "Each run first navigates to the URL where the bookmark's steps started. Replayed steps are not journaled; one " +
+            "bookmark-event row records the verdict. Returns reproducible | flaky | not-reproducible | inconclusive; " +
+            "inconclusive with reason 'precondition-failed' means every run failed before the steps could start (setup or first step), " +
+            "so the starting state was wrong rather than the behavior. runs[].error is {phase, stepIndex, stepType, message}.",
+            Schema(
+                ("id", SStr("Bookmark id (or journal index) — required.")),
+                ("runs", SInt("Repeat count 1–20 (default 1).")),
+                ("clearSession", SBool("Clear session before each run (default false).")),
+                ("fromPrevious", SBool("Before each run, restore the bookmark these steps continue from (startsFrom), so mid-flow steps start in the right state (default false).")),
+                ("safetyMode", SStr("Default active when omitted. Must be active or aggressive to replay."))
+            ),
+            required: ["id"]),
+
+        Tool("browser_bookmark_export",
+            "Export one bookmark as a zip: journal entry, screenshot, verbatim .trw, and state.json with cookie/storage values " +
+            "redacted. .trw and steps may still contain typed passwords — treat the zip as sensitive.",
+            Schema(
+                ("id", SStr("Bookmark id (or journal index) — required.")),
+                ("path", SStr("Output .zip path — required."))
+            ),
+            required: ["id", "path"]),
+
+        Tool("browser_bookmark_import",
+            "Import a bookmark zip made by browser_bookmark_export. Adds the journal entry and its files. The imported bookmark " +
+            "can be viewed and verified, but not restored (its state is redacted). Importing the same zip again returns the existing " +
+            "bookmark with alreadyImported=true; an id that clashes with a live bookmark gets a new id (importedId keeps the original).",
+            Schema(
+                ("path", SStr("Path to the .zip — required."))
+            ),
+            required: ["path"]),
 
         Tool("browser_decide",
             "Ask the human tester to make a call, as 2-6 lettered options they answer with one click in the AI Assistant panel. " +

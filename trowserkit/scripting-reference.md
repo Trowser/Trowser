@@ -108,7 +108,7 @@ The **Quicktests ▾** dropdown in the Script Console toolbar provides ready-mad
 | `PerformanceCheck` | Web Vitals performance check on the current page |
 | `ResponsiveAccessibility` | WCAG AA check across all viewport presets |
 | `TabOrderCheck` | Real Tab + Shift+Tab walk; skipped focusables, traps, reading order, Shift+Tab consistency |
-| `ToggleScreenCurtain` | Toggle blind-testing screen curtain (same as Ctrl+B) |
+| `ToggleScreenCurtain` | Toggle blind-testing screen curtain (same as Ctrl+Shift+B) |
 | `RequestFuzzer` | 500 hunt from the network log: structural JSON faults, naughty strings, Content-Type matrix; injection when `fuzzLevel` is `aggressive` |
 | `2 SecretsHarvest` | Unified secret/credential scan: JS bundles, cookies, storage, network responses, page text, source maps |
 | `1 SecurityScan` | Broad passive security: tech stack, JS CVEs, headers, CORS, XSS, mixed content, cookies, source maps, web storage, HTTP methods, path discovery |
@@ -310,6 +310,8 @@ All automation methods are available as top-level calls (no object prefix needed
 Locator factory methods (also top-level): `ByRole`, `ByLabel`, `ByText`, `ByPlaceholder`, `ByTestId`, `ByFrame`.
 
 Frame / download / drag / emulation / forensics (also top-level): `GetFrames`, `ByFrame`, `Drag`, `WaitForDownload`, `GetDownloads`, `AssertDownload`, `ClearDownloads`, `SetEmulation`, `ClearEmulation`, `ExportHar`, `StartTrace`, `StopTrace`, `GetTrace`, `ExportTrace`, `ClearTrace`.
+
+Bookmarks (also top-level): `CatchBookmark`, `GetBookmarks`, `GetBookmark`, `RestoreBookmark`, `ExportBookmark`, `ImportBookmark`.
 
 Later sections document the same helpers the REST API exposes where a C# method exists: reload and force-navigate, dialogs, file upload, rapid click, screenshots and visual diff, emulation, action trace, resource-leak probes, form attack, Nuclei, and the active security scanners. A few REST routes still have no script method; those are listed under [Security endpoints vs scripting](#security-endpoints-vs-scripting).
 
@@ -933,6 +935,34 @@ REST: `POST /api/security/auth-control-identifier`. MCP: `browser_security_auth_
 | `ScreenshotElementToBytes(selector, padding?, format?, quality?)` | `string selector, int padding = 0, string format = "png", int quality = 80` | `Task<byte[]>` | Element image bytes. |
 | `CompareScreenshots(before, after, threshold?)` | `byte[] before, byte[] after, int threshold = 30` | `Task<ImageComparer.CompareResult>` | Pixel diff. `threshold` is per-channel (0–255); lower is more sensitive. |
 | `Log(message)` / `Log(message, color)` | `string message, string? color` | `void` | Write to the script console. `color` is a hex string such as `"#CCA700"`. |
+
+## Bookmarks
+
+One journal entry per Catch: screenshot, narrated steps since the previous checkpoint, last request (method/status/URL), and a `repro.trw` when steps can be replayed. Same as the nav-bar button and Ctrl+B. REST/MCP: `POST /api/bookmark`, `browser_bookmark` (Core pack also has `browser_bookmark_restore` and `browser_bookmark_verify`).
+
+There is no `VerifyBookmark()` on the script API — call **`POST /api/bookmark-verify`** or MCP `browser_bookmark_verify` (needs **active** safety; blocked in `--safe`). Scripts use **`RestoreBookmark(id)`** only (always navigates to the bookmark URL after restoring storage). For **`navigate: false`** or SPA reload behaviour, use REST/MCP instead.
+
+| Method | Parameters | Returns | Description |
+|--------|------------|---------|-------------|
+| `CatchBookmark(note?)` | `string? note = null` | `Task<BookmarkInfo>` | Bookmark this moment. Also creates a checkpoint. Allowed in safe mode. |
+| `GetBookmarks()` | -- | `List<BookmarkInfo>` | All rows with bookmark evidence, oldest first (includes reclassified bugs if evidence remains). |
+| `GetBookmark(id)` | `string id` | `BookmarkInfo?` | One bookmark by id or journal index. |
+| `RestoreBookmark(id)` | `string id` | `Task<BookmarkRestoreResult>` | Go: restore cookies/storage, navigate to bookmark URL (may reload after storage). Server is not restored. Blocked in safe mode. |
+| `ExportBookmark(id, zipPath)` | `string id, string zipPath` | `ExportResult` | Zip of the journal entry + evidence (`state.json` values redacted; `.trw` and narrated steps verbatim — treat as secret). |
+| `ImportBookmark(zipPath)` | `string zipPath` | `BookmarkInfo` | Import a zip. Verify works via API/MCP; `RestoreBookmark` cannot restore redacted state. |
+
+**`BookmarkInfo` highlights:** `EmptyStepCapture` when there is no replayable slice; `CanVerify` / `CanRestore`; `Steps` (narrated text); journal `fields` use `capturedSteps` for the same data in full journal exports.
+
+```csharp
+var bm = await CatchBookmark("odd total on cart");
+Log($"Bookmarked {bm.Title} as {bm.Id} (#{bm.BookmarkNumber})");
+if (bm.CanRestore)
+{
+    var back = await RestoreBookmark(bm.Id);
+    Log(back.Note); // server is not restored
+}
+// Replay: POST /api/bookmark-verify or browser_bookmark_verify (not a script helper)
+```
 
 **CompareResult:** `DiffImagePng`, `DiffPercent`, `ChangedPixels`, `TotalPixels`, `Width`, `Height`.
 
@@ -3164,7 +3194,7 @@ REST: `GET` / `POST` / `DELETE /api/emulation`.
 
 ## Screen Curtain (Blind Testing)
 
-Cover the web content with a black overlay so the page is invisible — useful for experiencing a site the way a blind user would, relying on a screen reader and keyboard. Toggle with **Ctrl+B** in the GUI (B for blind).
+Cover the web content with a black overlay so the page is invisible — useful for experiencing a site the way a blind user would, relying on a screen reader and keyboard. Toggle with **Ctrl+Shift+B** in the GUI (B for blind).
 
 The overlay blocks mouse interaction with the page but does not remove content from the browser accessibility tree. Keyboard focus and screen reader output continue to work.
 

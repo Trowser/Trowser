@@ -1,5 +1,5 @@
-using System.IO;
 using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
 using Trowser.Api;
 using Trowser.Security.LlmRedTeam;
@@ -385,21 +385,18 @@ public sealed class WorkflowStepExecutor
         JsonElement step, int index, string? stepId, string phase,
         WorkflowExecutionContext ctx, WorkflowDependencies deps)
     {
-        // Minimal REST delegation for navigate/fetch via path+method in .trw compatibility
-        var path = step.GetProperty("path").GetString()!.Trim().ToLowerInvariant();
+        var path = step.GetProperty("path").GetString()!.Trim();
         var method = step.GetProperty("method").GetString()!.Trim().ToUpperInvariant();
+        JsonElement? bodyEl = step.TryGetProperty("body", out var body) && body.ValueKind == JsonValueKind.Object
+            ? WorkflowVarSubstitution.SubstituteElement(body, ctx.Vars)
+            : null;
 
-        if (path is "/api/navigate" && method == "POST" && step.TryGetProperty("body", out var navBody))
-        {
-            var url = navBody.TryGetProperty("url", out var u) ? WorkflowVarSubstitution.Substitute(u.GetString(), ctx.Vars) : null;
-            if (!string.IsNullOrWhiteSpace(url))
-            {
-                await deps.Context.Navigate(url);
-                return Ok(index, stepId, phase, "rest", new { path, url });
-            }
-        }
+        var error = await RestApiReplayer.TryReplayAsync(deps.Context, method, path, bodyEl, deps.Cancellation);
+        if (error != null)
+            return Fail(index, stepId, phase, "rest", error);
 
-        return Fail(index, stepId, phase, "rest", $"Unsupported REST workflow step: {method} {path}");
+
+        return Ok(index, stepId, phase, "rest", new { method, path = path.ToLowerInvariant() });
     }
 
     private static Dictionary<string, object?> ExecuteMock(

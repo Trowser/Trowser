@@ -81,6 +81,8 @@ public partial class TrowserApiServer : IDisposable
     /// causing queued <c>POST /mcp</c> <c>tools/call</c> to see an empty body and return HTTP 202.
     /// </summary>
     private readonly AsyncLocal<string?> _preReadBody = new();
+    /// <summary>Journal row of the current request's action (-1 when not journaled), so handlers can amend it.</summary>
+    private readonly AsyncLocal<int?> _journalActionIndex = new();
 
     /// <summary>When set, <see cref="ReadJsonBody"/> uses this instead of the real request body (scenario sub-steps).</summary>
     private string? _scenarioBodyOverride;
@@ -275,10 +277,12 @@ public partial class TrowserApiServer : IDisposable
             "/api/sse/messages" or
             "/api/pointers" or
             "/api/checkpoints" or
+            "/api/bookmarks" or
             "/api/websocket/messages")
         || (method == "GET" && IsNetworkEntryByIdPath(path))
         || (method == "GET" && path.StartsWith("/api/pointer/", StringComparison.OrdinalIgnoreCase))
         || (method == "GET" && path.StartsWith("/api/checkpoint/", StringComparison.OrdinalIgnoreCase))
+        || (method == "GET" && path.StartsWith("/api/bookmark/", StringComparison.OrdinalIgnoreCase))
         || (method == "GET" && path.StartsWith("/api/orchestrate/runs/", StringComparison.OrdinalIgnoreCase))
         || (method == "POST" && path == "/api/security/chain-analyze")
         || (method == "POST" && path == "/api/security/osv-check")
@@ -297,6 +301,12 @@ public partial class TrowserApiServer : IDisposable
         method == "GET"
         || path is "/api/journal" or "/api/journal/export" or "/api/session-memory" or "/api/message" or "/mcp"
         || path is "/api/test-scenario"
+        || path is "/api/bookmark" or "/api/bookmark-export" or "/api/bookmark-import"  // the bookmark entry is the record
+        || path is "/api/bookmark-restore" or "/api/bookmark-verify"
+        || path is "/api/repro/verify" or "/api/repro/capture"
+        || path is "/api/cookies/clear" or "/api/cookies/delete"
+        || path is "/api/storage/set" or "/api/storage/clear" or "/api/storage/delete"
+        || path is "/api/clear-session" or "/api/clear_session"
         || path is "/api/assert/reset" or "/api/console/clear" or "/api/network/clear"
             or "/api/mock/clear" or "/api/intercept/clear"
         || path.StartsWith("/api/assert/")  // assertions are logged separately via LogApiAssert
@@ -310,23 +320,132 @@ public partial class TrowserApiServer : IDisposable
     /// Log an API action at the point of receiving the request, extracting key params from the raw body.
     /// This provides a one-line summary of every meaningful API call for the journal narrative.
     /// </summary>
-    private void LogApiActionFromBody(string method, string path, string? rawBody)
+    private int LogApiActionFromBody(string method, string path, string? rawBody, int tabId)
     {
-        if (_sessionLogger == null || ShouldSkipJournalLog(path, method)) return;
+        if (_sessionLogger == null || ShouldSkipJournalLog(path, method)) return -1;
 
         string? details = null;
+        Dictionary<string, string>? extraFields = null;
         if (!string.IsNullOrWhiteSpace(rawBody))
         {
             try
             {
                 using var doc = JsonDocument.Parse(rawBody);
                 details = ExtractApiSummary(path, doc.RootElement);
+                var refSelectors = ResolveRefSelectorsForJournal(doc.RootElement, tabId);
+                if (refSelectors != null)
+                    extraFields = new(StringComparer.OrdinalIgnoreCase)
+                    {
+                        [Repro.ReproCaptureService.RefSelectorsField] = JsonSerializer.Serialize(refSelectors)
+                    };
             }
             catch { /* non-JSON body — log without details */ }
         }
 
-        try { _sessionLogger.LogApiAction(method, path, details, rawBody: rawBody); }
-        catch (Exception ex) { TrowserLog.Warn($"Journal API log failed: {ex.Message}"); }
+        string? pageUrl = null;
+        try
+        {
+            var tab = _context.ActiveTab;
+            pageUrl = AgentUrlPolicy.ResolveLogicalPageUrl(tab.Url, tab.DisplayUrlOverride);
+        }
+        catch { /* no tab */ }
+
+        try { return _sessionLogger.LogApiAction(method, path, details, rawBody: rawBody, tabId: tabId, pageUrl: pageUrl, extraFields: extraFields); }
+        catch (Exception ex)
+        {
+            TrowserLog.Warn($"Journal API log failed: {ex.Message}");
+            return -1;
+        }
+    }
+
+    /// <summary>
+    /// Refs (<c>ref</c> at the root or in <c>actions[]</c>) resolved to the selectors they point at right now.
+    /// Refs only mean something on the page that produced them, so replay (bookmark .trw) uses these selectors.
+    /// </summary>
+    private Dictionary<string, string>? ResolveRefSelectorsForJournal(JsonElement root, int tabId)
+    {
+        if (root.ValueKind != JsonValueKind.Object) return null;
+        var refs = new List<(int Ref, string? Frame)>();
+        void Collect(JsonElement obj)
+        {
+            if (obj.ValueKind == JsonValueKind.Object && obj.TryGetProperty("ref", out var r))
+            {
+                int? n = r.ValueKind switch
+                {
+                    JsonValueKind.Number when r.TryGetInt32(out var i) => i,
+                    JsonValueKind.String when int.TryParse(r.GetString(), out var i) => i,
+                    _ => null
+                };
+                var frame = obj.TryGetProperty("frame", out var f) && f.ValueKind == JsonValueKind.String ? f.GetString() : null;
+                if (n != null) refs.Add((n.Value, frame));
+            }
+        }
+        Collect(root);
+        if (root.TryGetProperty("actions", out var actions) && actions.ValueKind == JsonValueKind.Array)
+            foreach (var a in actions.EnumerateArray()) Collect(a);
+        if (refs.Count == 0) return null;
+
+        BrowserTab? tab;
+        try { tab = (tabId > 0 ? _context.GetTabById(tabId) : null) ?? _context.ActiveTab; }
+        catch { return null; }
+        if (tab == null) return null;
+
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (refIndex, explicitFrame) in refs)
+        {
+            var key = refIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (map.ContainsKey(key)) continue;
+            var selector = tab.GetSelectorByRef(refIndex);
+            if (string.IsNullOrWhiteSpace(selector)) continue;
+            // An explicit "frame" stays in the step body and is applied again on replay.
+            map[key] = string.IsNullOrWhiteSpace(explicitFrame)
+                ? AutomationContext.ApplyFrame(selector, tab.GetFrameIdByRef(refIndex))
+                : selector;
+        }
+        return map.Count > 0 ? map : null;
+    }
+
+    /// <summary>
+    /// Browser tab id for journal <c>action</c> rows: explicit <c>tabIndex</c>/<c>urlMatch</c> when provided,
+    /// otherwise the active tab after agent-tab selection.
+    /// </summary>
+    private int ResolveJournalTabId(HttpListenerRequest request, string? rawBody)
+    {
+        try
+        {
+            int? tabIndex = null;
+            var qs = request.QueryString;
+            if (int.TryParse(qs["tabIndex"], out var qti))
+                tabIndex = _context.ResolveTabTarget(qti, null);
+            else if (!string.IsNullOrWhiteSpace(qs["urlMatch"]))
+                tabIndex = _context.ResolveTabTarget(null, qs["urlMatch"]);
+
+            if (tabIndex == null && !string.IsNullOrWhiteSpace(rawBody))
+            {
+                using var doc = JsonDocument.Parse(rawBody);
+                var root = doc.RootElement;
+                if (root.ValueKind == JsonValueKind.Object)
+                {
+                    if (root.TryGetProperty("tabIndex", out var tiEl) && tiEl.TryGetInt32(out var bodyTi))
+                        tabIndex = _context.ResolveTabTarget(bodyTi, null);
+                    else if (root.TryGetProperty("urlMatch", out var um) && um.ValueKind == JsonValueKind.String)
+                    {
+                        var match = um.GetString();
+                        if (!string.IsNullOrWhiteSpace(match))
+                            tabIndex = _context.ResolveTabTarget(null, match);
+                    }
+                }
+            }
+
+            if (tabIndex is int idx)
+                return _context.Tabs[idx].Id;
+        }
+        catch
+        {
+            // fall through to active tab
+        }
+
+        return _context.ActiveTab?.Id ?? 0;
     }
 
     /// <summary>Extract a concise human-readable summary from the request body for journal logging.</summary>
@@ -840,13 +959,30 @@ public partial class TrowserApiServer : IDisposable
         var clickCount = body.GetInt("clickCount", 1);
         if (clickCount < 1) clickCount = 1;
 
+        var waitAfter = body.GetInt("waitAfterMs", body.GetInt("waitMs", 150));
+        waitAfter = Math.Clamp(waitAfter, 0, 30_000);
+        var waitNav = body.GetBool("waitForNavigation", false);
+
         var before = await _context.CapturePageState();
         await _context.Click(selector, button, clickCount, timeout > 0 ? timeout : null);
-        await Task.Delay(150);
+        if (waitNav)
+            await _context.WaitForFinalNavigation(400, Math.Min(timeout > 0 ? timeout : 5000, 30_000));
+        else if (waitAfter > 0)
+            await Task.Delay(waitAfter);
         var after = await _context.CapturePageState();
         var changes = AutomationContext.DiffPageState(before, after);
+        var urlChanged = !AutomationContext.UrlEquivalentForNavigate(before.Url, after.Url);
 
-        await WriteSuccess(response, new { clicked = selector, button, clickCount, staleRefWarning = staleWarning, changes });
+        await WriteSuccess(response, new
+        {
+            clicked = selector,
+            button,
+            clickCount,
+            staleRefWarning = staleWarning,
+            url = after.Url,
+            urlChanged,
+            changes
+        });
     }
 
     private async Task HandlePostClickAt(HttpListenerRequest request, HttpListenerResponse response)

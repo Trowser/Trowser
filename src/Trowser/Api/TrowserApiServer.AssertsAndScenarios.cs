@@ -65,7 +65,15 @@ public partial class TrowserApiServer
         var navCount = await _context.WaitForFinalNavigation(quietPeriod, timeout);
         var url = await _context.GetCurrentUrl();
         var title = await _context.GetTitle();
-        await WriteSuccess(response, new { navigations = navCount, url, title, quietPeriodMs = quietPeriod, timeoutMs = timeout });
+        await WriteSuccess(response, new
+        {
+            navigations = navCount,
+            idle = navCount == 0,
+            url,
+            title,
+            quietPeriodMs = quietPeriod,
+            timeoutMs = timeout
+        });
     }
 
     private async Task HandlePostAssertPageContains(HttpListenerRequest request, HttpListenerResponse response)
@@ -1014,7 +1022,17 @@ public partial class TrowserApiServer
             }
         }
 
-        await WriteSuccess(response, new { count = results.Count, results });
+        // success:true means the batch ran; allSucceeded says whether every step did.
+        var succeeded = results.Count(r =>
+            JsonSerializer.SerializeToElement(r).TryGetProperty("success", out var s) && s.ValueKind == JsonValueKind.True);
+        await WriteSuccess(response, new
+        {
+            count = results.Count,
+            succeeded,
+            failed = results.Count - succeeded,
+            allSucceeded = succeeded == results.Count,
+            results
+        });
     }
 
     private async Task<object> ExecuteBatchClick(JsonBody body)

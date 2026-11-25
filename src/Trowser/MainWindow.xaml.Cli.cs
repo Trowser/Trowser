@@ -163,10 +163,11 @@ public partial class MainWindow
         if (_mirrorController is { IsActive: true })
             _mirrorController.EnqueueNavigation(url);
 
-        if (_sessionLogger.IsLogging)
+        if (_sessionLogger.Settings.LogBrowserActions)
         {
+            var tabId = _automationContext?.ActiveTab?.Id ?? 0;
             _sessionLogger.LogBrowserAction("POST", "/api/navigate",
-                $"{{\"url\": \"{url.Replace("\"", "\\\"")}\"}}", null);
+                $"{{\"url\": \"{url.Replace("\"", "\\\"")}\"}}", null, tabId);
         }
 
         _urlCompletion.Record(url);
@@ -273,8 +274,8 @@ public partial class MainWindow
         if (ActiveWebView?.CanGoBack == true)
         {
             ActiveWebView.GoBack();
-            if (_sessionLogger.IsLogging)
-                _sessionLogger.LogBrowserAction("POST", "/api/go-back", null, null);
+            if (_sessionLogger.Settings.LogBrowserActions)
+                _sessionLogger.LogBrowserAction("POST", "/api/go-back", null, null, _automationContext?.ActiveTab?.Id ?? 0);
         }
     }
 
@@ -283,16 +284,16 @@ public partial class MainWindow
         if (ActiveWebView?.CanGoForward == true)
         {
             ActiveWebView.GoForward();
-            if (_sessionLogger.IsLogging)
-                _sessionLogger.LogBrowserAction("POST", "/api/go-forward", null, null);
+            if (_sessionLogger.Settings.LogBrowserActions)
+                _sessionLogger.LogBrowserAction("POST", "/api/go-forward", null, null, _automationContext?.ActiveTab?.Id ?? 0);
         }
     }
 
     private void RefreshButton_Click(object sender, RoutedEventArgs e)
     {
         if (_isWebViewReady) ActiveWebView?.Reload();
-        if (_sessionLogger.IsLogging)
-            _sessionLogger.LogBrowserAction("POST", "/api/navigate", "{\"action\": \"reload\"}", null);
+        if (_sessionLogger.Settings.LogBrowserActions)
+            _sessionLogger.LogBrowserAction("POST", "/api/navigate", "{\"action\": \"reload\"}", null, _automationContext?.ActiveTab?.Id ?? 0);
     }
 
     private void StopButton_Click(object sender, RoutedEventArgs e)
@@ -439,8 +440,15 @@ public partial class MainWindow
             e.Handled = true;
         }
 
-        // Ctrl+B: Toggle screen curtain (blind testing mode)
+        // Ctrl+B: Bookmark this moment
         if (e.Key == Key.B && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            _ = CatchBookmarkFromUiAsync();
+            e.Handled = true;
+        }
+
+        // Ctrl+Shift+B: Toggle screen curtain (blind testing mode)
+        if (e.Key == Key.B && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
         {
             _ = ToggleScreenCurtainFromUiAsync();
             e.Handled = true;

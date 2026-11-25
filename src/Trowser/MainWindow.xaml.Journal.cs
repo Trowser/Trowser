@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using Trowser.Api;
 using Trowser.Pointers;
 using Trowser.Recording;
 using Trowser.Scripting;
@@ -194,9 +195,10 @@ public partial class MainWindow
                 if (!int.TryParse(idPart, out var index)) return;
                 var entry = _sessionLogger.GetEntry(index);
                 if (entry == null) return;
-                var preview = string.IsNullOrWhiteSpace(entry.Summary) ? $"#{index}" : Truncate(entry.Summary, 80);
+                var kind = entry.Kind ?? entry.Type ?? "entry";
+                var preview = string.IsNullOrWhiteSpace(entry.Summary) ? "(no title)" : Truncate(entry.Summary, 80);
                 var result = MessageBox.Show(
-                    $"Delete journal entry #{index}?\n\n{preview}",
+                    $"Delete this {kind}?\n\n{preview}\n\nJournal index: {index}",
                     "Delete journal entry",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question);
@@ -210,6 +212,33 @@ public partial class MainWindow
                 var idPart = uri["trowser://show/".Length..].TrimEnd('/');
                 if (!int.TryParse(idPart, out var index)) return;
                 await ShowJournalEntryAsync(index);
+                return;
+            }
+
+            if (TryParseJournalIndex(uri, "trowser://verify/", out var verifyIndex))
+            {
+                var entry = _sessionLogger.GetEntry(verifyIndex);
+                if (entry != null) await VerifyBookmarkAsync(entry);
+                return;
+            }
+
+            if (TryParseJournalIndex(uri, "trowser://go/", out var goIndex))
+            {
+                var entry = _sessionLogger.GetEntry(goIndex);
+                if (entry != null) await GoToBookmarkAsync(entry);
+                return;
+            }
+
+            if (TryParseJournalIndex(uri, "trowser://bookmark-export/", out var exportIndex))
+            {
+                var entry = _sessionLogger.GetEntry(exportIndex);
+                if (entry != null) ExportBookmark(entry);
+                return;
+            }
+
+            if (uri.Equals("trowser://bookmark-import", StringComparison.OrdinalIgnoreCase))
+            {
+                ImportBookmark();
                 return;
             }
 
@@ -260,6 +289,12 @@ public partial class MainWindow
         if (entry == null)
         {
             StatusText.Text = $"Journal entry #{index} is gone.";
+            return;
+        }
+
+        if (Bookmarks.BookmarkInfo.HasBookmarkEvidence(entry))
+        {
+            await ShowBookmarkEvidenceAsync(entry);
             return;
         }
 
@@ -383,6 +418,13 @@ public partial class MainWindow
             _playRunStatusText = null;
             SetPlayRunUiIdle();
         }
+    }
+
+    private static bool TryParseJournalIndex(string uri, string prefix, out int index)
+    {
+        index = -1;
+        if (!uri.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return false;
+        return int.TryParse(uri[prefix.Length..].TrimEnd('/'), out index);
     }
 
     private void CopyJournalEntry(int index)
@@ -552,11 +594,17 @@ public partial class MainWindow
     }
 
     /// <summary>Record a navigation narration line.</summary>
-    private void RecordNavigationNarration(string url)
+    private void RecordNavigationNarration(Automation.BrowserTab tab, string url)
     {
-        if (string.IsNullOrWhiteSpace(url) || url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        if (AgentUrlPolicy.ShouldSkipJournalNavigation(url))
             return;
-        AppendNarration(ActionNarrator.DescribeNavigation(url));
+        var line = ActionNarrator.DescribeNavigation(url);
+        AppendNarration(line);
+        if (_sessionLogger.Settings.LogBrowserActions)
+        {
+            var body = JsonSerializer.Serialize(new { url });
+            _sessionLogger.LogBrowserAction("POST", "/api/navigate", body, line, tab.Id, pageUrl: url);
+        }
     }
 
     private void AppendNarration(string? line)

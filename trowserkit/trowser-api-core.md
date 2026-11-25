@@ -77,6 +77,7 @@ Every action that targets an element accepts **one** of these:
 4. Re-read `GET /api/state` (or `POST /api/diff-state`) to see what changed.
 5. Check `GET /api/console` and `GET /api/network?errors=true` for failures the page did not show.
 6. Assert (`/api/assert/*`) and record findings (`POST /api/journal`).
+7. At notable moments, **Catch** a bookmark (`POST /api/bookmark`, MCP `browser_bookmark`, or Ctrl+B) — screenshot, narrated steps, last request, optional replay `.trw`.
 
 ---
 
@@ -332,6 +333,27 @@ All run on the current page and need no body unless noted.
 
 ---
 
+## Bookmarks
+
+A **bookmark** is a journal row (`type: "bookmark"`) that freezes a moment: screenshot, narrated steps since the previous checkpoint, the last meaningful request (method/status/URL only), and a `repro.trw` when Verify can replay those steps. Catch also creates a checkpoint so the next bookmark's step slice starts there. Same as the nav-bar button and **Ctrl+B**.
+
+| Action | REST | MCP (`?mode=core`) | Safe mode |
+|--------|------|-------------------|-----------|
+| Catch | `POST /api/bookmark` `{ "note" }` | `browser_bookmark` | Allowed |
+| List / get | `GET /api/bookmarks`, `GET /api/bookmark/{id}` | `browser_bookmark` `action=list|get` | Gate-free |
+| Go (restore cookies/storage) | `POST /api/bookmark-restore` `{ "id", "navigate": true }` | `browser_bookmark_restore` | **403** |
+| Verify (replay `.trw`) | `POST /api/bookmark-verify` `{ "id", "runs", "clearSession" }` | `browser_bookmark_verify` | **403** |
+
+List APIs include any journal row that still has bookmark evidence (even after `PATCH` reclassifies it to `bug` / `observation`). `GET /api/journal?type=bookmark` matches **`type`** only — reclassified rows drop out of that filter but remain in `GET /api/bookmarks`.
+
+**Go** restores cookies, `localStorage`, and `sessionStorage` only; the server is unchanged. After storage writes, the page may **reload** (SPAs re-read storage). `navigate: false` keeps the tab on the pre-restore URL (`restoredPreviousUrl`). **Verify** defaults `safetyMode` to **`active`** when omitted; replayed steps are logged as normal API actions.
+
+Responses use the usual `data.*` envelope (`data.bookmarks`, `data.count`, etc.). Narrated steps and replay workflows can contain **typed passwords** — treat bookmark folders and API payloads as sensitive. Export/import zips are in the full REST reference and **security/full** MCP pack only (`browser_bookmark_export` / `browser_bookmark_import`).
+
+Full field list and journal `PATCH` rules: [Bookmarks in trowser-api-reference.md](trowser-api-reference.md#bookmarks).
+
+---
+
 ## Journal (findings and notes)
 
 The journal is the session timeline: your actions and assertions are logged automatically; add notes and bugs yourself. All journal routes are gate-free.
@@ -356,7 +378,7 @@ The journal is the session timeline: your actions and assertions are logged auto
   "priority": "high", "evidence": "observed", "tags": ["search"] }
 ```
 
-- `GET /api/journal` — `since=<index>` (incremental), `last=N`, `type=bug`, `tag=`, `q=` (search), `view=index|full`. Response has `entries[]`, `total`, `revision`, `deleted[]`.
+- `GET /api/journal` — `since=<index>` (incremental), `last=N`, `type=action|note|bug|bookmark|…`, `tag=`, `q=` (search), `view=index|full`. Response has `entries[]`, `total`, `revision`, `deleted[]`. Bookmark rows store narrated steps in `fields.capturedSteps` (not bug `steps`); `DELETE` removes the journal row and deletes the evidence folder on disk.
 - `PATCH /api/journal` — `index` plus fields to change. `DELETE /api/journal?index=N`.
 - `GET /api/journal/export?format=html|markdown|json` — the report; optional `path` writes it to disk.
 
@@ -380,4 +402,4 @@ The journal is the session timeline: your actions and assertions are logged auto
 
 ## Everything else (see trowser-api-reference.md)
 
-The full reference **[trowser-api-reference.md](trowser-api-reference.md)** also covers: network mocking and request interception (fault injection, breakpoints, replay), cookie writes, load testing, raw HTTP (`/api/fetch-raw`), batch scenarios (`/api/test-scenario`, `.trw` files), pointers and checkpoints, robustness testing (monkey test, fuzzing, interrupter), Web MCP page tools, client TLS certificates, and multi-instance peer and identity testing for authorization checks. It also documents more than 100 security scanners and probes (injection, XSS, SSRF, CSRF, IDOR/BOLA, JWT, OAuth/SAML, cache, smuggling, WebSocket, LLM red-teaming) and the OWASP-style orchestration playbooks, all of which take an explicit `safetyMode`. The method for using them is in `SecurityTestingWithTrowser.md`. For a one-line list of every endpoint and MCP tool, see [trowser-api-index.md](trowser-api-index.md).
+The full reference **[trowser-api-reference.md](trowser-api-reference.md)** also covers: bookmark export/import zips, network mocking and request interception (fault injection, breakpoints, replay), cookie writes, load testing, raw HTTP (`/api/fetch-raw`), batch scenarios (`/api/test-scenario`, `.trw` files), pointers and checkpoints, robustness testing (monkey test, fuzzing, interrupter), Web MCP page tools, client TLS certificates, and multi-instance peer and identity testing for authorization checks. It also documents more than 100 security scanners and probes (injection, XSS, SSRF, CSRF, IDOR/BOLA, JWT, OAuth/SAML, cache, smuggling, WebSocket, LLM red-teaming) and the OWASP-style orchestration playbooks, all of which take an explicit `safetyMode`. The method for using them is in `SecurityTestingWithTrowser.md`. For a one-line list of every endpoint and MCP tool, see [trowser-api-index.md](trowser-api-index.md).

@@ -3,7 +3,7 @@
 Quick-scan table of contents for all Trowser REST endpoints and MCP tools.
 No arguments — just method, path, and one-line purpose.
 
-> **Auto-generated** from `TrowserApiServer*.cs` and `McpHandler.ToolDefinitions.cs` on 2026-11-15.
+> **Auto-generated** from `TrowserApiServer*.cs` and `McpHandler.ToolDefinitions.cs` on 2026-11-25.
 > Do not edit by hand — run `scripts/generate-api-index.ps1` after API changes.
 > Full details: [trowser-api-reference.md](trowser-api-reference.md) · Doc map: [DOCUMENTATION.md](../DOCUMENTATION.md)
 
@@ -184,7 +184,7 @@ No arguments — just method, path, and one-line purpose.
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | GET | `/api/screen-curtain` | Get screen curtain state: { "enabled": true/false } — black overlay hiding page visuals for blind/screen-reader testing |
-| POST | `/api/screen-curtain` | Set or toggle screen curtain: { "enabled": true/false } or { "toggle": true }. Same as Ctrl+B in the GUI. |
+| POST | `/api/screen-curtain` | Set or toggle screen curtain: { "enabled": true/false } or { "toggle": true }. Same as Ctrl+Shift+B in the GUI. |
 | GET | `/api/viewport` | Get current viewport size and available presets |
 | POST | `/api/viewport` | Set viewport: { "width": 390, "height": 844 } or { "preset": "SmallPhone" }. |
 
@@ -517,6 +517,13 @@ No arguments — just method, path, and one-line purpose.
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
 | POST | `/api/attack-form` | Adaptive form attack ('Attack this form'): inspects the live page to discover the editable fields wired to a form/submit… |
+| POST | `/api/bookmark` | Bookmark this moment (Catch): one journal entry with a screenshot, the narrated steps since the previous checkpoint, the… |
+| POST | `/api/bookmark-export` | Export one bookmark as a zip (journal entry + screenshot, .trw, redacted state): { "id", "path": "file.zip" }. |
+| POST | `/api/bookmark-import` | Import a bookmark zip: { "path": "file.zip" }. Imported bookmarks keep Verify but never offer Go (state is redacted). |
+| POST | `/api/bookmark-restore` | Go: restore a bookmark's cookies, localStorage, and sessionStorage; optionally navigate to its URL (default). |
+| POST | `/api/bookmark-verify` | Replay a bookmark's .trw: { "id", "runs": 1, "clearSession": false }. |
+| GET | `/api/bookmark/{id}` | Get one bookmark by id (or journal index): steps, last request, evidence paths, canVerify, canRestore. |
+| GET | `/api/bookmarks` | List bookmarks, oldest first: any journal row that still has bookmark evidence (including reclassified bug/observation rows). |
 | POST | `/api/click-at` | CDP click at viewport x/y (CSS px); hits painted targets including cross-origin iframes |
 | POST | `/api/console/clear` | Clear console log |
 | GET | `/api/coverage` | Reflective coverage lens derived from the journal: pages visited, interactive elements exercised, and which quality characteristics have been touched. |
@@ -610,6 +617,11 @@ No arguments — just method, path, and one-line purpose.
 | `browser_authz_probe` | POST /api/authz/probe | Batch authorization boundary scanner. |
 | `browser_authz_role_matrix` | POST /api/authz/role-matrix | Authorization role matrix: fetches endpoints as each captured identity and classifies access (allowed/denied/error). |
 | `browser_authz_shadow` | POST /api/authz/shadow | Control the Live Authz Shadow: watches normal browsing and replays authz-relevant requests through registered peers. |
+| `browser_bookmark` | POST /api/bookmark | Bookmark this moment so a human (or you, later) can see exactly what the page looked like and how you got there. |
+| `browser_bookmark_export` | POST /api/bookmark-export | Export one bookmark as a zip: journal entry, screenshot, verbatim .trw, and state.json with cookie/storage values |
+| `browser_bookmark_import` | POST /api/bookmark-import | Import a bookmark zip made by browser_bookmark_export. Adds the journal entry and its files. The imported bookmark |
+| `browser_bookmark_restore` | POST /api/bookmark-restore | Go back to a bookmark: restore the cookies, localStorage, and sessionStorage saved when it was caught. By default |
+| `browser_bookmark_verify` | POST /api/bookmark-verify | Replay a bookmark's .trw workflow (defaults to safetyMode active when omitted; blocked in --safe). |
 | `browser_check_links` | POST /api/check-links | Check all links on the current page for broken URLs, redirects, and errors. |
 | `browser_checkpoint` | POST /api/checkpoint | Mark a sync point in the session. A checkpoint bounds 'what has happened since we last synced' — it records the |
 | `browser_clear_all` | POST /api/clear-all | Reset all test session state in one call. Clears: console log, network log, cookies, |

@@ -867,15 +867,15 @@ public partial class MainWindow
             _ = InjectRecordingScriptAsync(tab);
         }
         else if (e.IsSuccess && IsActiveTab(tab) &&
-                 (_sessionLogger.IsLogging || _mirrorController is { IsActive: true }))
+                 (_sessionLogger.Settings.LogBrowserActions || _mirrorController is { IsActive: true }))
         {
-            // Session logging and Mirror Mode need the recording JS injected to capture browser actions
+            // Journal action capture (bookmarks, repro) — independent of writing a session log file.
             _ = InjectRecordingScriptAsync(tab);
         }
 
-        // Human-readable navigation narration (feeds "Add to bug" repro steps).
-        if (e.IsSuccess && IsActiveTab(tab) && (_recorder.IsRecording || _sessionLogger.IsLogging))
-            RecordNavigationNarration(tab.WebView.CoreWebView2?.Source ?? "");
+        // Human-readable navigation narration and journal action rows (bookmarks, repro).
+        if (e.IsSuccess && IsActiveTab(tab) && (_recorder.IsRecording || _sessionLogger.Settings.LogBrowserActions))
+            RecordNavigationNarration(tab, tab.WebView.CoreWebView2?.Source ?? "");
 
         if (e.IsSuccess)
         {

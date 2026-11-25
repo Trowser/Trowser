@@ -544,6 +544,8 @@ public partial class AutomationContext
             // Standard input/textarea path: use native value setter to bypass
             // framework interceptors (React, Vue, Angular use Object.defineProperty
             // on the element instance to track value changes).
+            if (!(el instanceof HTMLInputElement) && !(el instanceof HTMLTextAreaElement))
+                return 'ERROR:Element is not an input or textarea: ' + (el.tagName || typeof el);
             var proto = el instanceof HTMLTextAreaElement
                 ? HTMLTextAreaElement.prototype
                 : HTMLInputElement.prototype;
@@ -1814,35 +1816,31 @@ public partial class AutomationContext
         Log($"Element screenshot saved to: {filePath}");
     }
 
-    /// <summary>Capture a screenshot and return the PNG bytes directly.</summary>
-    public async Task<byte[]> ScreenshotToBytes()
-    {
-        var webView = ActiveTab.WebView;
-        return await await webView.Dispatcher.InvokeAsync(async () =>
-        {
-            using var ms = new MemoryStream();
-            await webView.CoreWebView2.CapturePreviewAsync(
-                CoreWebView2CapturePreviewImageFormat.Png, ms);
-            return ms.ToArray();
-        });
-    }
+    /// <summary>
+    /// Capture a screenshot and return the PNG bytes. Uses CDP rather than
+    /// <c>CapturePreviewAsync</c>, which can hang forever when the window is Hidden
+    /// (<c>--serve</c> / headless CLI).
+    /// </summary>
+    public Task<byte[]> ScreenshotToBytes() => ScreenshotToBytes("png");
 
     /// <summary>Capture a screenshot with specified format. JPEG quality 1-100.</summary>
     public async Task<byte[]> ScreenshotToBytes(string format, int quality = 80)
     {
-        if (format != "jpeg")
-            return await ScreenshotToBytes();
-
+        var fmt = string.Equals(format, "jpeg", StringComparison.OrdinalIgnoreCase) ? "jpeg" : "png";
         var webView = ActiveTab.WebView;
-        return await await webView.Dispatcher.InvokeAsync(async () =>
+        var cdpTask = await webView.Dispatcher.InvokeAsync(async () =>
         {
-            var cdpParams = JsonSerializer.Serialize(new { format = "jpeg", quality });
+            object cdpParams = fmt == "jpeg"
+                ? new { format = "jpeg", quality }
+                : new { format = "png" };
             var result = await webView.CoreWebView2.CallDevToolsProtocolMethodAsync(
-                "Page.captureScreenshot", cdpParams);
+                "Page.captureScreenshot", JsonSerializer.Serialize(cdpParams));
             using var doc = JsonDocument.Parse(result);
             var base64 = doc.RootElement.GetProperty("data").GetString();
             return Convert.FromBase64String(base64!);
         });
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        return await cdpTask.WaitAsync(cts.Token);
     }
 
     /// <summary>Capture an element screenshot and return bytes with format/quality control.</summary>
@@ -2654,7 +2652,7 @@ public partial class AutomationContext
         var webView = ActiveTab.WebView;
         var navCount = 0;
         var lastNavTime = DateTime.UtcNow;
-        var tcs = new TaskCompletionSource<bool>();
+        var startedAt = DateTime.UtcNow;
 
         void handler(object? s, CoreWebView2NavigationCompletedEventArgs e)
         {
@@ -2678,6 +2676,10 @@ public partial class AutomationContext
 
                 var elapsed = (DateTime.UtcNow - lastNavTime).TotalMilliseconds;
                 if (navCount > 0 && elapsed >= quietPeriodMs)
+                    break;
+
+                // No navigation in flight — return after one quiet period instead of the full timeout.
+                if (navCount == 0 && (DateTime.UtcNow - startedAt).TotalMilliseconds >= quietPeriodMs)
                     break;
             }
         }

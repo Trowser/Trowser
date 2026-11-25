@@ -272,19 +272,26 @@ public static class JournalProjection
 
     public static object ProjectEntry(SessionLogger.JournalEntry e)
     {
-        object? fieldsForResponse = e.Fields;
-        if (e.Fields != null && e.StepsIsArray && e.Fields.TryGetValue("steps", out var stepsStr))
+        object? fieldsForResponse = null;
+        if (e.Fields != null)
         {
             var dict = new Dictionary<string, object>(e.Fields.Count, StringComparer.OrdinalIgnoreCase);
             foreach (var (k, v) in e.Fields)
             {
-                if (k.Equals("steps", StringComparison.OrdinalIgnoreCase))
-                    dict[k] = stepsStr.Split('\n');
+                if (e.StepsIsArray && k.Equals("steps", StringComparison.OrdinalIgnoreCase))
+                    dict[k] = v.Split('\n');
                 else
                     dict[k] = v;
             }
+
+            if (dict.TryGetValue(Trowser.Bookmarks.BookmarkFields.RequestUrl, out var reqObj)
+                && reqObj is string reqUrl)
+                dict[Trowser.Bookmarks.BookmarkFields.RequestUrl] =
+                    Trowser.Api.AgentUrlPolicy.ForAgent(reqUrl) ?? reqUrl;
             fieldsForResponse = dict;
         }
+
+        var url = Trowser.Api.AgentUrlPolicy.ForAgent(e.Url);
 
         return new
         {
@@ -300,7 +307,7 @@ public static class JournalProjection
             evidence = e.Evidence,
             fields = fieldsForResponse,
             tags = e.Tags,
-            url = e.Url
+            url
         };
     }
 
@@ -317,11 +324,15 @@ public static class JournalProjection
             kind = e.Kind ?? e.Type,
             evidence = e.Evidence,
             rank,
-            summary = e.Summary,
+            summary = IndexSummary(e),
             tags = e.Tags,
             origin = SessionLogger.GetOrigin(e.Source)
         };
     }
+
+    /// <summary>Bookmark rows show <c>#N title — note</c>; the page title alone rarely tells bookmarks apart.</summary>
+    private static string IndexSummary(SessionLogger.JournalEntry e) =>
+        Bookmarks.BookmarkInfo.HasBookmarkEvidence(e) ? Bookmarks.BookmarkInfo.IndexSummary(e) : e.Summary;
 
     public static string FormatIndexLine(SessionLogger.JournalEntry e)
     {
@@ -330,7 +341,7 @@ public static class JournalProjection
             rank = pri;
         var rankPart = string.IsNullOrEmpty(rank) ? "" : $" [{rank}]";
         var tagsPart = e.Tags != null && e.Tags.Count > 0 ? $" tags={string.Join(",", e.Tags)}" : "";
-        return $"[{e.Index}] {e.Timestamp:HH:mm:ss} {e.Kind ?? e.Type}/{e.Evidence}{rankPart}{tagsPart}: {e.Summary}";
+        return $"[{e.Index}] {e.Timestamp:HH:mm:ss} {e.Kind ?? e.Type}/{e.Evidence}{rankPart}{tagsPart}: {IndexSummary(e)}";
     }
 
     public static string FormatFullEntry(SessionLogger.JournalEntry e)

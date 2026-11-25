@@ -64,6 +64,8 @@ internal static class SafeModePolicy
         "storage_set",
         "identity_apply",
         "identity_capture",
+        "bookmark_restore",
+        "bookmark_verify",
         "peer_identity_apply",
         "ssl_certificates",
         "ssl_certificates_active",

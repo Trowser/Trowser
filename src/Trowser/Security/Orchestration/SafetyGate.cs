@@ -84,10 +84,16 @@ internal static class SafetyGate
     }
 
     /// <summary>Shorthand: resolve from body and gate at Active.</summary>
-    public static SafetyGateDenial? RequireActive(JsonBody body, string toolDescription)
+    public static SafetyGateDenial? RequireActive(JsonBody body, string toolDescription,
+        SafetyMode defaultWhenOmitted = SafetyMode.Safe)
     {
-        var requested = ResolveRequested(body);
-        return RequireAtLeast(requested, ApplyCliCeiling(requested), SafetyMode.Active, toolDescription);
+        var requested = body.HasProperty("safetyMode")
+            ? ResolveRequested(body)
+            : defaultWhenOmitted;
+        var effective = body.HasProperty("safetyMode")
+            ? Resolve(body)
+            : ApplyCliCeiling(defaultWhenOmitted);
+        return RequireAtLeast(requested, effective, SafetyMode.Active, toolDescription);
     }
 
     /// <summary>

@@ -106,8 +106,15 @@ public partial class MainWindow
             e.Handled = true;
         }
 
-        // Ctrl+B — screen curtain (blind testing mode)
+        // Ctrl+B — bookmark this moment
         if (e.Key == Key.B && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            _ = CatchBookmarkFromUiAsync();
+            e.Handled = true;
+        }
+
+        // Ctrl+Shift+B — screen curtain (blind testing mode)
+        if (e.Key == Key.B && Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
         {
             _ = ToggleScreenCurtainFromUiAsync();
             e.Handled = true;
@@ -155,7 +162,7 @@ public partial class MainWindow
         {
             var enabled = await _automationContext.ToggleScreenCurtain();
             StatusText.Text = enabled
-                ? "Screen curtain ON — use a screen reader (Ctrl+B to toggle)"
+                ? "Screen curtain ON — use a screen reader (Ctrl+Shift+B to toggle)"
                 : "Screen curtain OFF";
         }
         catch (Exception ex)
@@ -196,12 +203,22 @@ public partial class MainWindow
                 LogStatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4EC9B0"));
                 ((Border)LogStatusText.Parent).ToolTip =
                     $"Session logging active\nFile: {Path.GetFileName(_sessionLogger.FilePath)}\n\nCtrl+Shift+S — Screenshot\n\nClick to open settings";
+            }
+            else if (_sessionLogger.Settings.LogBrowserActions)
+            {
+                LogStatusText.Text = "Log:Off";
+                LogStatusText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF9552"));
+                ((Border)LogStatusText.Parent).ToolTip =
+                    "Journal actions are on (bookmarks capture your steps). Click to enable session log file.";
+            }
 
-                // Inject recording script into current tab for action capture
+            if (_sessionLogger.IsLogging || _sessionLogger.Settings.LogBrowserActions)
+            {
                 var activeTab = _automationContext?.ActiveTab;
                 if (activeTab != null)
                     _ = InjectRecordingScriptAsync(activeTab);
             }
+
             else
             {
                 LogStatusText.Text = "Log:Off";
@@ -367,7 +384,7 @@ public partial class MainWindow
     /// <summary>
     /// Transform a recorded browser action (from the JS injection) into a REST API log entry.
     /// </summary>
-    private void LogRecordedActionToSession(System.Text.Json.JsonElement action)
+    private void LogRecordedActionToSession(System.Text.Json.JsonElement action, int tabId)
     {
         try
         {
@@ -413,7 +430,7 @@ public partial class MainWindow
                     return; // assert, elementOfInterest etc. — not browser actions
             }
 
-            _sessionLogger.LogBrowserAction("POST", apiPath, jsonBody, description);
+            _sessionLogger.LogBrowserAction("POST", apiPath, jsonBody, description, tabId);
         }
         catch (Exception ex)
         {

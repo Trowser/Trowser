@@ -42,6 +42,16 @@ public class SafetyGateTests
     }
 
     [Fact]
+    public void RequireActive_uses_default_when_safetyMode_omitted()
+    {
+        using var doc = JsonDocument.Parse("{}");
+        var body = new JsonBody(doc);
+
+        Assert.Null(SafetyGate.RequireActive(body, "Replay bookmark", defaultWhenOmitted: SafetyMode.Active));
+        Assert.NotNull(SafetyGate.RequireActive(body, "Replay bookmark"));
+    }
+
+    [Fact]
     public void RequireActive_suggests_passiveOnly_when_requested_passive()
     {
         using var doc = JsonDocument.Parse("""{"safetyMode":"passive"}""");

@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Windows.Threading;
 using System.Xml.Linq;
 using Trowser;
+using Trowser.Bookmarks;
 using Trowser.Accessibility;
 using Trowser.Automation;
 using Trowser.Compatibility;
@@ -338,7 +339,7 @@ public partial class TrowserApiServer
         }
 
         var effectiveKind = kind ?? existing.Kind ?? existing.Type;
-        string? summary = body.GetString("note") ?? body.GetString("text") ?? body.GetString("title");
+        string? summary = null;
 
         bool setSeverity = body.HasProperty("severity");
         string? severity = null;
@@ -395,6 +396,8 @@ public partial class TrowserApiServer
 
         bool setDetails = body.HasProperty("details");
         var details = setDetails ? body.GetString("details") : null;
+
+        JournalBookmarkPatch.ApplySummaryDetails(body, existing, ref summary, ref details, ref setDetails);
 
         Dictionary<string, string>? fields = null;
         bool setFields = false;

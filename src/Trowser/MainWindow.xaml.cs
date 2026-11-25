@@ -635,6 +635,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             _automationContext.SecurityShadow = _securityShadow;
             _lawService.Wire(_automationContext, _securityShadow);
             _automationContext.Laws = _lawService;
+            _automationContext.BookmarkService = new Bookmarks.BookmarkService(
+                _automationContext, _sessionLogger, _pointerStore, () => _safeMode, _identityStore);
 
             WireUpTabEvents(_automationContext.ActiveTab);
             InterceptSettings.LoadInto(_automationContext.ActiveTab);

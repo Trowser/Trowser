@@ -56,3 +56,6 @@ public static class BrowserSessionCookieMatching
                || host.EndsWith("." + d, StringComparison.OrdinalIgnoreCase);
     }
 }
+
+/// <summary>What a session restore did with cookies. Names only, never values.</summary>
+public sealed record CookieRestoreReport(int Restored, List<string> SkippedExpired, List<string> ExpiredRestoredAsSession);

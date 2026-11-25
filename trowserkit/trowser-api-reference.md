@@ -120,11 +120,13 @@ Unified test journal for real-time LLM collaboration and test narrative.
 ### GET /api/journal
 Returns the unified journal — a timeline of all session activity (actions, notes, bugs, enhancements, observations, charters, test ideas, assertions, messages, errors, screenshots) from both the human tester and LLM. **Gate-free** — safe for passive polling.
 
+**REST envelope:** successful responses wrap the payload in **`{ "success": true, "activeTab": { ... }, "data": { ... } }`**. Read journal rows from **`data.entries`**, not top-level `entries`. MCP tools return human-readable text or tool-native JSON without this wrapper — do not assume the same shape as raw REST.
+
 | Query Param | Description |
 |-------------|-------------|
 | `since` | Return entries after this index (exclusive). Use for incremental polling. |
 | `last` | Return only the last N entries. |
-| `type` | Filter: `action`, `assertion`, `message`, `error`, `screenshot`, `script-output`, `recording`, `pointer`, `decision`, or a note kind (`note`, `bug`, `enhancement`, `observation`, `charter`, `testing`, `test-idea`, `user`). `type=bug` extracts only bug reports. |
+| `type` | Filter: `action`, `assertion`, `message`, `error`, `screenshot`, `script-output`, `recording`, `pointer`, `decision`, **`bookmark`**, or a note kind (`note`, `bug`, `enhancement`, `observation`, `charter`, `testing`, `test-idea`, `user`). `type=bug` extracts only bug reports. `type=bookmark` matches journal **`type`** only (reclassifying to `bug`/`observation` via `PATCH kind` moves the row out of this filter; evidence paths remain on `fields`). |
 | `source` | Filter: `api` (LLM/REST), `gui` (human tester), `system` (auto-generated) |
 | `origin` | Filter by human-facing origin: `agent` (api), `user` (gui), `auto` (system) |
 | `evidence` | Filter: `observed`, `inferred`, `hypothesis`, `untested` |
@@ -133,7 +135,7 @@ Returns the unified journal — a timeline of all session activity (actions, not
 | `view` | `index` (titles-only) or `full`. When omitted and `total` > 40, defaults to `index`. |
 | `indexes` | Comma-separated journal indexes — returns full entries for those ids only |
 
-Response: `{ entries[], count, total, logging, revision, deleted[], view? }`. Each full entry: `{ index, timestamp, type, kind?, source, origin, summary, details?, severity?, evidence, fields?, tags?, url? }`. Index view omits `details` and `fields`. For `bug`/`enhancement` entries, `fields` contains `steps` (string or array), `actual`, `expected`, `priority`, `oracle`, `notes`. `revision` increments on add, update, and delete. `deleted` lists indices removed this process session (never reused). `type` also accepts `recording`.
+Response payload (inside **`data`**): `{ entries[], count, total, logging, revision, deleted[], view? }`. Each full entry: `{ index, timestamp, type, kind?, source, origin, summary, details?, severity?, evidence, fields?, tags?, url? }`. Index view omits `details` and `fields`. For `bug`/`enhancement` entries, `fields` contains `steps` (string or array), `actual`, `expected`, `priority`, `oracle`, `notes`. `revision` increments on add, update, and delete. `deleted` lists indices removed this process session (never reused). `type` also accepts `recording`.
 
 **Efficient polling pattern:**
 1. `GET /api/journal?since=0` → entries 1-3, remember `lastSeen=3`
@@ -269,6 +271,74 @@ List checkpoints. **Gate-free**. Returns `{ checkpoints, count, latest }`.
 
 ### GET /api/checkpoint/{id}
 Fetch a checkpoint with a summary of activity **since** it (GUI actions, errors, pointers). **Gate-free**.
+
+---
+
+## Bookmarks
+
+A **bookmark** is a journal entry (`type: "bookmark"`) that captures a moment in one click: a screenshot, the narrated steps since the previous checkpoint, the last meaningful network request (method, status, URL — capped like `GET /api/network`, no headers or body), and a replayable `.trw` when those steps can be replayed by Verify. Catch also creates a checkpoint so the next bookmark's steps start here.
+
+**Evidence on disk:** when session logging is on, files live under `bookmarks/{id}/` beside the session log; when logging is off, under `%TEMP%\trowser-bookmarks\{id}\` (still referenced from the journal entry). Show me (GUI) opens an evidence page (no navigation). **Verify** replays `repro.trw`. **Go** (`bookmark-restore`) restores cookies, localStorage, and sessionStorage — the server is not restored.
+
+**Secrets (local evidence):** Bookmark **Verify** replays real `POST /api/type` bodies from the journal. Narrated `steps`, journal action `fields.body`, and `repro.trw` therefore **keep typed text verbatim** (passwords, emails, tokens in form fields) — that is required for replay. Treat bookmark folders and `GET /api/bookmark` responses as sensitive. **Export** redacts cookie/storage values in `state.json` only; the zip still includes the same `repro.trw`, narrated steps, and journal JSON — **do not share exports** unless you accept those credentials being readable.
+
+Same as the nav-bar bookmark button and **Ctrl+B**. Screen curtain moved to **Ctrl+Shift+B**.
+
+**MCP:** Core pack (`?mode=core`): `browser_bookmark`, `browser_bookmark_restore`, `browser_bookmark_verify`. Security / full pack also lists `browser_bookmark_export`, `browser_bookmark_import` (zip round-trip; redacted `state.json`, verbatim `.trw`).
+
+`browser_checkpoint` / `POST /api/checkpoint` are unchanged — they do not write journal rows.
+
+**Journal editing:** for bookmarks, `POST /api/bookmark` `note` and the entry's `details` are the tester note; `title` is the page title in `summary`. `PATCH /api/journal` on bookmark entries maps **`title`** (or `text`) → `summary`, **`note`** → `details` — you can send both in one request. For non-bookmark entries, `note` / `text` / `title` still update `summary` as before. In journal JSON (`view=full`), narrated automation lives in **`fields.capturedSteps`** (distinct from bug-report `steps`); the BookmarkInfo projection still exposes them as **`steps`**. Reclassifying with `PATCH kind` to `bug` / `enhancement` migrates narrated text off the bug `steps` field. **`DELETE /api/journal`** on a bookmark row removes the row **and deletes its evidence files** (screenshot, `repro.trw`, `state.json`, `bookmark.json`) — this cannot be undone; export first if you may need them. Only files Trowser wrote are deleted, only from a folder named after the bookmark id, and never while another journal row still points at the same folder.
+
+**Bookmark events:** Go, Verify, and Export each add one journal row with `type: "bookmark-event"` and `fields.event` (`restore` / `verify` / `export`) plus `fields.bookmarkRef` (the bookmark id). Verify rows carry `verdict`, `passRate`, `runs`, `passed`, `reason`, and run errors; restore rows carry cookie/storage counts and `cookiesSkipped` / `expiredCookiesRestored`. These rows are never narrated or captured as steps. Steps that Verify replays and the navigation Go performs are **not** journaled as actions, so they never leak into the next bookmark. After a Go, the next bookmark on that tab starts its slice there and records `startsFrom` = the restored bookmark.
+
+**Slices are per tab:** a bookmark's steps are the actions on the active tab since that tab's previous bookmark (or Go). `POST /api/tabs/new` with a `url` is attributed to the new tab and replays as a navigate. Actions that used a `ref` record the selector it pointed at when the action ran (`fields.refSelectors`), and replay uses that selector. `POST /api/batch` sub-actions (click, type, select, hover, scroll) are narrated and replayed one by one; reads and waits in a batch are skipped.
+
+### POST /api/bookmark
+Catch. Body: `{ "note": "optional tester sentence" }`. Returns a **BookmarkInfo** projection:
+
+| Field | Meaning |
+|-------|---------|
+| `id` | Bookmark id (`bm-…`) |
+| `bookmarkNumber` | Display sequence among catches (max existing + 1; **not** reused after deletes or merges) |
+| `emptyStepCapture` | `true` when there were no narrated steps and no replayable `.trw` — do not treat as a logged-in / reproducible moment without checking `canVerify` |
+| `journalIndex` | Journal row index |
+| `checkpointId` | Checkpoint created for the next slice |
+| `title` / `url` | Page title and logical URL (`data:` URLs summarized for agents) |
+| `note` | Tester note (journal `details`) |
+| `steps` / `stepCount` / `stepsOmitted` | Narrated actions since previous bookmark (housekeeping API calls omitted; the most recent 50 shown, `stepsOmitted` counts the older ones) |
+| `startUrl` | Page the first step ran on. `repro.trw` `setup` navigates there first unless the first step already navigates |
+| `startsFrom` | Bookmark id these steps continue from (previous bookmark on the tab, or the bookmark last restored with Go) |
+| `lastRequest` | `{ method, status, url }` — last meaningful document/fetch/XHR or mutating request; requests to the page's own site win over third-party ones (analytics/error beacons), and `ping` requests are ignored |
+| `screenshot`, `trwPath`, `statePath`, `directory` | Evidence paths |
+| `canVerify` | True when `repro.trw` contains replayable steps (not housekeeping-only / not trivial `about:blank`) |
+| `canRestore` | True when `state.json` exists on disk and is not redacted (checked on every read) |
+| `author` | Journal `source` (`api` = agent, `gui` = user) |
+| `warnings` | Only on Catch: e.g. session logging is off, so the journal (and this bookmark) is lost on exit while its files stay in `%TEMP%` |
+
+`note` must be a string (anything else is **400**). Wherever a bookmark `id` is accepted, it may be the `bm-…` id, a journal index string, or a journal index number.
+
+**Blocked in safe mode:** no (Catch is allowed; Go/Verify are not).
+
+### GET /api/bookmarks
+List bookmarks, oldest first. Response: **`data.bookmarks`**, **`data.count`** (same envelope as other REST routes) — same fields as above per item. **`?view=index`** (MCP `browser_bookmark` `action: "list", view: "index"`) returns one compact row per bookmark instead: `id`, `bookmarkNumber`, `journalIndex`, `createdAt`, `author`, `title`, `note`, `url`, `stepCount`, `canVerify`, `canRestore`. In `GET /api/journal?view=index`, bookmark rows are summarized as `#N title — note` so the tester note is visible. Includes any journal row that still has bookmark evidence (even if reclassified to `bug`/`observation`). `data:` request URLs are summarized.
+
+### GET /api/bookmark/{id}
+`id` is the bookmark id **or** a journal index. Returns one bookmark or **404**.
+
+### POST /api/bookmark-restore
+**Go.** Body: `{ "id", "navigate": true }` (`navigate` defaults to **true** when omitted). Restores cookies/storage; may navigate to the origin first when storage is present (`navigatedForStorage`). When `navigate` is true, navigates to the bookmark URL and **reloads** when localStorage/sessionStorage were applied (so SPAs re-read storage). When `navigate` is **false**, the tab is returned to the URL it had before restore (`restoredPreviousUrl`), with reload when storage was written — `navigated` and `navigatedToBookmarkUrl` stay **false**. Cookies keep their saved expiry. A cookie that has expired since the bookmark is **skipped** and listed in `cookiesSkipped`; with `"includeExpired": true` it is restored as a session cookie and listed in `expiredCookiesRestored` (useful to go back in time, but it bypasses session-timeout behavior). Response includes `cookies`, `localStorage`, `sessionStorage` counts, `cookiesSkipped`, `expiredCookiesRestored`, `serverRestored: false`, and `note`. **Blocked in safe mode.**
+
+### POST /api/bookmark-verify
+Replay the bookmark's `repro.trw`. Body: `{ "id", "runs": 1, "clearSession": false, "fromPrevious": false }`. When `safetyMode` is omitted, this endpoint defaults to **`active`** (unlike most other gated routes, which default to `safe`). Override with `"safetyMode": "safe"` only to confirm the gate blocks replay. Each run opens `startUrl` first (the `.trw` `setup`). Steps that continue mid-flow may still need the earlier state: `"fromPrevious": true` restores the `startsFrom` bookmark (Go, without the server) before each run; **400** when the bookmark has no `startsFrom` or that bookmark has no restorable state, **404** when it is no longer in the journal.
+
+Returns `{ verdict, reason, passRate, passed, failed, runs[] }`. `verdict` is `reproducible` / `flaky` / `not-reproducible` / `inconclusive`. When every run failed before the steps under test began (in `setup`, at the first step, or while preparing the run), the verdict is **`inconclusive`** with `reason: "precondition-failed"` — the start state was wrong, which says nothing about the behavior. Each `runs[]` item has `run`, `passed`, `precondition` (when true), and `error` as an object: `{ phase, stepIndex, stepType, message }` (`phase` is `setup`, `trigger`, `cleanup`, `oracle`, `clearSession`, `navigate`, `beforeRun`, or `identity`). Replayed steps are **not** journaled; one `bookmark-event` row records the verdict. **Blocked in safe mode** (`--safe`).
+
+### POST /api/bookmark-export
+Export zip: journal entry, screenshot, **verbatim** `repro.trw` (replay needs real typed values), and **redacted** `state.json` (cookie/storage values replaced). Body: `{ "id", "path": "file.zip" }`. Paths use `ExportPathGuard`; a path that cannot be written (for example access denied) is **400**. Response `files` lists every zip entry, including `bookmark.json`. See **Secrets** above before sending the zip elsewhere.
+
+### POST /api/bookmark-import
+Import zip. Body: `{ "path": "file.zip" }`. Preserves original `createdAt` (with its offset) where present; `canRestore` is false (state redacted). The checkpoint and tab of the source session are dropped. Importing the same zip again returns the existing bookmark with `alreadyImported: true` instead of adding a second row. When the id is already used by a live bookmark (for example after `POST /api/journal/import` of the same session), the imported row gets a new id and its own copy of the files; `fields.importedId` keeps the original id. The same applies to bookmark rows in `POST /api/journal/import`.
 
 ---
 
@@ -628,7 +698,7 @@ Wait for next navigation event.
 | `timeout` | 10000 | Max wait (ms) |
 
 ### POST /api/wait-for-final-navigation
-Wait through redirect chains (SSO, OAuth, SAML). Returns after `quietPeriod` ms of no new navigations.
+Wait through redirect chains (SSO, OAuth, SAML). Returns after `quietPeriod` ms of no new navigations. When **no** navigation occurs, returns after one `quietPeriod` with `navigations: 0` and `idle: true` (does not wait the full `timeout`).
 
 | Field | Default | Description |
 |-------|---------|-------------|
@@ -657,6 +727,9 @@ Click an element. Auto-waits for visible + enabled. Auto-waits for navigation on
 | `button` | `"left"` | `left`, `right`, `middle` |
 | `clickCount` | 1 | 1=single, 2=double-click |
 | `timeout` | 5000 | Auto-wait (ms) |
+| `waitAfterMs` | 150 | Delay before snapshotting `changes` |
+| `waitForNavigation` | false | When true, calls wait-for-final-navigation logic before `changes` |
+| *(response)* `url`, `urlChanged` | — | Address bar URL and whether it changed vs pre-click |
 
 **Cross-origin iframes:** `frame` / snapshot scoping uses the parent document’s same-origin `contentDocument` — not a security gate, but the browser’s DOM boundary. Cross-origin frames still appear in `frames[]` (`sameOrigin: false`, often `inspectable: true` for `execute-js` with `frame`). For **clickjacking** PoCs (overlay + click under a decoy), use **`POST /api/click-at`** or **`POST /api/security/clickjack-test`** rather than refs inside the embedded document.
 
@@ -824,7 +897,7 @@ Do **not** `fetch()` JS bundles, source maps, or other large static assets insid
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `script` | Yes | JavaScript source to run. **Field name is `script` (not `expression`).** Multi-statement auto-wrapped with last-expression auto-return. |
+| `script` | Yes | JavaScript source to run. Primary field name is `script` (aliases: `expression`, `code`). Multi-statement auto-wrapped with last-expression auto-return. |
 | `frame` | No | `frameId` or `name` from `frames[]` / `GET /api/frames` — runs in that document (including **inspectable cross-origin** frames). Same IIFE auto-wrap as the main frame. |
 | `timeout` | No (`30000`) | Max wait for Promise resolution in ms. Host-side; an in-page `AbortController` does not help if WebView2 never settles. |
 | `tabIndex` | No | Run against this tab (0-based); active tab is restored after the call. |
@@ -1073,7 +1146,7 @@ When started with `domSnapshots: true`, steps may include `domSnapshotId` and `d
 
 ## Screen Curtain (Blind Testing)
 
-Black overlay on the web content area — hides the page visually while screen readers and keyboard navigation keep working. Same as **Ctrl+B** in the GUI.
+Black overlay on the web content area — hides the page visually while screen readers and keyboard navigation keep working. Same as **Ctrl+Shift+B** in the GUI.
 
 ### GET /api/screen-curtain
 Returns `{ "enabled": true|false }`.

@@ -381,13 +381,16 @@ public partial class TrowserApiServer
         // Treating them as agent automation opens a new A-tab on the peer.
         var isMirror = IsMirrorForward(request);
         _context.IsAgentAutomation = !isMirror;
-        LogApiActionFromBody(method, path, _preReadBody.Value);
         if (!isMirror && ShouldPreferAgentTab(path, method) && !RequestSpecifiesExplicitTab(_preReadBody.Value))
         {
             var warn = await _context.EnsureAgentTabAsync();
             if (!string.IsNullOrEmpty(warn))
                 OnShowMessage?.Invoke(warn, "info", 4000);
         }
+
+        var journalTabId = ResolveJournalTabId(request, _preReadBody.Value);
+        var journalActionIndex = LogApiActionFromBody(method, path, _preReadBody.Value, journalTabId);
+        _journalActionIndex.Value = journalActionIndex;
 
         // Capture the actual HTTP requests a security scan issues when the caller opts in with
         // {"verbose": true}. WriteSuccess attaches the captured trace to the JSON response.
@@ -402,29 +405,29 @@ public partial class TrowserApiServer
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
             await WriteError(response, 499, $"Operation '{method} {path}' was aborted via POST /api/abort.");
-            _sessionLogger?.LogApiAction(method, path, isError: true, errorMessage: "Aborted");
         }
         catch (TimeoutException ex)
         {
             await WriteError(response, 504, ex.Message);
-            _sessionLogger?.LogApiAction(method, path, isError: true, errorMessage: ex.Message);
         }
         catch (InvalidOperationException ex)
         {
             await WriteError(response, 400, ex.Message);
-            _sessionLogger?.LogApiAction(method, path, isError: true, errorMessage: ex.Message);
         }
         catch (ApiCommandException ex)
         {
             await WriteError(response, ex);
-            _sessionLogger?.LogApiAction(method, path, isError: true, errorMessage: ex.Message);
         }
         finally
         {
+            if (_sessionLogger != null && journalActionIndex >= 0 && response.StatusCode > 0)
+                _sessionLogger.SetActionHttpStatus(journalActionIndex, response.StatusCode);
+
             _context.IsAgentAutomation = false;
             if (_sessionLogger != null) _sessionLogger.SuppressGuiActions = false;
             MirrorController?.EndApiSuppress();
             _preReadBody.Value = null;
+            _journalActionIndex.Value = null;
             _currentOperation = null;
             _operationCts = null;
             _context.OperationCancellation = CancellationToken.None;
@@ -885,6 +888,31 @@ public partial class TrowserApiServer
 
             case "/api/checkpoints" when method == "GET":
                 await HandleGetCheckpoints(response);
+                break;
+
+            // Bookmarks: one journal entry per Catch, with evidence files beside the log.
+            case "/api/bookmark" when method == "POST":
+                await RespondAsync(request, response, BuildBookmarkCreateAsync);
+                break;
+
+            case "/api/bookmarks" when method == "GET":
+                await HandleGetBookmarks(request, response);
+                break;
+
+            case "/api/bookmark-restore" when method == "POST":
+                await RespondAsync(request, response, BuildBookmarkRestoreAsync);
+                break;
+
+            case "/api/bookmark-verify" when method == "POST":
+                await RespondAsync(request, response, BuildBookmarkVerifyAsync);
+                break;
+
+            case "/api/bookmark-export" when method == "POST":
+                await RespondAsync(request, response, BuildBookmarkExportAsync);
+                break;
+
+            case "/api/bookmark-import" when method == "POST":
+                await RespondAsync(request, response, BuildBookmarkImportAsync);
                 break;
 
             // Decisions (agent asks the human to make a call). In-memory, so gate-free.
@@ -2299,6 +2327,8 @@ public partial class TrowserApiServer
                 if (await TryRoutePointerAsync(path, method, request, response))
                     break;
                 if (await TryRouteCheckpointAsync(path, method, request, response))
+                    break;
+                if (await TryRouteBookmarkAsync(path, method, response))
                     break;
                 if (await TryRouteDecisionAsync(path, method, request, response))
                     break;

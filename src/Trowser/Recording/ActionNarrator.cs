@@ -39,6 +39,132 @@ public static class ActionNarrator
     /// <summary>Describe a page navigation. <paramref name="url"/> is shown as a path when possible.</summary>
     public static string DescribeNavigation(string url) => $"Navigated to {ShortUrl(url)}";
 
+    /// <summary>
+    /// Describe a journal action stored as its REST equivalent (<c>POST /api/click</c> plus JSON body),
+    /// as written by GUI capture and by the API server. Falls back to <c>METHOD /api/path</c>.
+    /// </summary>
+    public static string DescribeApiAction(string method, string path, string? body)
+    {
+        var fallback = $"{method} {path}";
+        JsonElement root = default;
+        var hasBody = false;
+        JsonDocument? doc = null;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(body))
+            {
+                doc = JsonDocument.Parse(body);
+                root = doc.RootElement;
+                hasBody = root.ValueKind == JsonValueKind.Object;
+            }
+
+            switch (path.ToLowerInvariant())
+            {
+                case "/api/navigate":
+                    if (hasBody && Str(root, "action") == "reload") return "Reload the page";
+                    var url = hasBody ? Str(root, "url") : "";
+                    return string.IsNullOrEmpty(url) ? fallback : DescribeNavigation(url);
+                case "/api/go-back":
+                    return "Go back";
+                case "/api/go-forward":
+                    return "Go forward";
+                case "/api/click":
+                {
+                    if (!hasBody) return "Click";
+                    var target = ApiTarget(root);
+                    if (root.TryGetProperty("clickCount", out var cc) && cc.ValueKind == JsonValueKind.Number
+                        && cc.TryGetInt32(out var n) && n > 1)
+                        return $"Double-click {target}";
+                    return $"Click {target}";
+                }
+                case "/api/hover":
+                    return hasBody ? $"Hover {ApiTarget(root)}" : "Hover";
+                case "/api/type" or "/api/fill":
+                {
+                    if (!hasBody) return "Type";
+                    var text = Str(root, "text");
+                    if (string.IsNullOrEmpty(text)) text = Str(root, "value");
+                    return $"Type \"{Truncate(text, 60)}\" into {ApiTarget(root)}";
+                }
+                case "/api/select":
+                    return hasBody ? $"Select \"{Truncate(Str(root, "value"), 60)}\" in {ApiTarget(root)}" : "Select";
+                case "/api/key" or "/api/press":
+                    return hasBody && !string.IsNullOrEmpty(Str(root, "key")) ? $"Press {Str(root, "key")}" : "Press a key";
+                case "/api/scroll":
+                    return "Scroll";
+                case "/api/execute-js":
+                {
+                    var script = hasBody ? Str(root, "script") : "";
+                    if (string.IsNullOrEmpty(script) && hasBody) script = Str(root, "code");
+                    return string.IsNullOrWhiteSpace(script) ? "Run JavaScript" : $"Run JS: {Truncate(OneLine(script), 100)}";
+                }
+                case "/api/tabs/new":
+                {
+                    var tabUrl = hasBody ? Str(root, "url") : "";
+                    return string.IsNullOrEmpty(tabUrl) ? "Open a new tab" : $"Open a new tab at {ShortUrl(tabUrl)}";
+                }
+                case "/api/tabs/switch":
+                    return hasBody && root.TryGetProperty("tabIndex", out var ti) ? $"Switch to tab {ti.GetRawText()}" : "Switch tab";
+                case "/api/tabs/close":
+                    return "Close a tab";
+                case "/api/batch":
+                    return hasBody ? DescribeBatch(root) ?? fallback : fallback;
+                default:
+                    return fallback;
+            }
+        }
+        catch (JsonException)
+        {
+            return fallback;
+        }
+        finally
+        {
+            doc?.Dispose();
+        }
+    }
+
+    /// <summary><c>Batch: Click …; Type …</c> from the batch's <c>actions[]</c> (first 5, then a count).</summary>
+    private static string? DescribeBatch(JsonElement root)
+    {
+        if (!root.TryGetProperty("actions", out var actions) || actions.ValueKind != JsonValueKind.Array) return null;
+        var parts = new List<string>();
+        var total = 0;
+        foreach (var a in actions.EnumerateArray())
+        {
+            total++;
+            if (parts.Count >= 5 || a.ValueKind != JsonValueKind.Object) continue;
+            var name = Str(a, "action");
+            if (string.IsNullOrEmpty(name)) continue;
+            var described = DescribeApiAction("POST", "/api/" + name.ToLowerInvariant(), a.GetRawText());
+            parts.Add(described.StartsWith("POST /api/", StringComparison.Ordinal) ? name : described);
+        }
+        if (parts.Count == 0) return null;
+        var more = total > parts.Count ? $" (+{total - parts.Count} more)" : "";
+        return $"Batch: {string.Join("; ", parts)}{more}";
+    }
+
+    private static string OneLine(string s) =>
+        System.Text.RegularExpressions.Regex.Replace(s, @"\s+", " ").Trim();
+
+    /// <summary>Friendly name for a REST locator body: role "name", label, text, placeholder, testId, selector, or ref.</summary>
+    private static string ApiTarget(JsonElement body)
+    {
+        var role = Str(body, "role");
+        var name = Str(body, "name");
+        if (string.IsNullOrEmpty(name)) name = Str(body, "label");
+        if (!string.IsNullOrEmpty(role))
+            return string.IsNullOrEmpty(name) ? role : $"{role} \"{Truncate(name, 60)}\"";
+        if (!string.IsNullOrEmpty(name)) return $"\"{Truncate(name, 60)}\"";
+        foreach (var key in new[] { "byText", "placeholder", "testId", "selector" })
+        {
+            var v = Str(body, key);
+            if (!string.IsNullOrEmpty(v)) return key == "selector" ? Truncate(v, 80) : $"\"{Truncate(v, 60)}\"";
+        }
+        if (body.TryGetProperty("ref", out var r) && r.ValueKind == JsonValueKind.Number)
+            return $"ref {r.GetRawText()}";
+        return "element";
+    }
+
     private static string DescribeType(JsonElement action)
     {
         var value = Str(action, "value");

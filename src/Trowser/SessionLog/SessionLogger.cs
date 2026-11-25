@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using Trowser.Bookmarks;
 using Trowser.Decisions;
 
 namespace Trowser.SessionLog;
@@ -21,8 +23,9 @@ public class SessionLogger
     private StreamWriter? _writer;
     private string? _filePath;
     private DateTime _sessionStart;
-    private int _nextJournalIndex;
+    private int _nextJournalIndex = 1;
     private int _revision;
+    private int _bookmarkNumberHighWater;
     private readonly List<int> _deletedIndices = new();
 
     // Unified journal — single timeline of all session activity
@@ -102,7 +105,7 @@ public class SessionLogger
     }
 
     /// <summary>Log a browser action as its REST API equivalent (GUI-originated actions only).</summary>
-    public void LogBrowserAction(string httpMethod, string apiPath, string? jsonBody, string? description = null)
+    public void LogBrowserAction(string httpMethod, string apiPath, string? jsonBody, string? description = null, int? tabId = null, string? pageUrl = null)
     {
         if (!Settings.LogBrowserActions) return;
         if (SuppressGuiActions) return; // API call in progress — it will log its own entry
@@ -123,12 +126,15 @@ public class SessionLogger
         };
         if (!string.IsNullOrEmpty(jsonBody))
             fields["body"] = jsonBody;
+        if (tabId.HasValue)
+            fields[Bookmarks.BookmarkFields.TabId] = tabId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
         AddJournal("action", "gui", $"{httpMethod} {apiPath}",
-            descPart.Length > 0 ? description : null, fields: fields);
+            descPart.Length > 0 ? description : null, fields: fields,
+            url: Trowser.Api.AgentUrlPolicy.ForAgent(pageUrl));
     }
 
-    /// <summary>Log an API command from an LLM or external tool. Always stored in-memory; written to file when logging + LogApiUsage enabled.</summary>
-    public void LogApiAction(string httpMethod, string apiPath, string? keyParams = null, bool isError = false, string? errorMessage = null, string? rawBody = null)
+    /// <summary>Log an API command from an LLM or external tool. Always stored in-memory; written to file when logging + LogApiUsage enabled. Returns journal index, or -1.</summary>
+    public int LogApiAction(string httpMethod, string apiPath, string? keyParams = null, bool isError = false, string? errorMessage = null, string? rawBody = null, int? tabId = null, string? pageUrl = null, IReadOnlyDictionary<string, string>? extraFields = null)
     {
         var summary = $"{httpMethod} {apiPath}";
         string? details = null;
@@ -148,15 +154,86 @@ public class SessionLogger
             };
             if (!string.IsNullOrEmpty(rawBody))
                 fields["body"] = rawBody;
+            if (tabId.HasValue && tabId.Value > 0)
+                fields[Bookmarks.BookmarkFields.TabId] = tabId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (extraFields != null)
+                foreach (var kv in extraFields)
+                    fields.TryAdd(kv.Key, kv.Value);
         }
 
-        var entry = AddJournal(isError ? "error" : "action", "api", summary, details, fields: fields);
+        var agentUrl = Trowser.Api.AgentUrlPolicy.ForAgent(pageUrl);
+        var entry = AddJournal(isError ? "error" : "action", "api", summary, details, fields: fields, url: agentUrl);
 
-        if (!IsLogging || !Settings.LogApiUsage) return;
+        if (!IsLogging || !Settings.LogApiUsage)
+            return entry.Index;
 
         var errorTag = isError ? " ❌" : "";
         var detailsPart = !string.IsNullOrEmpty(details) ? $" — {details}" : "";
         WriteEntry($"`{Timestamp()}` **API{errorTag}** — {summary}{detailsPart}");
+        return entry.Index;
+    }
+
+    /// <summary>Attach HTTP status to a pending API action row (polled journal).</summary>
+    public void SetActionHttpStatus(int index, int httpStatus)
+    {
+        if (index < 0 || httpStatus <= 0) return;
+        lock (_lock)
+        {
+            var entry = _journal.FirstOrDefault(e => e.Index == index);
+            if (entry?.Fields == null) return;
+            if (!string.Equals(entry.Type, "action", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(entry.Type, "error", StringComparison.OrdinalIgnoreCase))
+                return;
+
+            entry.Fields["httpStatus"] = httpStatus.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (httpStatus >= 400)
+            {
+                entry.Type = "error";
+                if (string.IsNullOrEmpty(entry.Details))
+                    entry.Details = $"HTTP {httpStatus}";
+            }
+        }
+    }
+
+    /// <summary>Move an action row to another tab (e.g. <c>POST /api/tabs/new</c> runs in the tab it creates).</summary>
+    public void SetActionTabId(int index, int tabId)
+    {
+        if (index < 0 || tabId <= 0) return;
+        lock (_lock)
+        {
+            var entry = _journal.FirstOrDefault(e => e.Index == index);
+            if (entry?.Fields == null) return;
+            entry.Fields[Bookmarks.BookmarkFields.TabId] = tabId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
+
+    /// <summary>
+    /// Record something done to a bookmark (Go, Verify, Export) as a <c>bookmark-event</c> row.
+    /// The row references the bookmark through <c>bookmarkRef</c>, never <c>bookmarkId</c>, so it is
+    /// not itself a bookmark, is never captured as a step, and deleting it touches no files.
+    /// </summary>
+    public JournalEntry LogBookmarkEvent(string source, string eventName, string bookmarkId, string summary,
+        string? details = null, IReadOnlyDictionary<string, string>? extraFields = null, string? url = null, int? tabId = null)
+    {
+        var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [Bookmarks.BookmarkFields.EventName] = eventName,
+            [Bookmarks.BookmarkFields.EventBookmarkRef] = bookmarkId
+        };
+        if (tabId.HasValue && tabId.Value > 0)
+            fields[Bookmarks.BookmarkFields.TabId] = tabId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (extraFields != null)
+            foreach (var kv in extraFields)
+                fields.TryAdd(kv.Key, kv.Value);
+
+        var entry = AddJournal(Bookmarks.BookmarkFields.EventEntryType, source, summary, details, fields: fields,
+            url: Trowser.Api.AgentUrlPolicy.ForAgent(url));
+        if (IsLogging)
+        {
+            var detailsPart = string.IsNullOrEmpty(details) ? "" : $" — {details}";
+            WriteEntry($"`{Timestamp()}` **Bookmark {eventName}** — {summary}{detailsPart}");
+        }
+        return entry;
     }
 
     /// <summary>Log a plain tester note from the GUI. Shortcut for <see cref="LogTesterNote"/> with kind="note".</summary>
@@ -383,6 +460,27 @@ public class SessionLogger
     }
 
     /// <summary>
+    /// Log a bookmark: one entry per Catch. <paramref name="fields"/> carries the bookmark id,
+    /// checkpoint id, narrated steps, last request, and evidence file paths.
+    /// </summary>
+    public JournalEntry LogBookmark(string source, string summary, string? url,
+        Dictionary<string, string> fields, string? details = null)
+    {
+        var title = string.IsNullOrWhiteSpace(summary) ? "Bookmark" : summary.Trim();
+        var entry = AddJournal("bookmark", source, title, details, fields: fields, url: url,
+            evidence: NoteKinds.EvidenceObserved);
+
+        if (IsLogging)
+        {
+            var sourceTag = source == "api" ? "Agent " : "";
+            var urlPart = string.IsNullOrEmpty(url) ? "" : $" — {url}";
+            WriteEntry($"`{Timestamp()}` **{sourceTag}Bookmark** — {title}{urlPart}");
+        }
+
+        return entry;
+    }
+
+    /// <summary>
     /// Log the moment the agent asked the human to make a call. The decision id is stored in
     /// <c>Fields["decisionId"]</c> so the ask and its resolution can be paired up later.
     /// </summary>
@@ -493,6 +591,31 @@ public class SessionLogger
 
     // ----- Journal API -----
 
+    /// <summary>Next bookmark display number (never reused after deletes in this process).</summary>
+    public int AllocateBookmarkNumber()
+    {
+        lock (_lock)
+        {
+            var fromJournal = BookmarkFields.NextBookmarkNumber(_journal);
+            if (fromJournal > _bookmarkNumberHighWater)
+                _bookmarkNumberHighWater = fromJournal;
+            var n = _bookmarkNumberHighWater;
+            _bookmarkNumberHighWater++;
+            return n;
+        }
+    }
+
+    /// <summary>Keep display numbers monotonic when a bundle preserves <c>bookmarkNumber</c> from another session.</summary>
+    public void NoteImportedBookmarkNumber(int imported)
+    {
+        if (imported <= 0) return;
+        lock (_lock)
+        {
+            if (imported >= _bookmarkNumberHighWater)
+                _bookmarkNumberHighWater = imported + 1;
+        }
+    }
+
     /// <summary>Get journal entries, with optional filtering by index, type, source, tag, evidence, and free-text search.</summary>
     public List<JournalEntry> GetJournal(int? since = null, int? last = null, string? type = null, string? source = null, string? tag = null, string? evidence = null, string? origin = null, string? q = null)
     {
@@ -504,7 +627,9 @@ public class SessionLogger
                 query = query.Where(e => e.Index > since.Value);
 
             if (!string.IsNullOrEmpty(type))
+            {
                 query = query.Where(e => e.Type.Equals(type, StringComparison.OrdinalIgnoreCase));
+            }
 
             if (!string.IsNullOrEmpty(source))
                 query = query.Where(e => e.Source.Equals(source, StringComparison.OrdinalIgnoreCase));
@@ -623,6 +748,31 @@ public class SessionLogger
         var fields = source.Fields == null
             ? null
             : new Dictionary<string, string>(source.Fields, StringComparer.OrdinalIgnoreCase);
+        // Tab ids are process-local: an imported row must not join a live tab's step slice.
+        fields?.Remove(BookmarkFields.TabId);
+        if (fields != null && BookmarkFields.HasEvidence(fields))
+        {
+            var importedId = fields.GetValueOrDefault(BookmarkFields.BookmarkId);
+            bool collides;
+            lock (_lock)
+                collides = !string.IsNullOrWhiteSpace(importedId) && _journal.Any(e =>
+                    e.Fields != null && BookmarkFields.HasEvidence(e.Fields)
+                    && string.Equals(e.Fields.GetValueOrDefault(BookmarkFields.BookmarkId), importedId, StringComparison.OrdinalIgnoreCase));
+
+            if (collides)
+            {
+                // Two rows with one id would share (and on delete, destroy) one evidence folder.
+                BookmarkEvidenceCleanup.RemapId(fields, BookmarkEvidence.NewId());
+                fields[BookmarkFields.BookmarkNumber] = AllocateBookmarkNumber()
+                    .ToString(CultureInfo.InvariantCulture);
+            }
+            else if (fields.TryGetValue(BookmarkFields.BookmarkNumber, out var imp)
+                && int.TryParse(imp, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) && n > 0)
+                NoteImportedBookmarkNumber(n);
+            else
+                fields[BookmarkFields.BookmarkNumber] = AllocateBookmarkNumber()
+                    .ToString(CultureInfo.InvariantCulture);
+        }
         var tags = source.Tags == null ? null : new List<string>(source.Tags);
 
         JournalEntry entry;
@@ -655,6 +805,9 @@ public class SessionLogger
         return entry;
     }
 
+    private static Dictionary<string, string>? CopyFields(IReadOnlyDictionary<string, string>? fields) =>
+        fields == null ? null : new Dictionary<string, string>(fields, StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Replace editable fields on an existing entry. Index, timestamp, and original source are kept.
     /// Returns the updated entry, or null if the index is unknown.
@@ -674,13 +827,18 @@ public class SessionLogger
             entry = _journal.FirstOrDefault(e => e.Index == index);
             if (entry == null) return null;
 
+            var bookmarkEntry = BookmarkFields.HasEvidence(entry.Fields);
             if (!string.IsNullOrWhiteSpace(kind))
             {
                 var normalized = NoteKinds.Normalize(kind);
                 if (NoteKinds.IsKnown(normalized))
                 {
                     entry.Kind = normalized;
-                    entry.Type = normalized;
+                    entry.Type = string.Equals(normalized, BookmarkFields.EntryType, StringComparison.OrdinalIgnoreCase)
+                        ? BookmarkFields.EntryType
+                        : normalized;
+                    if (bookmarkEntry && NoteKinds.IsStructured(normalized))
+                        BookmarkFields.MigrateCapturedStepsOffBugFields(entry.Fields);
                 }
             }
 
@@ -697,7 +855,7 @@ public class SessionLogger
             {
                 if (fields == null || fields.Count == 0)
                 {
-                    entry.Fields = null;
+                    entry.Fields = bookmarkEntry ? CopyFields(entry.Fields) : null;
                 }
                 else
                 {
@@ -707,6 +865,8 @@ public class SessionLogger
                         if (!string.IsNullOrWhiteSpace(v))
                             copy[k] = v;
                     }
+                    if (bookmarkEntry)
+                        BookmarkFields.RestoreEvidenceKeys(entry.Fields, copy);
                     entry.Fields = copy.Count == 0 ? null : copy;
                 }
             }
@@ -761,6 +921,7 @@ public class SessionLogger
     public bool DeleteEntry(int index)
     {
         JournalEntry? removed;
+        List<JournalEntry> remaining;
         lock (_lock)
         {
             var i = _journal.FindIndex(e => e.Index == index);
@@ -769,7 +930,10 @@ public class SessionLogger
             _journal.RemoveAt(i);
             _deletedIndices.Add(index);
             _revision++;
+            remaining = _journal.Where(e => e.Fields != null && BookmarkFields.HasEvidence(e.Fields)).ToList();
         }
+
+        Bookmarks.BookmarkEvidenceCleanup.TryDeleteFolder(removed, remaining);
 
         if (IsLogging)
             WriteEntry($"`{Timestamp()}` **Deleted #{index}** — {removed!.Type}: {removed.Summary}");

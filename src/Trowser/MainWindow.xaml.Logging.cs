@@ -169,11 +169,13 @@ public partial class MainWindow
                     if (_recorder.IsRecording && CapturedActionRouting.Accepts(CapturedActionRouting.Sink.Script, actionProp))
                         _recorder.RecordAction(actionProp);
 
-                    if (_sessionLogger.IsLogging && CapturedActionRouting.Accepts(CapturedActionRouting.Sink.Journal, actionProp))
-                        LogRecordedActionToSession(actionProp);
+                    // In-memory journal actions (bookmarks, repro) — not tied to writing a session .md file.
+                    if (_sessionLogger.Settings.LogBrowserActions
+                        && CapturedActionRouting.Accepts(CapturedActionRouting.Sink.Journal, actionProp))
+                        LogRecordedActionToSession(actionProp, tab.Id);
 
                     // Keep the human-readable narration buffer up to date (feeds "Add to bug" steps).
-                    if ((_recorder.IsRecording || _sessionLogger.IsLogging)
+                    if ((_recorder.IsRecording || _sessionLogger.Settings.LogBrowserActions || _sessionLogger.IsLogging)
                         && CapturedActionRouting.Accepts(CapturedActionRouting.Sink.Narration, actionProp))
                         RecordNarration(actionProp);
 

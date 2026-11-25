@@ -59,8 +59,11 @@ public static class JournalReportGenerator
         sb.AppendLine($"- **Observations:** {g.Observations.Count}");
         sb.AppendLine($"- **Test ideas:** {g.TestIdeas.Count}");
         sb.AppendLine($"- **Notes:** {g.Notes.Count}");
-        sb.AppendLine($"- **API actions:** {g.Actions.Count}");
-        sb.AppendLine($"- **Screenshots:** {g.Screenshots.Count}");
+        sb.AppendLine($"- **Actions:** {g.Actions.Count}");
+        var bookmarkShots = g.Bookmarks.Count(e => e.Fields != null
+            && e.Fields.TryGetValue(Bookmarks.BookmarkFields.Screenshot, out var s) && !string.IsNullOrEmpty(s));
+        sb.AppendLine($"- **Screenshots:** {g.Screenshots.Count + bookmarkShots}");
+        if (g.Bookmarks.Count > 0) sb.AppendLine($"- **Bookmarks:** {g.Bookmarks.Count}");
         if (g.Pointers.Count > 0) sb.AppendLine($"- **Pointers:** {g.Pointers.Count}");
         if (g.Decisions.Count > 0) sb.AppendLine($"- **Decisions:** {g.Decisions.Count}");
         if (g.Recordings.Count > 0) sb.AppendLine($"- **Recordings:** {g.Recordings.Count}");
@@ -73,6 +76,21 @@ public static class JournalReportGenerator
         RenderSection(sb, "Test ideas", g.TestIdeas, includeFields: false);
         RenderSection(sb, "Pointers", g.Pointers, includeFields: true);
         RenderSection(sb, "Decisions", g.Decisions, includeFields: true);
+
+        if (g.Bookmarks.Count > 0)
+        {
+            sb.AppendLine("## Bookmarks");
+            sb.AppendLine();
+            foreach (var e in g.Bookmarks)
+            {
+                var b = Bookmarks.BookmarkInfo.FromEntry(e);
+                var note = string.IsNullOrWhiteSpace(b.Note) ? "" : $" — _{b.Note}_";
+                sb.AppendLine($"- `{e.Timestamp:HH:mm:ss}` {e.Summary}{note}{(string.IsNullOrEmpty(e.Url) ? "" : $" ({e.Url})")} ({b.StepCount} step{(b.StepCount == 1 ? "" : "s")})");
+                if (!string.IsNullOrEmpty(b.Screenshot))
+                    sb.AppendLine($"  - Screenshot: `{b.Screenshot}`");
+            }
+            sb.AppendLine();
+        }
 
         if (g.Notes.Count > 0)
         {
@@ -193,10 +211,11 @@ public static class JournalReportGenerator
         sb.AppendLine(SummaryCard("Observations", g.Observations.Count, null, compact, section: "observations"));
         sb.AppendLine(SummaryCard("Test ideas", g.TestIdeas.Count, null, compact, section: "testideas"));
         sb.AppendLine(SummaryCard("Notes", g.Notes.Count, null, compact, section: "notes"));
+        if (g.Bookmarks.Count > 0) sb.AppendLine(SummaryCard("Bookmarks", g.Bookmarks.Count, null, compact, section: "bookmarks"));
         if (g.Pointers.Count > 0) sb.AppendLine(SummaryCard("Pointers", g.Pointers.Count, null, compact, section: "pointers"));
         if (g.Decisions.Count > 0) sb.AppendLine(SummaryCard("Decisions", g.Decisions.Count, null, compact, section: "decisions"));
         if (g.Messages.Count > 0) sb.AppendLine(SummaryCard("Messages", g.Messages.Count, null, compact, section: "messages"));
-        sb.AppendLine(SummaryCard("API actions", g.Actions.Count, null, compact,
+        sb.AppendLine(SummaryCard("Actions", g.Actions.Count, null, compact,
             link: compact && g.Actions.Count > 0 ? "trowser://apiactions" : null));
         sb.AppendLine(SummaryCard("Screenshots", g.Screenshots.Count, null, compact,
             section: compact ? "screenshots" : null,
@@ -210,6 +229,7 @@ public static class JournalReportGenerator
         RenderHtmlSection(sb, "Observations", "observations", g.Observations, mdDir, includeFields: false, compact, viewState);
         RenderHtmlSection(sb, "Test ideas", "testideas", g.TestIdeas, mdDir, includeFields: false, compact, viewState);
         RenderHtmlSection(sb, "Notes", "notes", g.Notes, mdDir, includeFields: false, compact, viewState);
+        RenderBookmarksSection(sb, g.Bookmarks, mdDir, compact, viewState);
         RenderHtmlSection(sb, "Pointers", "pointers", g.Pointers, mdDir, includeFields: true, compact, viewState);
         RenderHtmlSection(sb, "Decisions", "decisions", g.Decisions, mdDir, includeFields: true, compact, viewState);
 
@@ -305,28 +325,94 @@ public static class JournalReportGenerator
     }
 
     /// <summary>
-    /// Full detail page listing the session's API/GUI actions (method, path, details), opened from the
-    /// Journal panel's clickable "API actions" card.
+    /// Evidence page for a bookmark, opened by Show me: screenshot, steps, and last request.
+    /// It does not navigate or replay. Every page-derived string is HTML-encoded.
+    /// </summary>
+    public static string GenerateBookmarkDetailHtml(SessionLogger.JournalEntry entry, string? sessionFilePath = null)
+    {
+        var b = Bookmarks.BookmarkInfo.FromEntry(entry);
+        var mdDir = !string.IsNullOrEmpty(sessionFilePath)
+            ? Path.GetDirectoryName(Path.GetFullPath(sessionFilePath))
+            : null;
+        var title = string.IsNullOrEmpty(entry.Summary) ? "Bookmark" : entry.Summary;
+        var author = SessionLogger.GetOrigin(entry.Source);
+
+        var body = new StringBuilder();
+        body.AppendLine($"<header><h1>Bookmark: {Esc(title)}</h1>");
+        var numLabel = b.BookmarkNumber > 0 ? $"bookmark #{b.BookmarkNumber}" : $"journal #{entry.Index}";
+        body.AppendLine($"<p class=\"meta\">{entry.Timestamp:yyyy-MM-dd HH:mm:ss} \u2022 by {Esc(author)} \u2022 {numLabel} \u2022 {Esc(b.Id)}</p>");
+        if (!string.IsNullOrEmpty(entry.Url)) body.AppendLine($"<p class=\"meta\">URL: {Esc(entry.Url)}</p>");
+        body.AppendLine("</header>");
+
+        if (!string.IsNullOrEmpty(entry.Details))
+            body.AppendLine($"<section><h2>Note</h2><p>{Esc(entry.Details)}</p></section>");
+
+        body.AppendLine("<section><h2>Screenshot</h2>");
+        if (!string.IsNullOrEmpty(b.Screenshot) && Api.ExportPathGuard.IsExistingLocalFile(b.Screenshot))
+            body.AppendLine(RenderScreenshot(b.Screenshot, mdDir, compact: false));
+        else
+            body.AppendLine("<p class=\"muted\">No screenshot was captured.</p>");
+        body.AppendLine("</section>");
+
+        var stepHeading = b.TabId.HasValue
+            ? $"Steps since the previous bookmark on this tab"
+            : "Steps since the previous bookmark";
+        body.AppendLine($"<section><h2>{stepHeading}</h2>");
+        if (b.Steps.Count == 0)
+        {
+            body.AppendLine("<p class=\"muted\">No actions were recorded since the previous bookmark.</p>");
+        }
+        else
+        {
+            if (b.StepsOmitted > 0)
+                body.AppendLine($"<p class=\"muted\">{b.StepsOmitted} earlier step{(b.StepsOmitted == 1 ? "" : "s")} not shown (the .trw has all of them).</p>");
+            body.AppendLine("<ol class=\"steps\">");
+            foreach (var step in b.Steps)
+                body.AppendLine($"<li>{Esc(step)}</li>");
+            body.AppendLine("</ol>");
+        }
+        body.AppendLine("</section>");
+
+        body.AppendLine("<section><h2>Last request</h2>");
+        body.AppendLine(b.LastRequest == null
+            ? "<p class=\"muted\">No network request was recorded.</p>"
+            : $"<p><code>{Esc(b.LastRequest.Method)} {b.LastRequest.Status}</code> {Esc(b.LastRequest.Url)}</p>");
+        body.AppendLine("</section>");
+
+        body.AppendLine("<section><h2>Next steps</h2><ul class=\"context\">");
+        body.AppendLine(b.CanVerify
+            ? $"<li><strong>Verify</strong> replays the steps from <code>{Esc(b.TrwPath!)}</code> (right-click the bookmark in the Journal).</li>"
+            : "<li>No replayable steps, so Verify is not available.</li>");
+        body.AppendLine(b.CanRestore
+            ? "<li><strong>Restore</strong> applies the cookies, localStorage, and sessionStorage saved with this bookmark and opens its URL. The server is not restored.</li>"
+            : "<li>No saved cookies or storage, so Restore is not available.</li>");
+        body.AppendLine("</ul></section>");
+
+        return HtmlShell($"Bookmark \u2014 {title}", body.ToString());
+    }
+
+    /// <summary>
+    /// Full detail page listing the session's actions (GUI and API), opened from the Journal panel's Actions card.
     /// </summary>
     public static string GenerateActionsDetailHtml(IReadOnlyList<SessionLogger.JournalEntry> entries)
     {
         var actions = entries.Where(e => string.Equals(e.Type, "action", StringComparison.OrdinalIgnoreCase)).ToList();
 
         var body = new StringBuilder();
-        body.AppendLine($"<header><h1>API actions</h1><p class=\"meta\">{actions.Count} action{(actions.Count == 1 ? "" : "s")}</p></header>");
+        body.AppendLine($"<header><h1>Actions</h1><p class=\"meta\">{actions.Count} action{(actions.Count == 1 ? "" : "s")}</p></header>");
         body.AppendLine("<section><table class=\"actions\">");
-        body.AppendLine("<tr><th>Time</th><th>Source</th><th>Action</th><th>Details</th></tr>");
+        body.AppendLine("<tr><th>Time</th><th>Who</th><th>Action</th><th>Details</th></tr>");
         foreach (var e in actions)
         {
             body.AppendLine("<tr>"
                 + $"<td class=\"ts\">{e.Timestamp:HH:mm:ss}</td>"
-                + $"<td class=\"src\">{Esc(e.Source)}</td>"
+                + $"<td class=\"src\">{Esc(SessionLogger.GetOrigin(e.Source))}</td>"
                 + $"<td>{Esc(e.Summary ?? "")}</td>"
                 + $"<td>{(string.IsNullOrEmpty(e.Details) ? "" : Esc(e.Details))}</td>"
                 + "</tr>");
         }
         body.AppendLine("</table></section>");
-        return HtmlShell("API actions", body.ToString());
+        return HtmlShell("Actions", body.ToString());
     }
 
     private static string HtmlShell(string title, string body)
@@ -360,13 +446,17 @@ public static class JournalReportGenerator
         List<SessionLogger.JournalEntry> Errors,
         List<SessionLogger.JournalEntry> Screenshots,
         List<SessionLogger.JournalEntry> Pointers,
-        List<SessionLogger.JournalEntry> Decisions);
+        List<SessionLogger.JournalEntry> Decisions,
+        List<SessionLogger.JournalEntry> Bookmarks);
 
     private static Grouped Group(IReadOnlyList<SessionLogger.JournalEntry> entries)
     {
-        var g = new Grouped(new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new());
+        var g = new Grouped(new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new(), new());
         foreach (var e in entries)
         {
+            if (Bookmarks.BookmarkInfo.IsBookmark(e))
+                g.Bookmarks.Add(e);
+
             switch ((e.Kind ?? e.Type)?.ToLowerInvariant())
             {
                 case NoteKinds.Bug: g.Bugs.Add(e); break;
@@ -385,6 +475,7 @@ public static class JournalReportGenerator
                 case "screenshot": g.Screenshots.Add(e); break;
                 case "pointer": g.Pointers.Add(e); break;
                 case "decision": g.Decisions.Add(e); break;
+                case "bookmark": break; // counted above via IsBookmark
             }
         }
         return g;
@@ -447,7 +538,7 @@ public static class JournalReportGenerator
         return id switch
         {
             "bugs" or "enhancements" => count is >= 1 and <= 8,
-            "observations" or "notes" or "testideas" or "pointers" or "decisions" => count is >= 1 and <= 5,
+            "observations" or "notes" or "testideas" or "pointers" or "decisions" or "bookmarks" => count is >= 1 and <= 5,
             _ => false
         };
     }
@@ -478,7 +569,8 @@ public static class JournalReportGenerator
     /// Used by the panel context menu to grey the command out.
     /// </summary>
     public static bool CanShowMe(SessionLogger.JournalEntry e) =>
-        !string.IsNullOrEmpty(e.Url)
+        Bookmarks.BookmarkInfo.HasBookmarkEvidence(e)
+        || !string.IsNullOrEmpty(e.Url)
         || (e.Fields != null && (e.Fields.ContainsKey("pointerId")
             || e.Fields.ContainsKey("trwPath")
             || e.Fields.ContainsKey("reproPath")
@@ -620,6 +712,42 @@ public static class JournalReportGenerator
         sb.AppendLine(SectionCloseTag(compact));
     }
 
+    private static void RenderBookmarksSection(StringBuilder sb,
+        List<SessionLogger.JournalEntry> bookmarks, string? mdDir, bool compact, JournalPanelViewState? viewState)
+    {
+        if (bookmarks.Count == 0) return;
+
+        var open = SectionOpen("bookmarks", bookmarks.Count, compact, viewState);
+        sb.AppendLine(SectionOpenTag("bookmarks", "Bookmarks", compact, open));
+        foreach (var e in bookmarks)
+        {
+            var b = Bookmarks.BookmarkInfo.FromEntry(e);
+            var num = b.BookmarkNumber;
+            var summaryText = string.IsNullOrEmpty(e.Summary) ? "Bookmark" : e.Summary;
+            var heading = num > 0 ? Esc($"Bookmark #{num}: {summaryText}") : Esc(summaryText);
+            sb.AppendLine($"<article class=\"finding bookmark\" data-index=\"{e.Index}\">");
+            sb.AppendLine(EntryActions(e, compact));
+            sb.AppendLine(compact
+                ? $"<h3><a class=\"bookmark-title-link\" href=\"trowser://show/{e.Index}\">{heading}</a></h3>"
+                : $"<h3>{heading}</h3>");
+            sb.AppendLine($"<time>{e.Timestamp:yyyy-MM-dd HH:mm:ss}</time>");
+            if (!string.IsNullOrEmpty(e.Url))
+                sb.AppendLine($"<div class=\"entry-url\">URL: {Esc(e.Url)}</div>");
+            if (!string.IsNullOrEmpty(e.Details))
+                sb.AppendLine($"<div class=\"md-body\">{Esc(e.Details)}</div>");
+            var meta = $"{b.StepCount} step{(b.StepCount == 1 ? "" : "s")}";
+            if (b.LastRequest != null)
+                meta += $" \u2022 last request {Esc(b.LastRequest.Method)} {b.LastRequest.Status}";
+            if (b.CanVerify) meta += " \u2022 verify";
+            if (b.CanRestore) meta += " \u2022 go";
+            sb.AppendLine($"<p class=\"muted\">{meta}</p>");
+            if (!compact && !string.IsNullOrEmpty(b.Screenshot) && Api.ExportPathGuard.IsExistingLocalFile(b.Screenshot))
+                sb.AppendLine(RenderScreenshot(b.Screenshot, mdDir, compact: false));
+            sb.AppendLine("</article>");
+        }
+        sb.AppendLine(SectionCloseTag(compact));
+    }
+
     private static void RenderScreenshotsSection(StringBuilder sb,
         List<SessionLogger.JournalEntry> shots, string? mdDir, bool compact, JournalPanelViewState? viewState)
     {
@@ -752,7 +880,7 @@ public static class JournalReportGenerator
 
     private const string CompactCss = """
         .container.compact { max-width: none; padding: 8px 10px 16px; }
-        .compact .summary-wrap { position: sticky; top: 0; z-index: 2; background: #1e1e1e; padding-bottom: 8px; margin: 0 0 8px; }
+        .compact .summary-wrap { padding-bottom: 8px; margin: 0 0 8px; }
         .compact .summary-wrap h2 { display: none; }
         .compact .summary-grid { grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; }
         .compact .card { padding: 8px 4px; }
@@ -820,6 +948,8 @@ public static class JournalReportGenerator
         a.card-link:hover { border-color: #007acc; background: #2a2d2e; }
         .recordings li a.rec-link { color: #9cdcfe; text-decoration: none; cursor: pointer; }
         .recordings li a.rec-link:hover { text-decoration: underline; }
+        .finding.bookmark h3 a.bookmark-title-link { color: inherit; text-decoration: none; cursor: pointer; }
+        .finding.bookmark h3 a.bookmark-title-link:hover { text-decoration: underline; }
         .muted { color: #888; font-size: 11px; }
         .steps { list-style: decimal; padding-left: 28px; }
         .steps li { padding: 3px 0; border-bottom: 1px solid #2d2d30; color: #d4d4d4; }

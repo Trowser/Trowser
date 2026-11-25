@@ -84,8 +84,18 @@ public partial class AutomationContext
         };
     }
 
-    internal async Task RestoreBrowserSessionSnapshotAsync(BrowserSessionSnapshot snapshot)
+    /// <summary>
+    /// Put <paramref name="snapshot"/>'s cookies and storage back. By default every cookie comes back as
+    /// a session cookie. With <paramref name="keepExpiry"/> persistent cookies keep their saved expiry, and
+    /// cookies that have expired since the snapshot are skipped unless <paramref name="includeExpired"/>
+    /// (then they come back as session cookies and are counted in the report).
+    /// </summary>
+    internal async Task<CookieRestoreReport> RestoreBrowserSessionSnapshotAsync(BrowserSessionSnapshot snapshot,
+        bool keepExpiry = false, bool includeExpired = true)
     {
+        var restored = 0;
+        var skipped = new List<string>();
+        var expiredRestored = new List<string>();
         if (snapshot.Scope == BrowserSessionScopeKind.Profile)
         {
             await ClearCookies();
@@ -95,9 +105,28 @@ public partial class AutomationContext
             await ClearSiteCookiesAsync(snapshot.AnchorHost);
         }
 
+        var now = DateTime.UtcNow;
         foreach (var c in snapshot.Cookies)
         {
-            await SetCookie(c.Name, c.Value, c.Domain, c.Path, c.Secure, c.HttpOnly, c.SameSite);
+            DateTime? expires = null;
+            if (keepExpiry && !c.Session && TryParseExpiry(c.Expires, out var exp))
+            {
+                if (exp <= now)
+                {
+                    if (!includeExpired)
+                    {
+                        skipped.Add(c.Name);
+                        continue;
+                    }
+                    expiredRestored.Add(c.Name);
+                }
+                else
+                {
+                    expires = exp;
+                }
+            }
+            await SetCookie(c.Name, c.Value, c.Domain, c.Path, c.Secure, c.HttpOnly, c.SameSite, expires);
+            restored++;
         }
 
         if (snapshot.LocalStorage.Count > 0 || snapshot.SessionStorage.Count > 0)
@@ -122,6 +151,18 @@ public partial class AutomationContext
             foreach (var (k, v) in snapshot.SessionStorage)
                 await SetStorageItem("session", k, v);
         }
+
+        return new CookieRestoreReport(restored, skipped, expiredRestored);
+    }
+
+    private static bool TryParseExpiry(string? value, out DateTime utc)
+    {
+        utc = default;
+        if (string.IsNullOrWhiteSpace(value)) return false;
+        if (!DateTime.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out utc))
+            return false;
+        return true;
     }
 
     /// <summary>Clear cookies for one site host (not the entire profile).</summary>

@@ -90,6 +90,7 @@ public partial class TrowserApiServer
         return new
         {
             verdict = ReproVerifyService.ToApiString(result.Verdict),
+            reason = result.Reason,
             rate = result.Rate,
             passed = result.Passed,
             failed = result.Failed,
@@ -98,6 +99,7 @@ public partial class TrowserApiServer
                 run = r.Run,
                 passed = r.Passed,
                 error = r.Error,
+                failure = ReproFailureShape(r),
                 workflow = r.Workflow != null ? FormatWorkflowVerifyResponse(r.Workflow) : null
             }).ToList()
         };

@@ -9192,3 +9192,104 @@ paths:
       responses:
         "200":
           description: Success
+
+
+  /api/bookmark:
+    post:
+      operationId: post_bookmark
+      tags: [Other]
+      summary: "Bookmark this moment (Catch): one journal entry with a screenshot, the narrated steps since the previous checkpoint, the…"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/bookmark-export:
+    post:
+      operationId: post_bookmark_export
+      tags: [Other]
+      summary: "Export one bookmark as a zip (journal entry + screenshot, .trw, redacted state): { \"id\", \"path\": \"file.zip\" }."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/bookmark-import:
+    post:
+      operationId: post_bookmark_import
+      tags: [Other]
+      summary: "Import a bookmark zip: { \"path\": \"file.zip\" }. Imported bookmarks keep Verify but never offer Go (state is redacted)."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/bookmark-restore:
+    post:
+      operationId: post_bookmark_restore
+      tags: [Other]
+      summary: "Go: restore a bookmark's cookies, localStorage, and sessionStorage, then navigate to its URL."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success
+
+
+  /api/bookmark/{id}:
+    get:
+      operationId: get_bookmark_id
+      tags: [Other]
+      summary: "Get one bookmark by id (or journal index): steps, last request, evidence paths, canVerify, canRestore."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+
+
+  /api/bookmarks:
+    get:
+      operationId: get_bookmarks
+      tags: [Other]
+      summary: "List bookmarks (journal entries of type bookmark), oldest first."
+      responses:
+        "200":
+          description: Success
+
+
+  /api/bookmark-verify:
+    post:
+      operationId: post_bookmark_verify
+      tags: [Other]
+      summary: "Replay a bookmark's .trw: { \"id\", \"runs\": 1, \"clearSession\": false, \"safetyMode\": \"active\" }."
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Success

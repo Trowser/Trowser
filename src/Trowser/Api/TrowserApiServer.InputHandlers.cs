@@ -422,6 +422,9 @@ public partial class TrowserApiServer
             var tabIndex = await _context.NewTab(url, owner);
             var tabs = _context.GetTabs();
             var newTab = tabs.FirstOrDefault(t => t.Index == tabIndex);
+            // The journal row was attributed to the tab that was active before; the action belongs to the new tab.
+            if (newTab != null && _sessionLogger != null && _journalActionIndex.Value is int journalRow and >= 0)
+                _sessionLogger.SetActionTabId(journalRow, newTab.Id);
             await WriteSuccess(response, new
             {
                 tabIndex,

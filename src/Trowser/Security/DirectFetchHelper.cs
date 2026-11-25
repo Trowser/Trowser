@@ -72,13 +72,8 @@ public static class DirectFetchHelper
                 }
             }
 
-            using var handler = new HttpClientHandler
-            {
-                AllowAutoRedirect = false,
-                UseCookies = false,
-                AutomaticDecompression = System.Net.DecompressionMethods.All,
-                ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-            };
+            using var handler = ClientTlsHelper.CreateSocketsHandler(
+                context.SslManager, allowAutoRedirect: false, automaticDecompression: true);
             using var client = new HttpClient(handler)
             {
                 Timeout = TimeSpan.FromMilliseconds(timeoutMs)

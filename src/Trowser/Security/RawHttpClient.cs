@@ -131,7 +131,8 @@ internal static class RawHttpClient
     }
 
     public static async Task<RawResult> SendAsync(Uri target, string requestLine, string? headerBlock, string? body,
-        int timeoutMs = DefaultTimeoutMs, BuildOptions? options = null, CancellationToken ct = default)
+        int timeoutMs = DefaultTimeoutMs, BuildOptions? options = null, CancellationToken ct = default,
+        SslManager? sslManager = null)
     {
         BuildResult built;
         try
@@ -143,14 +144,14 @@ internal static class RawHttpClient
             return new RawResult { Error = ex.Message };
         }
 
-        var sent = await SendBytesAsync(target, built.Bytes, timeoutMs, ct);
+        var sent = await SendBytesAsync(target, built.Bytes, timeoutMs, ct, sslManager);
         sent.RequestSent = built.RequestSent;
         sent.HostWasAdded = built.HostWasAdded;
         return sent;
     }
 
     public static async Task<RawResult> SendBytesAsync(Uri target, byte[] requestBytes, int timeoutMs,
-        CancellationToken ct = default)
+        CancellationToken ct = default, SslManager? sslManager = null)
     {
         var sw = Stopwatch.StartNew();
         try
@@ -171,13 +172,15 @@ internal static class RawHttpClient
             if (isHttps)
             {
                 var sslStream = new SslStream(stream, false, (_, _, _, _) => true);
-                await sslStream.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+                var sslOptions = new SslClientAuthenticationOptions
                 {
                     TargetHost = host,
                     EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12 |
                                           System.Security.Authentication.SslProtocols.Tls13,
                     ApplicationProtocols = [SslApplicationProtocol.Http11]
-                }, connectCts.Token);
+                };
+                ClientTlsHelper.ApplyActiveClientCertificate(sslOptions, sslManager);
+                await sslStream.AuthenticateAsClientAsync(sslOptions, connectCts.Token);
                 stream = sslStream;
             }
 

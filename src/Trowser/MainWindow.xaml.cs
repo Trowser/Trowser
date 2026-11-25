@@ -87,6 +87,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly Security.PowerModeManager _powerMode = new();
     private readonly Security.RedTeamWhisperManager _redTeamWhisper = new();
     private readonly Security.SslManager _sslManager = Security.SslManager.Load();
+
+    internal Security.SslManager SslManager => _sslManager;
     private readonly PlaybookRegistry _playbookRegistry = new();
     private readonly IdentityStore _identityStore = new();
     private readonly ChainPatternCatalog _chainCatalog = new();

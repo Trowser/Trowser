@@ -980,7 +980,7 @@ public partial class AutomationContext
             : requestLine.Trim();
 
         var result = await RawHttpClient.SendAsync(uri, line, headers, body, timeoutMs,
-            new RawHttpClient.BuildOptions { NormalizeHeaders = normalizeHeaders });
+            new RawHttpClient.BuildOptions { NormalizeHeaders = normalizeHeaders }, sslManager: SslManager);
 
         return JsonSerializer.Serialize(new
         {
@@ -1135,12 +1135,8 @@ public partial class AutomationContext
     {
         var cookieHeader = await GetCookieHeaderForUrl(url);
 
-        using var handler = new System.Net.Http.HttpClientHandler
-        {
-            AllowAutoRedirect = false,
-            UseCookies = false,
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-        };
+        using var handler = ClientTlsHelper.CreateSocketsHandler(
+            SslManager, allowAutoRedirect: false, automaticDecompression: true);
         using var client = new System.Net.Http.HttpClient(handler)
         {
             Timeout = TimeSpan.FromMilliseconds(timeoutMs)

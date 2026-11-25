@@ -1306,10 +1306,10 @@ Use `body` for raw string payloads (form-encoded, XML, etc.). Use `json` as a sh
 
 **TRACE/CONNECT support:** These methods are blocked by browser `fetch()`. When used, Trowser automatically falls back to a server-side HttpClient request. The response includes `"type": "server-side"` and a `note` explaining this.
 
-**Wire-level HTTP:** `serverSide` uses HttpClient (one request shape per hop). For HTTP/1.x on a fresh TCP/TLS connection — duplicate header names, custom `Transfer-Encoding` / `Content-Length`, nonstandard request-line versions — use **`POST /api/fetch-raw`** (scripting: `FetchRaw`). Raw sends do not attach the browser cookie jar; use `GetCookieHeaderForUrl` / a `Cookie:` line when you need session cookies.
+**Wire-level HTTP:** `serverSide` uses HttpClient (one request shape per hop). For HTTP/1.x on a fresh TCP/TLS connection — duplicate header names, custom `Transfer-Encoding` / `Content-Length`, nonstandard request-line versions — use **`POST /api/fetch-raw`** (scripting: `FetchRaw`). Raw sends do not attach the browser cookie jar; use `GetCookieHeaderForUrl` / a `Cookie:` line when you need session cookies. When a client TLS certificate is **active** in SSL Manager, server-side fetch and fetch-raw attach it for mutual TLS (see [Client TLS certificates](#client-tls-certificates)).
 
 ### POST /api/fetch-raw
-Send HTTP/1.x bytes on a new TCP/TLS connection (not `HttpClient`, not WebView2). Use this when you need `Transfer-Encoding`, a custom `Content-Length`, duplicate header names, or a nonstandard request-line version token (`HTTP/1.0`, `HTTP/1.2`, …). Session header overrides are **not** applied. Blocked in `--safe`. TLS ALPN is pinned to `http/1.1`.
+Send HTTP/1.x bytes on a new TCP/TLS connection (not `HttpClient`, not WebView2). Use this when you need `Transfer-Encoding`, a custom `Content-Length`, duplicate header names, or a nonstandard request-line version token (`HTTP/1.0`, `HTTP/1.2`, …). Session header overrides are **not** applied. Blocked in `--safe`. TLS ALPN is pinned to `http/1.1`. The **active** SSL Manager client certificate is sent on `https` targets when one is set (mutual TLS).
 
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
@@ -5082,7 +5082,19 @@ List built-in payload sets with sample payloads and counts.
 
 ## Client TLS certificates
 
-Mutual TLS client certificates for WebView2 HTTPS (stored DPAPI-encrypted, persist across sessions). **Blocked in `--safe` mode** for add/remove/active changes; list/get are allowed.
+Mutual TLS (mTLS) client certificates for outbound HTTPS from Trowser. Certificates persist across sessions; PKCS#12 bytes are **DPAPI-encrypted** per Windows user. **Blocked in `--safe` mode** for add/remove/active changes; list/get are allowed.
+
+**Where the active cert is used (no extra toggle):** When an alias is active, Trowser attaches that client certificate automatically on server-side TLS, including:
+
+- Network Request Editor **Send (Direct)** and **Raw**
+- `POST /api/fetch` with `serverSide: true`, `POST /api/fetch-direct`, and `POST /api/fetch-raw`
+- Server-side security probes and similar `HttpClient` / raw-TLS traffic that shares the automation `SslManager`
+
+**Not covered:** **Send (Browser)** and in-page `fetch()` still use WebView2 / OS certificate selection for client auth (not the in-app PKCS#12 store). Session header overrides do not apply to Send Direct, fetch-direct, or fetch-raw.
+
+**Import:** `POST /api/ssl/certificates` (or SSL Manager / MCP add) needs the `.pfx` / `.p12` **password once**. Trowser validates the file, then stores a password-free PKCS#12 (full chain when present) encrypted with DPAPI. The original password is not saved. Certificates added before this behavior may need **remove + re-add** if TLS load fails.
+
+**Windows:** Schannel may use the issuing CA chain from the PKCS#12 and, when needed, install the leaf or intermediates into the current-user certificate store so the handshake can present mTLS correctly.
 
 ### GET /api/ssl/certificates
 List loaded certificates: alias, subject, issuer, thumbprint, expiry, active flag.
@@ -5097,7 +5109,7 @@ Remove by alias: `{ "alias" }`.
 Current active client certificate metadata, or empty when none is set.
 
 ### POST /api/ssl/certificates/active
-Set active cert: `{ "alias": "my-cert" }`. Empty/null alias clears active (no client cert sent).
+Set active cert: `{ "alias": "my-cert" }`. Empty/null alias clears active (no client cert sent on the paths above).
 
 **MCP:** `browser_ssl_list`, `browser_ssl_add`, `browser_ssl_remove`, `browser_ssl_get_active`, `browser_ssl_set_active`.
 

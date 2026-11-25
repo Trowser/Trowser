@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using Trowser.Automation;
+using Trowser.Security;
 
 namespace Trowser;
 
@@ -46,6 +47,8 @@ public class BreakpointHitDialog : Window
     private readonly Button _readMoreBtn;
 
     private BreakpointForwardStreamSession? _streamSession;
+
+    private SslManager? OwnerSslManager => (Owner as MainWindow)?.SslManager;
 
     private static readonly SolidColorBrush BgMedium = Bc("#2D2D30");
     private static readonly SolidColorBrush BgInput = Bc("#1E1E1E");
@@ -373,7 +376,7 @@ public class BreakpointHitDialog : Window
                 headerDict,
                 _requestBodyBox.Text);
 
-            var session = await BreakpointForwardHttp.OpenStreamSessionAsync(request);
+            var session = await BreakpointForwardHttp.OpenStreamSessionAsync(request, OwnerSslManager);
             var isEventStream = BreakpointForwardHttp.ResponseLooksLikeEventStream(session.Response);
 
             if (!isEventStream)
@@ -558,13 +561,8 @@ public class BreakpointHitDialog : Window
             var body = _requestBodyBox.Text;
             if (string.IsNullOrEmpty(body)) body = null;
 
-            using var handler = new HttpClientHandler
-            {
-                AutomaticDecompression = DecompressionMethods.All,
-                ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
-                AllowAutoRedirect = false,
-                MaxConnectionsPerServer = concurrency
-            };
+            using var handler = BreakpointForwardHttp.CreateForwardHandler(OwnerSslManager);
+            handler.MaxConnectionsPerServer = concurrency;
             using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
 
             var skipHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)

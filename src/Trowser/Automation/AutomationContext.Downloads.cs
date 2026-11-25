@@ -2,6 +2,7 @@ using System.IO;
 using System.Net.Http;
 using System.Text.Json;
 using Microsoft.Web.WebView2.Core;
+using Trowser.Security;
 
 namespace Trowser.Automation;
 
@@ -386,7 +387,8 @@ public partial class AutomationContext
             cookieHeader = string.Join("; ", cookies.Select(c => $"{c.Name}={c.Value}"));
         });
 
-        using var handler = new HttpClientHandler { UseCookies = false, AllowAutoRedirect = false };
+        using var handler = ClientTlsHelper.CreateSocketsHandler(
+            SslManager, allowAutoRedirect: false, automaticDecompression: true);
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(60) };
 
         // Follow redirects by hand so the origin's cookies are never sent to another host.

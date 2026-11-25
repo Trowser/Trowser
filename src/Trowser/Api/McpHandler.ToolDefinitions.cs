@@ -3770,7 +3770,8 @@ public partial class McpHandler
 
         Tool("browser_ssl_add",
             "Add a client certificate (.pfx or .p12) for mutual TLS authentication. " +
-            "The certificate is stored securely (DPAPI-encrypted). Use the alias to refer to it later. " +
+            "Password is required once at import; Trowser stores a DPAPI-encrypted password-free PKCS#12 (chain included when present). " +
+            "The active certificate is used automatically on server-side fetch, fetch-raw, Request Editor Direct/Raw, and related TLS. " +
             "JKS files must be converted to PKCS#12 first (keytool -importkeystore).",
             Schema(
                 ("filePath", SStr("Absolute path to .pfx or .p12 certificate file")),
@@ -3787,7 +3788,8 @@ public partial class McpHandler
         Tool("browser_ssl_set_active",
             "Set which client certificate to use for mutual TLS, by alias. " +
             "Pass an empty alias or omit it to clear the active certificate (no client cert sent). " +
-            "The active certificate is used for all WebView2 HTTPS requests that require client authentication.",
+            "When active, the cert is attached automatically on server-side HTTP/TLS (fetch serverSide, fetch-direct, fetch-raw, Request Editor Direct/Raw). " +
+            "WebView2 navigation uses OS client-cert selection, not this store.",
             Schema(("alias", SStr("Alias of the certificate to activate, or empty/null to clear")))),
 
         Tool("browser_ssl_get_active",

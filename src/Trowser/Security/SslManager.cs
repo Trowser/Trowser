@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
@@ -9,13 +10,17 @@ namespace Trowser.Security;
 /// <summary>
 /// Manages SSL client certificates for mutual TLS.
 /// Supports .pfx and .p12 formats. Stores PKCS#12 bytes encrypted with DPAPI.
-/// Provides the active certificate for WebView2 and HttpClient usage.
+/// Provides the active certificate for WebView2 (browser navigation) and outbound HttpClient / raw TLS (via <see cref="ClientTlsHelper"/>).
 /// </summary>
 public class SslManager
 {
     private readonly List<SslCertificateEntry> _certificates = new();
     private readonly object _lock = new();
     private string? _activeAlias;
+    private SslStreamCertificateContext? _cachedClientContext;
+    private X509Certificate2Collection? _cachedCertificateBag;
+    private string? _cachedClientContextAlias;
+    private string? _lastTlsLoadError;
 
     /// <summary>All loaded certificates (thread-safe snapshot).</summary>
     public IReadOnlyList<SslCertificateEntry> Certificates
@@ -56,12 +61,33 @@ public class SslManager
 
         var pkcs12Bytes = File.ReadAllBytes(filePath);
 
-        // Validate by loading the certificate
-        X509Certificate2 cert;
+        byte[] sealedPkcs12;
+        string thumbprint;
+        string subject;
+        string issuer;
+        DateTime notAfter;
+        DateTime notBefore;
         try
         {
-            cert = new X509Certificate2(pkcs12Bytes, password,
-                X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
+            sealedPkcs12 = SslPkcs12Helper.SealForStorage(pkcs12Bytes, password);
+            var metaBag = new X509Certificate2Collection();
+            metaBag.Import(sealedPkcs12, string.Empty,
+                X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
+            try
+            {
+                var leafMeta = metaBag.Cast<X509Certificate2>().FirstOrDefault(static c => c.HasPrivateKey)
+                               ?? throw new CryptographicException("No certificate with a private key.");
+                thumbprint = leafMeta.Thumbprint;
+                subject = leafMeta.Subject;
+                issuer = leafMeta.Issuer;
+                notAfter = leafMeta.NotAfter.ToUniversalTime();
+                notBefore = leafMeta.NotBefore.ToUniversalTime();
+            }
+            finally
+            {
+                foreach (X509Certificate2 c in metaBag)
+                    c.Dispose();
+            }
         }
         catch (CryptographicException ex)
         {
@@ -78,26 +104,26 @@ public class SslManager
             if (_certificates.Any(c => c.Alias.Equals(resolvedAlias, StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidOperationException($"A certificate with alias '{resolvedAlias}' already exists. Use a different alias.");
 
-            // Encrypt PKCS#12 bytes with DPAPI
-            var encrypted = ProtectedData.Protect(pkcs12Bytes, null, DataProtectionScope.CurrentUser);
+            // DPAPI protects password-free PKCS#12 (full chain). Original .pfx password is not stored.
+            var encrypted = ProtectedData.Protect(sealedPkcs12, null, DataProtectionScope.CurrentUser);
 
             var entry = new SslCertificateEntry
             {
                 Alias = resolvedAlias,
                 OriginalFileName = Path.GetFileName(filePath),
                 EncryptedPkcs12Base64 = Convert.ToBase64String(encrypted),
-                Thumbprint = cert.Thumbprint,
-                Subject = cert.Subject,
-                Issuer = cert.Issuer,
-                NotAfter = cert.NotAfter.ToUniversalTime(),
-                NotBefore = cert.NotBefore.ToUniversalTime(),
+                Thumbprint = thumbprint,
+                Subject = subject,
+                Issuer = issuer,
+                NotAfter = notAfter,
+                NotBefore = notBefore,
                 AddedAt = DateTime.UtcNow
             };
 
             _certificates.Add(entry);
+            InvalidateClientCertificateContext();
             Save();
 
-            cert.Dispose();
             return SslCertificateInfo.FromEntry(entry, _activeAlias == resolvedAlias);
         }
     }
@@ -117,6 +143,7 @@ public class SslManager
             if (_activeAlias?.Equals(alias, StringComparison.OrdinalIgnoreCase) == true)
                 _activeAlias = null;
 
+            InvalidateClientCertificateContext();
             Save();
             return true;
         }
@@ -130,6 +157,7 @@ public class SslManager
             if (string.IsNullOrWhiteSpace(alias))
             {
                 _activeAlias = null;
+                InvalidateClientCertificateContext();
                 Save();
                 return null;
             }
@@ -139,6 +167,7 @@ public class SslManager
                 throw new KeyNotFoundException($"No certificate found with alias '{alias}'.");
 
             _activeAlias = entry.Alias;
+            InvalidateClientCertificateContext();
             Save();
             return SslCertificateInfo.FromEntry(entry, true);
         }
@@ -167,30 +196,126 @@ public class SslManager
     }
 
     /// <summary>
-    /// Get the X509Certificate2 for the active certificate (for HttpClient/WebView2).
-    /// Returns null if no active certificate.
+    /// Schannel-ready client cert context for the active PKCS#12 (leaf + intermediates).
+    /// Returns null when nothing is active or the store cannot be decrypted.
     /// </summary>
-    public X509Certificate2? GetActiveX509Certificate()
+    /// <summary>Error from the last failed TLS load of the active cert, or null if load succeeded / nothing active.</summary>
+    public string? GetActiveClientTlsLoadError()
     {
         lock (_lock)
         {
-            if (_activeAlias == null) return null;
-            var entry = _certificates.FirstOrDefault(c => c.Alias.Equals(_activeAlias, StringComparison.OrdinalIgnoreCase));
-            if (entry == null) return null;
+            if (_activeAlias == null)
+                return null;
+            if (GetActiveClientCertificateContext() != null)
+                return null;
+            return _lastTlsLoadError ?? "The active client certificate could not be loaded for TLS.";
+        }
+    }
+
+    public SslStreamCertificateContext? GetActiveClientCertificateContext()
+    {
+        lock (_lock)
+        {
+            if (_activeAlias == null)
+            {
+                _lastTlsLoadError = null;
+                InvalidateClientCertificateContext();
+                return null;
+            }
+
+            if (_cachedClientContext != null &&
+                _cachedClientContextAlias?.Equals(_activeAlias, StringComparison.OrdinalIgnoreCase) == true)
+                return _cachedClientContext;
+
+            InvalidateClientCertificateContext();
+            _lastTlsLoadError = null;
+
+            var entry = _certificates.FirstOrDefault(c =>
+                c.Alias.Equals(_activeAlias, StringComparison.OrdinalIgnoreCase));
+            if (entry == null)
+            {
+                _lastTlsLoadError = $"Active alias '{_activeAlias}' was not found in the certificate list.";
+                return null;
+            }
 
             try
             {
                 var encrypted = Convert.FromBase64String(entry.EncryptedPkcs12Base64);
                 var pkcs12Bytes = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
-                return new X509Certificate2(pkcs12Bytes, (string?)null,
-                    X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
+
+                if (!SslPkcs12Helper.TryLoadPersisted(pkcs12Bytes, out var bag, out var importError))
+                {
+                    _lastTlsLoadError = importError;
+                    TrowserLog.Error($"Active client certificate '{entry.Alias}': {importError}");
+                    return null;
+                }
+
+                var ctx = SslPkcs12Helper.CreateClientContext(bag, out var ctxError);
+                if (ctx == null)
+                {
+                    DisposeCertificateBag(bag);
+                    _lastTlsLoadError = ctxError ?? "Failed to create TLS client certificate context.";
+                    TrowserLog.Error($"Active client certificate '{entry.Alias}': {_lastTlsLoadError}");
+                    return null;
+                }
+
+                _cachedCertificateBag = bag;
+                _cachedClientContext = ctx;
+                _cachedClientContextAlias = _activeAlias;
+                return _cachedClientContext;
             }
             catch (Exception ex)
             {
-                TrowserLog.Error($"Failed to decrypt certificate '{entry.Alias}'", ex);
+                _lastTlsLoadError = ex.Message;
+                TrowserLog.Error($"Failed to load active client certificate '{entry.Alias}'", ex);
                 return null;
             }
         }
+    }
+
+    /// <summary>Leaf certificate for the active client cert, if any.</summary>
+    public X509Certificate2? GetActiveX509Certificate() =>
+        GetActiveClientCertificateContext()?.TargetCertificate;
+
+    /// <summary>One-line summary for UI when mutual TLS is active (no secrets).</summary>
+    public string? GetActiveClientTlsSummary()
+    {
+        var ctx = GetActiveClientCertificateContext();
+        if (ctx == null)
+            return null;
+        var leaf = ctx.TargetCertificate;
+        var cn = TryGetCommonName(leaf.Subject);
+        var intermediateCount = ctx.IntermediateCertificates.Count;
+        return string.IsNullOrEmpty(cn)
+            ? $"Client certificate: {leaf.Thumbprint} (+{intermediateCount} issuing CA certs)"
+            : $"Client certificate: {cn} (+{intermediateCount} issuing CA certs)";
+    }
+
+    private static string? TryGetCommonName(string subject)
+    {
+        foreach (var part in subject.Split(',', StringSplitOptions.TrimEntries))
+        {
+            if (part.StartsWith("CN=", StringComparison.OrdinalIgnoreCase))
+                return part[3..];
+        }
+        return null;
+    }
+
+    private void InvalidateClientCertificateContext()
+    {
+        DisposeCertificateBag(_cachedCertificateBag);
+        _cachedCertificateBag = null;
+        _cachedClientContext = null;
+        _cachedClientContextAlias = null;
+        _lastTlsLoadError = null;
+    }
+
+    private static void DisposeCertificateBag(X509Certificate2Collection? bag)
+    {
+        if (bag == null) return;
+        foreach (X509Certificate2 c in bag)
+            c.Dispose();
+        bag.Clear();
     }
 
     /// <summary>Get the thumbprint of the active certificate (for WebView2 matching).</summary>

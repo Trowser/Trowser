@@ -2816,9 +2816,11 @@ Log($"Purged {purged} non-ASCII cookies");
 
 Load a PKCS#12 client certificate into the session SSL manager. Throws `InvalidOperationException` if the manager is not initialized.
 
+The **password is only needed at import**; storage is DPAPI-encrypted. When a cert is **active**, it is sent automatically on server-side TLS (`Fetch` with `serverSide: true`, `FetchDirect`, `FetchRaw`, and the HTTP Request Editor Direct/Raw paths). In-page `fetch()` and Send (Browser) do not use this store.
+
 | Method | Parameters | Returns | Description |
 |--------|------------|---------|-------------|
-| `SslAddCertificate(filePath, password, alias?)` | `string filePath, string password, string? alias = null` | `SslCertificateInfo` | Import a `.pfx` / `.p12`. |
+| `SslAddCertificate(filePath, password, alias?)` | `string filePath, string password, string? alias = null` | `SslCertificateInfo` | Import a `.pfx` / `.p12` (password once; full chain preserved when present). |
 | `SslSetActive(alias)` | `string? alias` | `SslCertificateInfo?` | Select the cert sent on client-auth handshakes. `null` clears the selection. |
 | `SslGetActive()` | -- | `SslCertificateInfo?` | Active certificate, or `null`. |
 | `SslListCertificates()` | -- | `List<SslCertificateInfo>` | Certificates in the manager (no secrets). |

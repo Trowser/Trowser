@@ -105,16 +105,13 @@ internal static class RequestEditorHttp
         return skipped;
     }
 
-    public static HttpClientHandler CreateHandler(bool allowAutoRedirect, bool automaticDecompression)
-    {
-        return new HttpClientHandler
-        {
-            AllowAutoRedirect = allowAutoRedirect,
-            UseCookies = false,
-            // Direct is a raw client: do not inherit WinINET/Fiddler/system proxy.
-            UseProxy = false,
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
-            AutomaticDecompression = automaticDecompression ? DecompressionMethods.All : DecompressionMethods.None
-        };
-    }
+    public static SocketsHttpHandler CreateHandler(
+        bool allowAutoRedirect,
+        bool automaticDecompression,
+        SslManager? sslManager = null) =>
+        ClientTlsHelper.CreateSocketsHandler(
+            sslManager,
+            allowAutoRedirect,
+            automaticDecompression,
+            useProxy: false);
 }

@@ -158,12 +158,8 @@ public static class SecurityProbeHttp
     {
         method = string.IsNullOrWhiteSpace(method) ? "GET" : method.Trim().ToUpperInvariant();
 
-        using var handler = new HttpClientHandler
-        {
-            AllowAutoRedirect = true,
-            UseCookies = false,
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-        };
+        using var handler = ClientTlsHelper.CreateSocketsHandler(
+            ctx.SslManager, allowAutoRedirect: true, automaticDecompression: true);
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMilliseconds(Math.Max(timeoutMs, 1000)) };
 
         using var req = new HttpRequestMessage(new HttpMethod(method), url);
@@ -249,12 +245,8 @@ public static class SecurityProbeHttp
     {
         method = string.IsNullOrWhiteSpace(method) ? "GET" : method.Trim().ToUpperInvariant();
 
-        using var handler = new HttpClientHandler
-        {
-            AllowAutoRedirect = true,
-            UseCookies = false,
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-        };
+        using var handler = ClientTlsHelper.CreateSocketsHandler(
+            ctx.SslManager, allowAutoRedirect: true, automaticDecompression: true);
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMilliseconds(Math.Max(timeoutMs, 1000)) };
 
         using var req = new HttpRequestMessage(new HttpMethod(method), url);

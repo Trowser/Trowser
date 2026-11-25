@@ -276,7 +276,7 @@ public partial class TrowserApiServer
         if (useBrowserCookies)
             cookieHeader = await _context.GetCookieHeaderForUrl(url);
 
-        var result = await RunLoadTest(url, method, headers, requestBody, concurrency, includeBody, cookieHeader);
+        var result = await RunLoadTest(url, method, headers, requestBody, concurrency, includeBody, cookieHeader, _context.SslManager);
         await WriteSuccess(response, result);
     }
 
@@ -287,15 +287,12 @@ public partial class TrowserApiServer
 
     private static async Task<object> RunLoadTest(
         string url, string method, Dictionary<string, string> headers,
-        string? requestBody, int concurrency, bool includeBody, string? cookieHeader = null)
+        string? requestBody, int concurrency, bool includeBody, string? cookieHeader = null,
+        Security.SslManager? sslManager = null)
     {
-        using var handler = new HttpClientHandler
-        {
-            AutomaticDecompression = DecompressionMethods.All,
-            ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
-            AllowAutoRedirect = false,
-            MaxConnectionsPerServer = concurrency
-        };
+        using var handler = Security.ClientTlsHelper.CreateSocketsHandler(
+            sslManager, allowAutoRedirect: false, automaticDecompression: true);
+        handler.MaxConnectionsPerServer = concurrency;
         using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
 
         var overallSw = System.Diagnostics.Stopwatch.StartNew();

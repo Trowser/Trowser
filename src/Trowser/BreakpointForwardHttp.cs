@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using Trowser.Automation;
+using Trowser.Security;
 
 namespace Trowser;
 
@@ -74,12 +75,8 @@ internal static class BreakpointForwardHttp
         return request;
     }
 
-    public static HttpClientHandler CreateForwardHandler() => new()
-    {
-        AutomaticDecompression = DecompressionMethods.All,
-        ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
-        AllowAutoRedirect = false
-    };
+    public static SocketsHttpHandler CreateForwardHandler(SslManager? sslManager = null) =>
+        ClientTlsHelper.CreateSocketsHandler(sslManager, allowAutoRedirect: false, automaticDecompression: true);
 
     public static Dictionary<string, string> CollectResponseHeaders(HttpResponseMessage response)
     {
@@ -93,9 +90,10 @@ internal static class BreakpointForwardHttp
 
     public static async Task<BreakpointForwardStreamSession> OpenStreamSessionAsync(
         HttpRequestMessage request,
+        SslManager? sslManager = null,
         CancellationToken cancellationToken = default)
     {
-        var handler = CreateForwardHandler();
+        var handler = CreateForwardHandler(sslManager);
         var client = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
         var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -107,7 +105,7 @@ internal static class BreakpointForwardHttp
 internal sealed class BreakpointForwardStreamSession : IAsyncDisposable
 {
     private readonly HttpClient _client;
-    private readonly HttpClientHandler _handler;
+    private readonly HttpMessageHandler _handler;
     private readonly StreamReader _reader;
     private readonly char[] _buffer = new char[8192];
 
@@ -117,7 +115,7 @@ internal sealed class BreakpointForwardStreamSession : IAsyncDisposable
 
     internal BreakpointForwardStreamSession(
         HttpClient client,
-        HttpClientHandler handler,
+        HttpMessageHandler handler,
         HttpResponseMessage response,
         Stream bodyStream)
     {

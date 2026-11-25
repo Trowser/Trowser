@@ -57,7 +57,7 @@ public partial class TrowserApiServer
         {
             var result = await RawHttpClient.SendAsync(uri, requestLine, headerBlock, fetchBody, timeout,
                 new RawHttpClient.BuildOptions { NormalizeHeaders = normalizeHeaders },
-                _context.OperationCancellation);
+                _context.OperationCancellation, _context.SslManager);
 
             await WriteSuccess(response, new
             {

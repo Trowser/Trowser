@@ -153,7 +153,7 @@ public class RequestEditorDialog : Window
         _tabs.Margin = new Thickness(0, 10, 0, 0);
 
         var composePanel = new StackPanel();
-        AddHint(composePanel, "Send (Browser) navigates this tab (page cookies and session). Send (Direct) uses HttpClient (bypasses CORS; no cookie jar unless you set Cookie). For Transfer-Encoding, Content-Length, or HTTP/1.x version tokens, use the Raw tab.");
+        AddHint(composePanel, "Send (Browser) navigates this tab (page cookies and session). Send (Direct) uses HttpClient (bypasses CORS; no cookie jar unless you set Cookie). When an SSL client certificate is active in Settings, Direct and Raw attach it automatically. For Transfer-Encoding, Content-Length, or HTTP/1.x version tokens, use the Raw tab.");
 
         var urlRow = new Grid { Margin = new Thickness(0, 6, 0, 0) };
         urlRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
@@ -710,6 +710,12 @@ public class RequestEditorDialog : Window
 
     private async void SendRaw_Click(object sender, RoutedEventArgs e)
     {
+        if (TryGetActiveClientTlsBlockReason(out var tlsBlock))
+        {
+            ShowResponseError(tlsBlock);
+            return;
+        }
+
         var targetText = _rawTargetUrl.Text.Trim();
         if (!Uri.TryCreate(targetText, UriKind.Absolute, out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
@@ -737,7 +743,8 @@ public class RequestEditorDialog : Window
         {
             if (count == 1)
             {
-                var result = await RawHttpClient.SendAsync(uri, line, headerBlock, body);
+                var result = await RawHttpClient.SendAsync(uri, line, headerBlock, body,
+                    sslManager: _context.SslManager);
                 if (!IsLoaded) return;
                 _loadingText.Visibility = Visibility.Collapsed;
                 ShowRawResult(result, targetText);
@@ -747,7 +754,8 @@ public class RequestEditorDialog : Window
             var sw = Stopwatch.StartNew();
             var tasks = Enumerable.Range(0, count).Select(async _ =>
             {
-                var result = await RawHttpClient.SendAsync(uri, line, headerBlock, body);
+                var result = await RawHttpClient.SendAsync(uri, line, headerBlock, body,
+                    sslManager: _context.SslManager);
                 var failed = result.Status == 0 && (result.Error != null || result.TimedOut);
                 return (
                     result,
@@ -838,6 +846,12 @@ public class RequestEditorDialog : Window
         var url = _urlBox.Text.Trim();
         if (string.IsNullOrEmpty(url)) return;
 
+        if (TryGetActiveClientTlsBlockReason(out var tlsBlock))
+        {
+            ShowResponseError(tlsBlock);
+            return;
+        }
+
         var count = ReadRepeatCount(_composeRepeatBox);
         if (count > 1)
         {
@@ -865,10 +879,12 @@ public class RequestEditorDialog : Window
                 request.Content = new StringContent(bodyText, Encoding.UTF8);
 
             var skipped = RequestEditorHttp.ApplyHeaders(request, headerDict);
+            ShowActiveClientCertNote();
 
             using var handler = RequestEditorHttp.CreateHandler(
                 allowAutoRedirect: _followRedirectsCheck.IsChecked == true,
-                automaticDecompression: true);
+                automaticDecompression: true,
+                sslManager: _context.SslManager);
             using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
 
             var sw = Stopwatch.StartNew();
@@ -890,8 +906,61 @@ public class RequestEditorDialog : Window
         catch (Exception ex)
         {
             _loadingText.Visibility = Visibility.Collapsed;
-            ShowResponseError($"Direct request failed:\n{ex.Message}");
+            ShowResponseError(FormatDirectRequestError(ex));
         }
+    }
+
+    private static string FormatDirectRequestError(Exception ex)
+    {
+        var lines = new List<string> { "Direct request failed:" };
+        for (var cur = ex; cur != null; cur = cur.InnerException)
+        {
+            if (string.IsNullOrWhiteSpace(cur.Message))
+                continue;
+            if (!lines.Contains(cur.Message, StringComparer.Ordinal))
+                lines.Add(cur.Message);
+        }
+
+        if (lines.Any(static l => l.Contains("Authentication failed", StringComparison.OrdinalIgnoreCase)))
+        {
+            lines.Add(
+                "Mutual TLS: the handshake reached the server but client authentication failed. " +
+                "Typical causes: the server rejected this client certificate (wrong environment or LogicalAddress), " +
+                "or the issuing CA chain is incomplete — ensure the .pfx includes the issuing CA, or install the TEST SITHS CA in Windows.");
+        }
+
+        return string.Join("\n", lines);
+    }
+
+    private void ShowActiveClientCertNote()
+    {
+        var summary = _context.SslManager?.GetActiveClientTlsSummary();
+        if (string.IsNullOrEmpty(summary))
+        {
+            _sendNote.Text = "";
+            _sendNote.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        _sendNote.Text = summary;
+        _sendNote.Visibility = Visibility.Visible;
+    }
+
+    private bool TryGetActiveClientTlsBlockReason(out string message)
+    {
+        message = "";
+        var sm = _context.SslManager;
+        if (sm == null || string.IsNullOrEmpty(sm.ActiveAlias))
+            return false;
+
+        if (sm.GetActiveClientCertificateContext() != null)
+            return false;
+
+        var err = sm.GetActiveClientTlsLoadError()
+                  ?? "The active client certificate could not be loaded for mutual TLS.";
+        message =
+            "Client certificate (mutual TLS):\n" + err;
+        return true;
     }
 
     private async Task SendDirectRepeatedAsync(string url, int count)
@@ -909,7 +978,8 @@ public class RequestEditorDialog : Window
         {
             using var handler = RequestEditorHttp.CreateHandler(
                 allowAutoRedirect: followRedirects,
-                automaticDecompression: true);
+                automaticDecompression: true,
+                sslManager: _context.SslManager);
             handler.MaxConnectionsPerServer = count;
             using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(30) };
 

@@ -23,13 +23,23 @@ public class LlmToolExecutor
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    private static readonly HashSet<string> CopilotUnsupportedSchemaKeys = new(StringComparer.Ordinal)
+    /// <summary>
+    /// JSON Schema keywords rejected by OpenAI, Anthropic, and GitHub Copilot tool definitions
+    /// (at any depth). MCP may still emit these for external clients.
+    /// </summary>
+    private static readonly HashSet<string> LlmProviderUnsupportedSchemaKeys = new(StringComparer.Ordinal)
     {
         "anyOf", "allOf", "oneOf", "not",
         "if", "then", "else",
         "$ref", "$defs", "$schema", "$id", "$comment",
         "unevaluatedProperties", "patternProperties",
         "dependentSchemas", "dependentRequired"
+    };
+
+    /// <summary>OpenAI additionally rejects <c>enum</c> and <c>const</c> on the parameters root.</summary>
+    private static readonly HashSet<string> OpenAiRootForbiddenSchemaKeys = new(StringComparer.Ordinal)
+    {
+        "enum", "const"
     };
 
     public LlmToolExecutor(McpHandler mcpHandler)
@@ -122,8 +132,7 @@ public class LlmToolExecutor
                 {
                     ["name"] = name,
                     ["description"] = description,
-                    ["parameters"] = JsonSerializer.Deserialize<Dictionary<string, object>>(
-                        inputSchema.GetRawText(), JsonOptions)!
+                    ["parameters"] = SanitizedParametersFromInputSchema(inputSchema)
                 }
             });
         }
@@ -154,9 +163,7 @@ public class LlmToolExecutor
             var inputSchema = root.TryGetProperty("inputSchema", out var schemaEl)
                 ? schemaEl
                 : default;
-            var parameters = inputSchema.ValueKind == JsonValueKind.Object
-                ? SanitizeCopilotJsonSchema(inputSchema)
-                : new Dictionary<string, object?> { ["type"] = "object", ["properties"] = new Dictionary<string, object?>() };
+            var parameters = SanitizedParametersFromInputSchema(inputSchema);
 
             openAiTools.Add(new Dictionary<string, object>
             {
@@ -228,11 +235,16 @@ public class LlmToolExecutor
         return doc.RootElement.TryGetProperty("name", out var n) ? n.GetString() : null;
     }
 
+    private static object SanitizedParametersFromInputSchema(JsonElement inputSchema) =>
+        inputSchema.ValueKind == JsonValueKind.Object
+            ? SanitizeLlmProviderJsonSchema(inputSchema)
+            : new Dictionary<string, object?> { ["type"] = "object", ["properties"] = new Dictionary<string, object?>() };
+
     /// <summary>
-    /// Copilot's completions API accepts only a subset of JSON Schema. Locator tools use
-    /// top-level <c>anyOf</c>/<c>allOf</c>, which CAPI rejects with HTTP 400.
+    /// Built-in Chat LLM providers accept only a subset of JSON Schema. MCP locator tools use
+    /// top-level <c>anyOf</c>/<c>allOf</c>; OpenAI and Anthropic reject those with HTTP 400.
     /// </summary>
-    internal static object SanitizeCopilotJsonSchema(JsonElement el)
+    internal static object SanitizeLlmProviderJsonSchema(JsonElement el, int depth = 0)
     {
         switch (el.ValueKind)
         {
@@ -241,9 +253,11 @@ public class LlmToolExecutor
                 var obj = new Dictionary<string, object?>();
                 foreach (var prop in el.EnumerateObject())
                 {
-                    if (CopilotUnsupportedSchemaKeys.Contains(prop.Name))
+                    if (LlmProviderUnsupportedSchemaKeys.Contains(prop.Name))
                         continue;
-                    obj[prop.Name] = SanitizeCopilotJsonSchema(prop.Value);
+                    if (depth == 0 && OpenAiRootForbiddenSchemaKeys.Contains(prop.Name))
+                        continue;
+                    obj[prop.Name] = SanitizeLlmProviderJsonSchema(prop.Value, depth + 1);
                 }
 
                 if (obj.TryGetValue("type", out var typeVal) && typeVal is string type)
@@ -267,7 +281,7 @@ public class LlmToolExecutor
                 return obj;
             }
             case JsonValueKind.Array:
-                return el.EnumerateArray().Select(SanitizeCopilotJsonSchema).ToList();
+                return el.EnumerateArray().Select(v => SanitizeLlmProviderJsonSchema(v, depth + 1)).ToList();
             case JsonValueKind.String:
                 return el.GetString() ?? "";
             case JsonValueKind.Number:
@@ -305,8 +319,7 @@ public class LlmToolExecutor
             {
                 ["name"] = name,
                 ["description"] = description,
-                ["input_schema"] = JsonSerializer.Deserialize<Dictionary<string, object>>(
-                    inputSchema.GetRawText(), JsonOptions)!
+                ["input_schema"] = SanitizedParametersFromInputSchema(inputSchema)
             });
         }
 

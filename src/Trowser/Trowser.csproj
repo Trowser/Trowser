@@ -8,7 +8,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>Trowser</AssemblyName>
     <RootNamespace>Trowser</RootNamespace>
-    <Version>1.4.3</Version>
+    <Version>1.4.4</Version>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <SelfContained>true</SelfContained>

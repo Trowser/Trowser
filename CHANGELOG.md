@@ -176,5 +176,10 @@ Added smaller trowser-api-core.md for basic LLM usage of REST API
 Start Claude Code integration for smoother AI usage with subscription price
 Contributors: Rikard Edgren, Rahul Parwal, Santhosh Tuppad
 
+1.4.3 2026-11-26
+Bookmarks in journal
+Sanitized tool definitions for OpenAI/Anthropic compatibility (issue 24)
+Contributors: Rikard Edgren
+
 
 All releases also include minor bug fixes and enhancements.

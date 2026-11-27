@@ -1,27 +1,28 @@
+using System.ComponentModel;
 using System.Windows;
-using System.Windows.Threading;
 
 namespace Trowser;
 
 /// <summary>
-/// Keeps keyboard focus in Trowser when a modeless owned dialog closes.
-/// Without this, Alt+Tab away and back then closing the dialog can return focus to the other app.
+/// Owned modeless dialogs: Windows keeps an owned window above its owner (and only its owner), so
+/// do not set <see cref="Window.Topmost"/> — that would float the dialog over other applications.
+/// When an active owned window is destroyed, Windows may hand the foreground to another
+/// application; activating the owner while the dialog still exists keeps focus in Trowser.
 /// </summary>
 internal static class ModelessDialogFocus
 {
     public static void WireOwnerFocusRestore(Window dialog)
     {
-        dialog.Closed += (_, _) =>
-        {
-            var owner = dialog.Owner;
-            if (owner == null)
-                return;
+        dialog.Closing += (_, e) => ActivateOwnerIfActive(dialog, e);
+    }
 
-            owner.Dispatcher.BeginInvoke(() =>
-            {
-                if (owner.IsVisible)
-                    owner.Activate();
-            }, DispatcherPriority.Input);
-        };
+    private static void ActivateOwnerIfActive(Window dialog, CancelEventArgs e)
+    {
+        if (e.Cancel || !dialog.IsActive)
+            return;
+
+        var owner = dialog.Owner;
+        if (owner is { IsVisible: true })
+            owner.Activate();
     }
 }

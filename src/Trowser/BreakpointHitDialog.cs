@@ -75,7 +75,7 @@ public class BreakpointHitDialog : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ResizeMode = ResizeMode.CanResizeWithGrip;
         Background = BgMedium;
-        Topmost = true;
+        ModelessDialogFocus.WireOwnerFocusRestore(this);
         ShowInTaskbar = false;
 
         var scroll = new ScrollViewer

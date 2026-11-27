@@ -432,7 +432,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
             Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF9552")),
             ShowInTaskbar = false,
-            Topmost = true,
             Owner = this,
             Content = new TextBlock
             {
@@ -447,6 +446,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             }
         };
 
+        ModelessDialogFocus.WireOwnerFocusRestore(splash);
         splash.Show();
 
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
@@ -473,7 +473,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             WindowStartupLocation = WindowStartupLocation.CenterScreen,
             Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EF9552")),
             ShowInTaskbar = false,
-            Topmost = true,
             Owner = this,
             Content = new TextBlock
             {
@@ -497,6 +496,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 overlay.Close();
         };
 
+        ModelessDialogFocus.WireOwnerFocusRestore(overlay);
         overlay.Show();
     }
 

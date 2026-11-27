@@ -45,7 +45,7 @@ public class NoteOverlay : Window
         ShowInTaskbar = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         SizeToContent = SizeToContent.WidthAndHeight;
-        Topmost = true;
+        ModelessDialogFocus.WireOwnerFocusRestore(this);
 
         var card = new Border
         {

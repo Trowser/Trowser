@@ -58,7 +58,6 @@ public sealed class SnipOverlayWindow : Window
         Background = new SolidColorBrush(Color.FromArgb(0xCC, 0x10, 0x10, 0x10));
         ResizeMode = ResizeMode.NoResize;
         ShowInTaskbar = false;
-        Topmost = true;
         WindowStartupLocation = WindowStartupLocation.Manual;
 
         PositionOverOwner(owner);

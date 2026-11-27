@@ -51,6 +51,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private bool _safeMode;
     private ExternalMcpMode _externalMcpMode = ExternalMcpMode.Core;
     private AgentTabPolicy _agentTabPolicy = AgentTabPolicy.StayOnActive;
+    private bool _preferWebDarkMode;
 
     private readonly List<string> _cliOutputLines = new();
     private const string ScriptPauseIcon = "II";
@@ -210,6 +211,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _safeMode = (cli || App.Api.SafeModeFromCommandLine) ? App.Api.SafeMode : apiUser.SafeMode;
         _externalMcpMode = apiUser.ExternalMcpMode;
         _agentTabPolicy = apiUser.AgentTabPolicy;
+        _preferWebDarkMode = apiUser.PreferWebDarkMode;
 
         // Security features and test-data preferences persist in settings.json.
         _securityShadow.Configure(
@@ -621,6 +623,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 Directory.CreateDirectory(_automationContext.DownloadDirectory);
             }
             _automationContext.NavigationGuard = _navigationGuard;
+            _automationContext.PreferWebDarkMode = _preferWebDarkMode;
             _peerSessionManager = new PeerSessionManager(_peerRegistry, _navigationGuard.Scope);
             _mirrorController = new Peers.MirrorController(_peerSessionManager);
             _mirrorController.MirrorStateChanged += () =>
@@ -641,6 +644,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 _automationContext, _sessionLogger, _pointerStore, () => _safeMode, _identityStore);
 
             WireUpTabEvents(_automationContext.ActiveTab);
+            await _automationContext.ApplyEffectiveEmulatedMediaToTabAsync(_automationContext.ActiveTab);
             InterceptSettings.LoadInto(_automationContext.ActiveTab);
             var firstTab = _automationContext.ActiveTab;
             firstTab.BaselineUserAgent = firstTab.WebView.CoreWebView2.Settings.UserAgent;

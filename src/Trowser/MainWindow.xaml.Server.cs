@@ -55,7 +55,8 @@ public partial class MainWindow
             SafeMode = _safeMode,
             ApiPort = _apiPort,
             ExternalMcpMode = _externalMcpMode,
-            AgentTabPolicy = _automationContext?.AgentTabPolicy ?? _agentTabPolicy
+            AgentTabPolicy = _automationContext?.AgentTabPolicy ?? _agentTabPolicy,
+            PreferWebDarkMode = _preferWebDarkMode
         }.Save();
     }
 
@@ -1231,7 +1232,7 @@ public partial class MainWindow
     {
         var dialog = new SettingsDialog(this, _navigationGuard.Scope, _apiPort,
             _llmSettings.ProxyEnabled, _llmSettings.ProxyUrl,
-            _safeMode, _apiKey, _apiKeyRequired, _keepApiKeyForNextSession,
+            _safeMode, _preferWebDarkMode, _apiKey, _apiKeyRequired, _keepApiKeyForNextSession,
             _securityShadow.Config, _powerMode.Config, _redTeamWhisper.Config, _sslManager,
             onVpxExport: VpxExport_Click, onVpxImport: VpxImport_Click);
         if (dialog.ShowDialog() == true)
@@ -1242,6 +1243,14 @@ public partial class MainWindow
             UpdateScopeDisplay();
 
             _safeMode = dialog.SafeModeValue;
+            var preferWebDarkChanged = _preferWebDarkMode != dialog.PreferWebDarkModeValue;
+            _preferWebDarkMode = dialog.PreferWebDarkModeValue;
+            if (_automationContext != null)
+            {
+                _automationContext.PreferWebDarkMode = _preferWebDarkMode;
+                if (preferWebDarkChanged)
+                    _ = _automationContext.SyncPreferWebDarkModeToAllTabsAsync();
+            }
             if (_chatMcpHandler != null)
                 _chatMcpHandler.SafeMode = _safeMode;
             var previousKey = _apiKey;

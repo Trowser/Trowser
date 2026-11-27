@@ -29,6 +29,12 @@ public class ApiUserSettings
     /// <summary>Allow <c>file://</c> URLs when scope permits (default false — LLM safety).</summary>
     public bool AllowFileUrls { get; set; }
 
+    /// <summary>
+    /// When true, pages see <c>prefers-color-scheme: dark</c> (similar to Chrome appearance → Dark).
+    /// API <c>/api/emulation</c> colorScheme overrides this until cleared.
+    /// </summary>
+    public bool PreferWebDarkMode { get; set; }
+
     /// <summary>Whether safe mode is on. CLI <c>--safe</c> overrides for that run.</summary>
     public bool SafeMode { get; set; }
 

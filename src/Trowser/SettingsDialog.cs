@@ -20,6 +20,7 @@ public class SettingsDialog : Window
     private readonly CheckBox _keepApiKeyForNextSessionCheckBox;
     private readonly TextBox _restApiKeyTextBox;
     private readonly CheckBox _safeModeCheckBox;
+    private readonly CheckBox _preferWebDarkModeCheckBox;
 
     private bool? _shadowEnabledOverride;
     private bool? _shadowNotifyOverride;
@@ -48,6 +49,7 @@ public class SettingsDialog : Window
     public bool KeepApiKeyForNextSession => _keepApiKeyForNextSessionCheckBox.IsChecked == true;
     public string RestApiKey => _restApiKeyTextBox.Text;
     public bool SafeModeValue => _safeModeCheckBox.IsChecked == true;
+    public bool PreferWebDarkModeValue => _preferWebDarkModeCheckBox.IsChecked == true;
 
     public bool ShadowEnabled => _shadowEnabledOverride ?? _shadowConfig?.Enabled ?? false;
     public bool ShadowNotifyGui => _shadowNotifyOverride ?? _shadowConfig?.NotifyGui ?? true;
@@ -74,7 +76,8 @@ public class SettingsDialog : Window
 
     public SettingsDialog(Window owner, string currentScope, int currentPort,
         bool proxyEnabled = false, string proxyUrl = "http://localhost:8080",
-        bool safeMode = false, string? apiKey = null, bool apiKeyRequired = true, bool keepApiKeyForNextSession = false,
+        bool safeMode = false, bool preferWebDarkMode = false, string? apiKey = null, bool apiKeyRequired = true,
+        bool keepApiKeyForNextSession = false,
         Security.ShadowConfig? shadowConfig = null,
         Security.PowerModeConfig? powerModeConfig = null,
         Security.WhisperConfig? whisperConfig = null,
@@ -144,6 +147,18 @@ public class SettingsDialog : Window
 
         _proxyCheckBox.Checked += (_, _) => _proxyUrlTextBox.IsEnabled = true;
         _proxyCheckBox.Unchecked += (_, _) => _proxyUrlTextBox.IsEnabled = false;
+
+        _preferWebDarkModeCheckBox = new CheckBox
+        {
+            Content = "Use dark mode when available",
+            Foreground = FgText,
+            FontSize = 12,
+            Margin = new Thickness(0, 12, 0, 2),
+            IsChecked = preferWebDarkMode
+        };
+        rootStack.Children.Add(_preferWebDarkModeCheckBox);
+        AddHint(rootStack,
+            "Sites that support dark mode (e.g. Chrome setting) will use it in Trowser too.");
 
         // ─── Section: Security ───
         AddSectionHeader(rootStack, "Security", topMargin: 20);

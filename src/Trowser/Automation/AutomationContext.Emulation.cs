@@ -10,6 +10,11 @@ public partial class AutomationContext
     private EmulationState _emulation = new();
     private string? _localeDocumentScriptId;
 
+    /// <summary>
+    /// When true, report <c>prefers-color-scheme: dark</c> unless <see cref="EmulationState.ColorScheme"/> is set via API.
+    /// </summary>
+    public bool PreferWebDarkMode { get; set; }
+
     /// <summary>Current environment overrides for the active session (geo, locale, UA, etc.).</summary>
     public EmulationState Emulation => _emulation.Clone();
 
@@ -109,34 +114,25 @@ public partial class AutomationContext
 
             if (update.ColorScheme != null || update.ReducedMotion != null)
             {
-                var features = new List<object>();
-                var scheme = update.ColorScheme ?? _emulation.ColorScheme;
-                if (!string.IsNullOrEmpty(scheme) &&
-                    !scheme.Equals("no-preference", StringComparison.OrdinalIgnoreCase))
+                if (update.ColorScheme != null)
                 {
-                    features.Add(new { name = "prefers-color-scheme", value = scheme });
-                    _emulation.ColorScheme = scheme;
-                }
-                else if (update.ColorScheme != null)
-                {
-                    _emulation.ColorScheme = null;
+                    if (string.IsNullOrEmpty(update.ColorScheme) ||
+                        update.ColorScheme.Equals("no-preference", StringComparison.OrdinalIgnoreCase))
+                        _emulation.ColorScheme = null;
+                    else
+                        _emulation.ColorScheme = update.ColorScheme;
                 }
 
-                var motion = update.ReducedMotion ?? _emulation.ReducedMotion;
-                if (!string.IsNullOrEmpty(motion) &&
-                    !motion.Equals("no-preference", StringComparison.OrdinalIgnoreCase))
+                if (update.ReducedMotion != null)
                 {
-                    features.Add(new { name = "prefers-reduced-motion", value = motion });
-                    _emulation.ReducedMotion = motion;
-                }
-                else if (update.ReducedMotion != null)
-                {
-                    _emulation.ReducedMotion = null;
+                    if (string.IsNullOrEmpty(update.ReducedMotion) ||
+                        update.ReducedMotion.Equals("no-preference", StringComparison.OrdinalIgnoreCase))
+                        _emulation.ReducedMotion = null;
+                    else
+                        _emulation.ReducedMotion = update.ReducedMotion;
                 }
 
-                await core.CallDevToolsProtocolMethodAsync(
-                    "Emulation.setEmulatedMedia",
-                    JsonSerializer.Serialize(new { features }));
+                await ApplyEffectiveEmulatedMediaAsync(core);
             }
 
             if (update.UserAgent != null)
@@ -208,7 +204,9 @@ public partial class AutomationContext
     /// </summary>
     public async Task ReapplyEmulationAfterNavigationAsync()
     {
-        if (_emulation.Geolocation == null && _emulation.Permissions.Count == 0 && string.IsNullOrEmpty(_emulation.Locale))
+        var needsMedia = NeedsEmulatedMediaFeatures();
+        if (_emulation.Geolocation == null && _emulation.Permissions.Count == 0 && string.IsNullOrEmpty(_emulation.Locale) &&
+            !needsMedia)
             return;
 
         var webView = ActiveTab.WebView;
@@ -254,12 +252,85 @@ public partial class AutomationContext
                         TrowserLog.Warn($"Reapply permission '{kv.Key}' failed: {ex.Message}");
                     }
                 }
+
+                if (needsMedia)
+                    await ApplyEffectiveEmulatedMediaAsync(core);
             });
         }
         catch (Exception ex)
         {
             TrowserLog.Warn($"ReapplyEmulationAfterNavigation failed: {ex.Message}");
         }
+    }
+
+    /// <summary>Apply effective color-scheme / reduced-motion media queries on every open tab.</summary>
+    public async Task SyncPreferWebDarkModeToAllTabsAsync()
+    {
+        if (_tabs.Count == 0) return;
+        var anchor = _tabs.FirstOrDefault(t => t.WebView != null)?.WebView;
+        if (anchor == null) return;
+        await await anchor.Dispatcher.InvokeAsync(async () =>
+        {
+            foreach (var tab in _tabs)
+            {
+                var core = tab.WebView.CoreWebView2;
+                if (core == null) continue;
+                try
+                {
+                    await ApplyEffectiveEmulatedMediaAsync(core);
+                }
+                catch (Exception ex)
+                {
+                    TrowserLog.Warn($"Apply emulated media on tab {tab.Id} failed: {ex.Message}");
+                }
+            }
+        });
+    }
+
+    /// <summary>Apply effective color-scheme / reduced-motion on one tab (e.g. after creation).</summary>
+    public async Task ApplyEffectiveEmulatedMediaToTabAsync(BrowserTab tab)
+    {
+        var wv = tab.WebView;
+        if (wv?.CoreWebView2 == null) return;
+        if (!NeedsEmulatedMediaFeatures()) return;
+        await await wv.Dispatcher.InvokeAsync(async () =>
+        {
+            var core = wv.CoreWebView2;
+            if (core == null) return;
+            await ApplyEffectiveEmulatedMediaAsync(core);
+        });
+    }
+
+    private bool NeedsEmulatedMediaFeatures() =>
+        PreferWebDarkMode ||
+        (!string.IsNullOrEmpty(_emulation.ColorScheme) &&
+         !_emulation.ColorScheme.Equals("no-preference", StringComparison.OrdinalIgnoreCase)) ||
+        (!string.IsNullOrEmpty(_emulation.ReducedMotion) &&
+         !_emulation.ReducedMotion.Equals("no-preference", StringComparison.OrdinalIgnoreCase));
+
+    private string? GetEffectiveColorScheme()
+    {
+        if (!string.IsNullOrEmpty(_emulation.ColorScheme) &&
+            !_emulation.ColorScheme.Equals("no-preference", StringComparison.OrdinalIgnoreCase))
+            return _emulation.ColorScheme;
+        return PreferWebDarkMode ? "dark" : null;
+    }
+
+    private async Task ApplyEffectiveEmulatedMediaAsync(CoreWebView2 core)
+    {
+        var features = new List<object>();
+        var scheme = GetEffectiveColorScheme();
+        if (!string.IsNullOrEmpty(scheme))
+            features.Add(new { name = "prefers-color-scheme", value = scheme });
+
+        var motion = _emulation.ReducedMotion;
+        if (!string.IsNullOrEmpty(motion) &&
+            !motion.Equals("no-preference", StringComparison.OrdinalIgnoreCase))
+            features.Add(new { name = "prefers-reduced-motion", value = motion });
+
+        await core.CallDevToolsProtocolMethodAsync(
+            "Emulation.setEmulatedMedia",
+            JsonSerializer.Serialize(new { features }));
     }
 
     private static async Task ApplyPermissionOverrideAsync(CoreWebView2 core, string permission, string setting)
@@ -321,6 +392,15 @@ public partial class AutomationContext
                     JsonSerializer.Serialize(new { userAgent = "" }));
             }
             catch { /* ignore */ }
+
+            if (PreferWebDarkMode)
+            {
+                try
+                {
+                    await ApplyEffectiveEmulatedMediaAsync(core);
+                }
+                catch { /* ignore */ }
+            }
         });
 
         _emulation = new EmulationState();

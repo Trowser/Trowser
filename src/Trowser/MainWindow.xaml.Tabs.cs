@@ -61,6 +61,8 @@ public partial class MainWindow
         if (uaOverride != null)
             webView.CoreWebView2.Settings.UserAgent = uaOverride;
         WireUpTabEvents(tab);
+        if (_automationContext != null)
+            await _automationContext.ApplyEffectiveEmulatedMediaToTabAsync(tab);
         InterceptSettings.LoadInto(tab);
 
         // Only page-initiated windows (window.open / target=_blank). Ctrl+T, reports, and
